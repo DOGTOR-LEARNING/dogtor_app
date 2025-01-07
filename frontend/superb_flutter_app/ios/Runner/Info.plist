@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>需要相機權限來拍攝照片</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>需要相簿權限來選擇照片</string>
 </dict>
 </plist>
