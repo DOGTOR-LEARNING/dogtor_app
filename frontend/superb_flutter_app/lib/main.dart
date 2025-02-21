@@ -139,6 +139,8 @@ class _ChatPageState extends State<ChatPage> {
     try {
       Map<String, dynamic> requestBody = {
         "user_message": _controller.text,
+        "subject": _selectedSubject,    // 添加選擇的科目
+        "chapter": _selectedItem,       // 添加選擇的章節
       };
 
       // 如果有選擇圖片，添加到請求中
