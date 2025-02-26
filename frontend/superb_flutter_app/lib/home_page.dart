@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'main.dart';  // 引入原來的 AI 問問題頁面
+import 'auth.dart';  // Import the AuthPage
+import 'mistake_book.dart';  // Import the MistakeBookPage
 import 'dart:math';
 
 class HomePage extends StatefulWidget {
@@ -51,7 +53,7 @@ class _HomePageState extends State<HomePage> {
         index: _selectedIndex,
         children: [
           Center(child: Text('探索', style: TextStyle(color: Colors.white))),
-          Center(child: Text('學習', style: TextStyle(color: Colors.white))),
+          MistakeBookPage(),  // Add MistakeBookPage here
           Container(
             decoration: BoxDecoration(
               color: Color(0xFF1B3B4B), // 深藍色微偏綠
@@ -158,7 +160,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           ChatPage(),
-          Center(child: Text('我的', style: TextStyle(color: Colors.white))),
+          AuthPage(),
         ],
       ),
       bottomNavigationBar: Container(
@@ -178,7 +180,7 @@ class _HomePageState extends State<HomePage> {
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.book),
-              label: '學習',
+              label: '學習',  // This should correspond to MistakeBookPage
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.home),

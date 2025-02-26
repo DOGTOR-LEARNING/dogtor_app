@@ -15,8 +15,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   await Supabase.initialize(
-    url: 'https://zgccuixkrlsfmsgblbpe.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnY2N1aXhrcmxzZm1zZ2JsYnBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5NjI3MzksImV4cCI6MjA1MTUzODczOX0.6SVEK8ib3RDeQ7-Qj3oGUU6e0j_baKkfhH6MoL03sQM',
+    url: 'https://sdjytgbojqslkfwfxlvs.supabase.co', // https://zgccuixkrlsfmsgblbpe.supabase.co
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkanl0Z2JvanFzbGtmd2Z4bHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0NjEwNjUsImV4cCI6MjA1NjAzNzA2NX0.IAFreOpeUF0qxKyWaEbpyG3eQPWS3F58XisraV_Z8S8', // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnY2N1aXhrcmxzZm1zZ2JsYnBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5NjI3MzksImV4cCI6MjA1MTUzODczOX0.6SVEK8ib3RDeQ7-Qj3oGUU6e0j_baKkfhH6MoL03sQM
   );
   
   runApp(MyApp());
@@ -92,31 +92,24 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
-    _loadItems();  // 當頁面初始化時加載數據
+    _loadItems();  // Now fetches from backend
   }
 
-  // 從 Supabase 加載數據
+  // Fetch chapters from backend
   Future<void> _loadItems() async {
     try {
-      print('開始加載數據...');
-      final response = await _supabase
-          .from('chemistry_chapter')
-          .select('chapter_name');
-
-      if (response != null) {
-        final uniqueItems = Set<String>.from(
-          (response as List).map((item) => item['chapter_name'] as String)
-        ).toList();
-
+      final response = await http.get(Uri.parse('http://127.0.0.1:8000/chapters'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
         setState(() {
-          _items = uniqueItems;
+          _items = List<String>.from(data['chapters']);
         });
-        
-        print('成功加載數據: $_items');
+      } else {
+        throw Exception('Failed to load chapters');
       }
     } catch (e) {
-      print('加載數據時出錯: $e');
-      // 使用暫時列表
+      print('Error loading chapters: $e');
+      // Fallback to temporary list
       setState(() {
         _items = [
           '第一章 緒論',
