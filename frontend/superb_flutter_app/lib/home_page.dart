@@ -180,7 +180,7 @@ class _HomePageState extends State<HomePage> {
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.book),
-              label: '學習',  // This should correspond to MistakeBookPage
+              label: '錯題本',  // This should correspond to MistakeBookPage
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.home),
