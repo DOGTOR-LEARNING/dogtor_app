@@ -3,6 +3,7 @@ import 'main.dart';  // 引入原來的 AI 問問題頁面
 import 'auth_page.dart';  // Import the AuthPage
 import 'mistake_book.dart';  // Import the MistakeBookPage
 import 'dart:math';
+import 'chapter_detail_page.dart';  // Import the ChapterDetailPage
 
 class HomePage extends StatefulWidget {
   @override
@@ -123,6 +124,17 @@ class _HomePageState extends State<HomePage> {
                                       child: GestureDetector(
                                         onTap: () {
                                           print('點擊了 ${planets[index]['name']}');
+                                          if (planets[index]['name'] == '理化') {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => ChapterDetailPage(
+                                                  subject: '理化',
+                                                  csvPath: 'assets/edu_data/junior_science_chapter.csv',
+                                                ),
+                                              ),
+                                            );
+                                          }
                                         },
                                         child: Image.asset(
                                           planets[index]['image'],

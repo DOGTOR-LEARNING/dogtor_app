@@ -121,6 +121,9 @@ class _ChatPageState extends State<ChatPage> {
         case '化學':
           csvPath = 'assets/edu_data/high_chemistry_chapter.csv';
           break;
+        case '理化':
+          csvPath = 'assets/edu_data/junior_science_chapter.csv';
+          break;
         // 可以添加其他科目的對應
         default:
           csvPath = ''; // 其他科目暫時不處理
