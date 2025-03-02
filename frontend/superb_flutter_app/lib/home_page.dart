@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'main.dart';  // 引入原來的 AI 問問題頁面
-import 'auth.dart';  // Import the AuthPage
+import 'auth_page.dart';  // Import the AuthPage
 import 'mistake_book.dart';  // Import the MistakeBookPage
 import 'dart:math';
 

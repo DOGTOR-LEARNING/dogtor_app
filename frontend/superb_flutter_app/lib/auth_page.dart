@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'home_page.dart';
 
 class AuthPage extends StatefulWidget {
   @override
@@ -33,19 +34,32 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _login() async {
-    final response = await http.post(
-      Uri.parse('http://127.0.0.1:8000/login'),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        'email': _emailController.text,
-        'password': _passwordController.text,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:8000/login'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          'email': _emailController.text,
+          'password': _passwordController.text,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      // Handle successful login
-    } else {
-      // Handle login error
+      if (response.statusCode == 200) {
+        // 登入成功後導向首頁
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      } else {
+        // 顯示錯誤提示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('登入失敗：${response.body}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('網路錯誤：$e')),
+      );
     }
   }
 

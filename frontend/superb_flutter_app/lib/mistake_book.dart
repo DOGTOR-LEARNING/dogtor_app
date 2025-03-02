@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class MistakeBookPage extends StatefulWidget {
   @override
@@ -13,7 +15,24 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
   @override
   void initState() {
     super.initState();
-    // Load mistakes from backend
+    _loadMistakes();
+  }
+
+  Future<void> _loadMistakes() async {
+    try {
+      final response = await http.get(Uri.parse('http://127.0.0.1:8000/mistakes'));
+      if (response.statusCode == 200) {
+        setState(() {
+          _mistakes = List<Map<String, dynamic>>.from(jsonDecode(response.body));
+        });
+      } else {
+        throw Exception('無法載入錯題');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('載入錯誤：$e')),
+      );
+    }
   }
 
   @override

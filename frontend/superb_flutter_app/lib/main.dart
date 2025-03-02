@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'home_page.dart';
+import 'auth_page.dart';
+import 'mistake_book.dart';
 
 
 Future<void> main() async {
@@ -46,7 +48,13 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(fontSize: 16, fontFamily: 'Normal', fontWeight: FontWeight.normal, color: Colors.white70),
         ),
       ),
-      home: HomePage(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => HomePage(),
+        '/chat': (context) => ChatPage(),
+        '/auth': (context) => AuthPage(),
+        '/mistakes': (context) => MistakeBookPage(),
+      },
     );
   }
 }
