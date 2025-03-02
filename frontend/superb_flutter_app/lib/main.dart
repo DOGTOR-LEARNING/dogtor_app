@@ -107,29 +107,67 @@ class _ChatPageState extends State<ChatPage> {
 
   // Fetch chapters from backend
   Future<void> _loadItems() async {
+    if (_selectedSubject == null) {
+      setState(() {
+        _items = []; // 如果沒有選擇科目，清空章節列表
+      });
+      return;
+    }
+
     try {
-      final response = await http.get(Uri.parse('http://127.0.0.1:8000/chapters'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _items = List<String>.from(data['chapters']);
-        });
-      } else {
-        throw Exception('Failed to load chapters');
+      // 根據選擇的科目決定要讀取的 CSV 文件
+      String csvPath = '';
+      switch (_selectedSubject) {
+        case '化學':
+          csvPath = 'assets/edu_data/high_chemistry_chapter.csv';
+          break;
+        // 可以添加其他科目的對應
+        default:
+          csvPath = ''; // 其他科目暫時不處理
       }
+
+      if (csvPath.isEmpty) {
+        // 如果沒有對應的 CSV 文件，使用預設章節
+        setState(() {
+          _items = [
+            '當前科目讀取章節失敗',
+          ];
+        });
+        return;
+      }
+
+      // 讀取 CSV 文件
+      final String data = await DefaultAssetBundle.of(context).loadString(csvPath);
+      final List<String> rows = data.split('\n');
+      
+      // 跳過標題行，獲取 chapter_name 並去除重複項目
+      setState(() {
+        _items = rows
+            .skip(1) // 跳過標題行
+            .where((row) => row.trim().isNotEmpty) // 過濾空行
+            .map((row) => row.split(',')[4].trim()) // 獲取 chapter_name（目前是第5列）
+            .toSet() // 使用 Set 去除重複項目
+            .toList(); // 轉回 List
+      });
+
     } catch (e) {
       print('Error loading chapters: $e');
-      // Fallback to temporary list
+      // 發生錯誤時使用預設章節
       setState(() {
         _items = [
-          '第一章 緒論',
-          '第二章 物質的組成與特性',
-          '第三章 化學計量',
-          '第四章 原子結構與元素週期表',
-          '第五章 化學鍵結',
+          '發生錯誤',
         ];
       });
     }
+  }
+
+  // 在科目選擇變更時重新載入章節
+  void _onSubjectChanged(String? newValue) {
+    setState(() {
+      _selectedSubject = newValue;
+      _selectedItem = null; // 清空已選擇的章節
+    });
+    _loadItems(); // 重新載入章節列表
   }
 
   // sendMessage: 處理發送消息的核心方法
@@ -277,11 +315,7 @@ class _ChatPageState extends State<ChatPage> {
                           child: Text(subject),
                         );
                       }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedSubject = newValue;
-                        });
-                      },
+                      onChanged: _onSubjectChanged,
                       hint: Text('選擇科目', style: TextStyle(color: Color(0xFF1E3875))),
                     ),
                   ),

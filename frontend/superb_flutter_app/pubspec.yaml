@@ -75,4 +75,5 @@ flutter:
 
   assets:
     - assets/pics/
+    - assets/edu_data/
 
