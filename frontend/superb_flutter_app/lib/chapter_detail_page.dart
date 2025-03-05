@@ -12,12 +12,18 @@ class ChapterDetailPage extends StatefulWidget {
 }
 
 class _ChapterDetailPageState extends State<ChapterDetailPage> {
+  // 儲存所有章節資料的列表
   List<Map<String, dynamic>> sections = [];
+  // 當前章節名稱
   String currentChapter = '';
+  // 目前完成的進度
   int currentProgress = 0;
+  // 總章節數量
   int totalSections = 0;
-  String yearGrade = '';  // 添加年級
-  String book = '';      // 添加冊別
+  // 課程適用年級
+  String yearGrade = '';
+  // 教材冊別
+  String book = '';
 
   @override
   void initState() {
@@ -27,10 +33,11 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> {
 
   Future<void> _loadChapterData() async {
     try {
+      // 從資源檔案中載入 CSV 資料
       final String data = await DefaultAssetBundle.of(context).loadString(widget.csvPath);
       final List<String> rows = data.split('\n');
       
-      // 跳過標題行，獲取第一行的年級和冊別資訊
+      // 從第一行資料中取得年級和冊別資訊
       if (rows.length > 1) {
         final firstRow = rows[1].split(',');
         yearGrade = firstRow[1];  // 年級
@@ -43,13 +50,13 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> {
           .map((row) {
             final cols = row.split(',');
             return {
-              'chapter_num': cols[3],
-              'chapter_name': cols[4],
-              'section_num': cols[5],
-              'section_name': cols[6],
-              'knowledge_spots': cols[7],
-              'section_summary': cols[8],  // 添加課綱內容
-              'stars': 0, // 預設星星數
+              'chapter_num': cols[3],    // 章節編號
+              'chapter_name': cols[4],   // 章節名稱
+              'section_num': cols[5],    // 小節編號
+              'section_name': cols[6],   // 小節名稱
+              'knowledge_spots': cols[7], // 知識點列表
+              'section_summary': cols[8], // 課綱內容摘要
+              'stars': 0,                // 學習進度星星數（預設為0）
             };
           }).toList();
 
@@ -59,7 +66,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> {
         currentProgress = 2; // 示例進度
       });
     } catch (e) {
-      print('Error loading chapter data: $e');
+      print('載入章節資料時發生錯誤: $e');
     }
   }
 
@@ -81,7 +88,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> {
       ),
       body: Column(
         children: [
-          // 添加年級和冊別資訊
+          // 顯示年級和冊別資訊
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
@@ -113,6 +120,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> {
               itemCount: sections.length,
               itemBuilder: (context, index) {
                 final section = sections[index];
+                // 判斷是否為新章節的開始
                 final isNewChapter = index == 0 || 
                     sections[index]['chapter_name'] != sections[index - 1]['chapter_name'];
                 
@@ -157,7 +165,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> {
                           // 從 knowledge_spots 欄位獲取知識點列表
                           final knowledgeSpots = section['knowledge_spots'].toString().split('、');
                           
-                          // 創建知識點分數映射，預設分數為 5
+                          // 為每個知識點設定預設分數（5分）
                           final Map<String, dynamic> knowledgePoints = Map.fromIterable(
                             knowledgeSpots,
                             key: (spot) => spot,

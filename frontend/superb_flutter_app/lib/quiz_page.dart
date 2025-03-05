@@ -4,8 +4,11 @@ import 'dart:convert';
 import 'dart:convert' show LineSplitter;
 
 class QuizPage extends StatefulWidget {
+  // 儲存章節名稱
   final String section;
+  // 儲存知識點資訊
   final Map<String, dynamic> knowledgePoints;
+  // 儲存章節摘要
   final String sectionSummary;
 
   QuizPage({
@@ -19,10 +22,15 @@ class QuizPage extends StatefulWidget {
 }
 
 class _QuizPageState extends State<QuizPage> {
+  // 儲存所有題目的列表
   List<Map<String, dynamic>> questions = [];
+  // 當前顯示的題目索引
   int currentQuestionIndex = 0;
+  // 控制載入狀態
   bool isLoading = true;
+  // 使用者選擇的答案
   String? selectedAnswer;
+  // 判斷答案是否正確
   bool? isCorrect;
 
   @override
@@ -33,6 +41,7 @@ class _QuizPageState extends State<QuizPage> {
 
   Future<void> _fetchQuestions() async {
     try {
+      // 向後端 API 發送請求獲取題目
       final response = await http.post(
         Uri.parse('http://127.0.0.1:8000/generate_questions'),
         headers: {'Content-Type': 'application/json'},
@@ -71,7 +80,7 @@ class _QuizPageState extends State<QuizPage> {
           }
         }
 
-        // 原有的解析邏輯也需要使用清理後的回應
+        // 解析每一行資料為題目物件
         final List<Map<String, dynamic>> parsedQuestions = [];
         for (var row in rows) {
           if (row.trim().isEmpty) continue; // 跳過空行
@@ -79,6 +88,7 @@ class _QuizPageState extends State<QuizPage> {
           final cols = row.split(',');
           if (cols.length >= 7) {
             try {
+              // 將每個題目轉換為結構化資料
               parsedQuestions.add({
                 'knowledge_point': utf8.decode(cols[0].codeUnits),
                 'question': utf8.decode(cols[1].codeUnits),
@@ -110,6 +120,7 @@ class _QuizPageState extends State<QuizPage> {
   }
 
   void _checkAnswer() {
+    // 檢查答案是否正確
     final currentQuestion = questions[currentQuestionIndex];
     try {
       // 打印調試信息
@@ -121,6 +132,7 @@ class _QuizPageState extends State<QuizPage> {
       final correctAnswer = currentQuestion['options'][correctAnswerIndex];
       
       setState(() {
+        // 比對使用者選擇的答案是否正確
         isCorrect = selectedAnswer == correctAnswer;
         print('Selected: $selectedAnswer');
         print('Correct: $correctAnswer');
@@ -134,6 +146,7 @@ class _QuizPageState extends State<QuizPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 顯示載入中畫面
     if (isLoading) {
       return Scaffold(
         backgroundColor: Color(0xFF1B3B4B),
@@ -141,6 +154,7 @@ class _QuizPageState extends State<QuizPage> {
       );
     }
 
+    // 顯示錯誤訊息
     if (questions.isEmpty) {
       return Scaffold(
         backgroundColor: Color(0xFF1B3B4B),
@@ -162,6 +176,7 @@ class _QuizPageState extends State<QuizPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 顯示題目文字
             Text(
               currentQuestion['question'],
               style: TextStyle(
@@ -171,7 +186,9 @@ class _QuizPageState extends State<QuizPage> {
               ),
             ),
             SizedBox(height: 20),
+            // 顯示選項按鈕
             ...currentQuestion['options'].asMap().entries.map((entry) {
+              // 設定選項的狀態（是否被選中、是否正確）
               final index = entry.key;
               final option = entry.value;
               final isSelected = selectedAnswer == option;
@@ -212,6 +229,7 @@ class _QuizPageState extends State<QuizPage> {
               );
             }).toList(),
             Spacer(),
+            // 底部導航按鈕（上一題、送出答案、下一題）
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
