@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'profile.dart'; // Import the ProfilePage
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthPage extends StatefulWidget {
   @override
@@ -12,6 +14,20 @@ class _AuthPageState extends State<AuthPage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
+  final _supabase = Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final session = _supabase.auth.currentSession;
+    if (session != null) {
+      _navigateToProfile();
+    }
+  }
 
   Future<void> _register() async {
     final response = await http.post(
@@ -26,7 +42,7 @@ class _AuthPageState extends State<AuthPage> {
     );
 
     if (response.statusCode == 200) {
-      // Handle successful registration
+      _login(); // Automatically log in after registration
     } else {
       // Handle registration error
     }
@@ -43,10 +59,30 @@ class _AuthPageState extends State<AuthPage> {
     );
 
     if (response.statusCode == 200) {
-      // Handle successful login
+      _navigateToProfile();
     } else {
       // Handle login error
     }
+  }
+
+Future<void> _loginWithGoogle() async {
+  final supabase = Supabase.instance.client; // 取得 Supabase 用戶端
+  try {
+    await supabase.auth.signInWithOAuth( 
+      OAuthProvider.google, // 這裡的 Provider.google 來自 supabase_flutter
+      //redirectTo: 'io.supabase.flutter://login-callback/',
+    );
+  } catch (e) {
+    print('Error: $e');  // 只在 debug 模式下使用 print
+  }
+}
+
+
+  void _navigateToProfile() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => ProfilePage()),
+    );
   }
 
   @override
@@ -57,23 +93,7 @@ class _AuthPageState extends State<AuthPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-            ),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: 'Name'),
-            ),
-            TextField(
-              controller: _gradeController,
-              decoration: InputDecoration(labelText: 'Grade'),
-            ),
+          
             ElevatedButton(
               onPressed: _register,
               child: Text('Register'),
@@ -81,6 +101,10 @@ class _AuthPageState extends State<AuthPage> {
             ElevatedButton(
               onPressed: _login,
               child: Text('Login'),
+            ),
+            ElevatedButton(
+              onPressed: _loginWithGoogle,
+              child: Text('Continue with Google'),
             ),
           ],
         ),

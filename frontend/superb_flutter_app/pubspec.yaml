@@ -33,8 +33,9 @@ dependencies:
   flutter_markdown: ^0.7.5
   flutter_math_fork: ^0.7.3
   flutter_markdown_latex: ^0.3.4
-  supabase_flutter: ^2.8.3
+  supabase_flutter: ^2.8.4
   image_picker: ^1.0.7
+  logging: ^1.2.0
 
 
 dev_dependencies:
