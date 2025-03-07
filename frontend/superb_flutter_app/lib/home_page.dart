@@ -4,6 +4,7 @@ import 'auth_page.dart';  // Import the AuthPage
 import 'mistake_book.dart';  // Import the MistakeBookPage
 import 'dart:math';
 import 'chapter_detail_page.dart';  // Import the ChapterDetailPage
+import 'chat_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
