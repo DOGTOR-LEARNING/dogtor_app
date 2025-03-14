@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:convert' show LineSplitter;
+import 'package:google_fonts/google_fonts.dart';
 
 class QuizPage extends StatefulWidget {
-  // 儲存章節名稱
   final String section;
-  // 儲存知識點資訊
   final Map<String, dynamic> knowledgePoints;
-  // 儲存章節摘要
   final String sectionSummary;
 
   QuizPage({
@@ -21,30 +18,47 @@ class QuizPage extends StatefulWidget {
   _QuizPageState createState() => _QuizPageState();
 }
 
-class _QuizPageState extends State<QuizPage> {
-  // 儲存所有題目的列表
+class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> questions = [];
-  // 當前顯示的題目索引
   int currentQuestionIndex = 0;
-  // 控制載入狀態
   bool isLoading = true;
-  // 使用者選擇的答案
   String? selectedAnswer;
-  // 判斷答案是否正確
   bool? isCorrect;
+  int correctAnswersCount = 0;
+  
+  // 添加動畫控制器
+  late AnimationController _animationController;
+  late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
     _fetchQuestions();
+    
+    // 初始化動畫控制器
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    
+    _animationController.forward();
+  }
+  
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchQuestions() async {
     try {
-      // 向後端 API 發送請求獲取題目
       final response = await http.post(
-        // Uri.parse('http://127.0.0.1:8000/generate_questions'),
-        Uri.parse('http://172.20.10.2:8000/generate_questions'),
+        Uri.parse('http://127.0.0.1:8000/generate_questions'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'section': widget.section,
@@ -53,43 +67,21 @@ class _QuizPageState extends State<QuizPage> {
         }),
       );
 
-      print('API Response: ${response.body}');
-      
       if (response.statusCode == 200) {
-        // 清理回應內容：移除引號和處理換行符
         final cleanResponse = response.body
-            .replaceAll('"', '')  // 移除引號
-            .replaceAll('\\n', '\n')  // 處理跳脫的換行符
-            .trim();  // 移除前後空白
+            .replaceAll('"', '')
+            .replaceAll('\\n', '\n')
+            .trim();
         
         final rows = cleanResponse.split('\n');
         
-        // 打印每題資訊
-        for (var i = 0; i < rows.length; i++) {
-          if (rows[i].trim().isEmpty) continue;
-          
-          final cols = rows[i].split(',');
-          if (cols.length >= 7) {
-            print('第${i + 1}題');
-            print('題目：${utf8.decode(cols[1].codeUnits)}');
-            print('選項：A.${utf8.decode(cols[3].codeUnits)}, ' +
-                  'B.${utf8.decode(cols[4].codeUnits)}, ' +
-                  'C.${utf8.decode(cols[5].codeUnits)}, ' +
-                  'D.${utf8.decode(cols[6].codeUnits)}');
-            print('正確答案：${cols[2]}');
-            print('-------------------');
-          }
-        }
-
-        // 解析每一行資料為題目物件
         final List<Map<String, dynamic>> parsedQuestions = [];
         for (var row in rows) {
-          if (row.trim().isEmpty) continue; // 跳過空行
+          if (row.trim().isEmpty) continue;
           
           final cols = row.split(',');
           if (cols.length >= 7) {
             try {
-              // 將每個題目轉換為結構化資料
               parsedQuestions.add({
                 'knowledge_point': utf8.decode(cols[0].codeUnits),
                 'question': utf8.decode(cols[1].codeUnits),
@@ -121,190 +113,600 @@ class _QuizPageState extends State<QuizPage> {
   }
 
   void _checkAnswer() {
-    // 檢查答案是否正確
     final currentQuestion = questions[currentQuestionIndex];
     try {
-      // 打印調試信息
-      print('Correct answer string: ${currentQuestion['correct_answer']}');
-      
-      // 確保正確答案是數字字符串
       final correctAnswerString = currentQuestion['correct_answer'].trim();
       final correctAnswerIndex = int.parse(correctAnswerString) - 1;
       final correctAnswer = currentQuestion['options'][correctAnswerIndex];
       
+      final bool answerIsCorrect = selectedAnswer == correctAnswer;
+      
       setState(() {
-        // 比對使用者選擇的答案是否正確
-        isCorrect = selectedAnswer == correctAnswer;
-        print('Selected: $selectedAnswer');
-        print('Correct: $correctAnswer');
-        print('Is Correct: $isCorrect');
+        isCorrect = answerIsCorrect;
+        
+        if (answerIsCorrect) {
+          correctAnswersCount++;
+        }
       });
     } catch (e) {
       print('Error in _checkAnswer: $e');
-      print('Current question: $currentQuestion');
     }
+  }
+
+  void _nextQuestion() {
+    if (currentQuestionIndex < questions.length - 1) {
+      // 重置動畫
+      _animationController.reset();
+      
+      setState(() {
+        currentQuestionIndex++;
+        selectedAnswer = null;
+        isCorrect = null;
+      });
+      
+      // 播放進入動畫
+      _animationController.forward();
+    }
+  }
+
+  void _showResultDialog() {
+    final percentage = (correctAnswersCount / questions.length * 100).round();
+    String resultMessage;
+    Color resultColor;
+    IconData resultIcon;
+    
+    if (percentage >= 90) {
+      resultMessage = "太棒了！你對這個部分掌握得非常好！";
+      resultColor = Color(0xFF4ADE80);
+      resultIcon = Icons.emoji_events;
+    } else if (percentage >= 70) {
+      resultMessage = "做得好！還有一點小細節需要復習。";
+      resultColor = Color(0xFF38BDF8);
+      resultIcon = Icons.thumb_up;
+    } else if (percentage >= 50) {
+      resultMessage = "繼續加油！可以再多複習幾遍。";
+      resultColor = Color(0xFFFACC15);
+      resultIcon = Icons.history_edu;
+    } else {
+      resultMessage = "這部分需要更多練習，別灰心！";
+      resultColor = Color(0xFFF87171);
+      resultIcon = Icons.replay;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                resultIcon,
+                size: 60,
+                color: resultColor,
+              ),
+              SizedBox(height: 16),
+              Text(
+                "測驗結果",
+                style: GoogleFonts.notoSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 8),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: resultColor.withOpacity(0.2),
+                  border: Border.all(
+                    color: resultColor,
+                    width: 3,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    "$percentage%",
+                    style: GoogleFonts.notoSans(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: resultColor,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                "答對 $correctAnswersCount/${questions.length} 題",
+                style: GoogleFonts.notoSans(
+                  fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                resultMessage,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSans(
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      "返回課程",
+                      style: GoogleFonts.notoSans(),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      // 重置測驗
+                      setState(() {
+                        currentQuestionIndex = 0;
+                        selectedAnswer = null;
+                        isCorrect = null;
+                        correctAnswersCount = 0;
+                        _animationController.reset();
+                        _animationController.forward();
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: resultColor,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      "重新測驗",
+                      style: GoogleFonts.notoSans(),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // 顯示載入中畫面
     if (isLoading) {
       return Scaffold(
-        backgroundColor: Color(0xFF1B3B4B),
-        body: Center(child: CircularProgressIndicator()),
+        backgroundColor: Color(0xFF1E293B),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                color: Color(0xFF38BDF8),
+                strokeWidth: 3,
+              ),
+              SizedBox(height: 24),
+              Text(
+                '載入題目中...',
+                style: GoogleFonts.notoSans(
+                  fontSize: 18,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    // 顯示錯誤訊息
     if (questions.isEmpty) {
       return Scaffold(
-        backgroundColor: Color(0xFF1B3B4B),
-        body: Center(child: Text('無法載入題目', style: TextStyle(color: Colors.white))),
+        backgroundColor: Color(0xFF1E293B),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
+              SizedBox(height: 16),
+              Text(
+                '無法載入題目',
+                style: GoogleFonts.notoSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    isLoading = true;
+                  });
+                  _fetchQuestions();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF38BDF8),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text('重試'),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     final currentQuestion = questions[currentQuestionIndex];
+    final progressPercentage = (currentQuestionIndex + 1) / questions.length;
 
     return Scaffold(
-      backgroundColor: Color(0xFF1B3B4B),
+      backgroundColor: Color(0xFF1E293B),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('練習題 ${currentQuestionIndex + 1}/${questions.length}'),
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new, color: Colors.white),
+        ),
+        title: Text(
+          widget.section,
+          style: GoogleFonts.notoSans(
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 顯示題目文字
-            Text(
-              currentQuestion['question'],
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            // 進度條
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '題目 ${currentQuestionIndex + 1}/${questions.length}',
+                        style: GoogleFonts.notoSans(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Color(0xFF4ADE80),
+                            size: 18,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '$correctAnswersCount 答對',
+                            style: GoogleFonts.notoSans(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progressPercentage,
+                      backgroundColor: Colors.white.withOpacity(0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+                      minHeight: 6,
+                    ),
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: 20),
-            // 顯示選項按鈕
-            ...currentQuestion['options'].asMap().entries.map((entry) {
-              // 設定選項的狀態（是否被選中、是否正確）
-              final index = entry.key;
-              final option = entry.value;
-              final isSelected = selectedAnswer == option;
-              final isCorrectAnswer = isCorrect != null && 
-                  option == currentQuestion['options'][int.parse(currentQuestion['correct_answer']) - 1];
-              
-              return Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: InkWell(
-                  onTap: isCorrect == null ? () {
-                    setState(() {
-                      selectedAnswer = option;
-                    });
-                  } : null,
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? (isCorrect == null 
-                              ? Colors.blue.withOpacity(0.3)
-                              : (isCorrect! 
-                                  ? Colors.green.withOpacity(0.3)
-                                  : Colors.red.withOpacity(0.3)))
-                          : (isCorrectAnswer && isCorrect != null
-                              ? Colors.green.withOpacity(0.3)
-                              : Colors.white.withOpacity(0.1)),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${String.fromCharCode(65 + (index as num).toInt())}. $option',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+            
+            Expanded(
+              child: FadeTransition(
+                opacity: _animation,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 知識點標籤
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF38BDF8).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Color(0xFF38BDF8).withOpacity(0.5),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          currentQuestion['knowledge_point'],
+                          style: GoogleFonts.notoSans(
+                            color: Color(0xFF38BDF8),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
-                    ),
+                      SizedBox(height: 16),
+                      
+                      // 題目文字
+                      Text(
+                        currentQuestion['question'],
+                        style: GoogleFonts.notoSans(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          height: 1.5,
+                        ),
+                      ),
+                      SizedBox(height: 24),
+                      
+                      // 選項
+                      ...currentQuestion['options'].asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final option = entry.value;
+                        final isSelected = selectedAnswer == option;
+                        final correctAnswerIndex = isCorrect != null 
+                            ? int.parse(currentQuestion['correct_answer']) - 1 
+                            : -1;
+                        final isCorrectAnswer = isCorrect != null && index == correctAnswerIndex;
+                        
+                        // 確定選項顏色和圖標
+                        Color optionColor = Colors.white.withOpacity(0.1);
+                        IconData? trailingIcon;
+                        Color? iconColor;
+                        
+                        if (isCorrect != null) {
+                          if (index == correctAnswerIndex) {
+                            optionColor = Color(0xFF4ADE80).withOpacity(0.2);
+                            trailingIcon = Icons.check_circle;
+                            iconColor = Color(0xFF4ADE80);
+                          } else if (isSelected) {
+                            optionColor = Color(0xFFF87171).withOpacity(0.2);
+                            trailingIcon = Icons.cancel;
+                            iconColor = Color(0xFFF87171);
+                          }
+                        } else if (isSelected) {
+                          optionColor = Color(0xFF38BDF8).withOpacity(0.2);
+                        }
+                        
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: isCorrect == null ? () {
+                                setState(() {
+                                  selectedAnswer = option;
+                                });
+                              } : null,
+                              borderRadius: BorderRadius.circular(12),
+                              splashColor: Colors.white.withOpacity(0.1),
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  color: optionColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected 
+                                        ? (isCorrect == null 
+                                            ? Color(0xFF38BDF8) 
+                                            : (isCorrect! 
+                                                ? Color(0xFF4ADE80) 
+                                                : Color(0xFFF87171)))
+                                        : (isCorrectAnswer 
+                                            ? Color(0xFF4ADE80) 
+                                            : Colors.white.withOpacity(0.2)),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Row(
+                                    children: [
+                                      // 選項字母
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: isSelected 
+                                              ? (isCorrect == null 
+                                                  ? Color(0xFF38BDF8) 
+                                                  : (isCorrect! 
+                                                      ? Color(0xFF4ADE80) 
+                                                      : Color(0xFFF87171)))
+                                              : (isCorrectAnswer 
+                                                  ? Color(0xFF4ADE80) 
+                                                  : Colors.white.withOpacity(0.1)),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          String.fromCharCode(65 + index as int),
+                                          style: GoogleFonts.notoSans(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      
+                                      // 選項文字
+                                      Expanded(
+                                        child: Text(
+                                          option,
+                                          style: GoogleFonts.notoSans(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ),
+                                      
+                                      // 結果圖標
+                                      if (trailingIcon != null)
+                                        Icon(
+                                          trailingIcon,
+                                          color: iconColor,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ],
                   ),
                 ),
-              );
-            }).toList(),
-            Spacer(),
-            // 底部導航按鈕（上一題、送出答案、下一題）
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (currentQuestionIndex > 0)
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            
+            // 底部按鈕
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Color(0xFF0F172A),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (selectedAnswer != null && isCorrect == null)
+                    // 送出答案按鈕
+                    ElevatedButton(
+                      onPressed: _checkAnswer,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF4ADE80),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            '送出答案',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    onPressed: () {
-                      setState(() {
-                        currentQuestionIndex--;
-                        selectedAnswer = null;
-                        isCorrect = null;
-                      });
-                    },
-                    child: Row(
-                      children: [
-                        Icon(Icons.arrow_back, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text('上一題', style: TextStyle(fontSize: 16)),
-                      ],
-                    ),
-                  ),
-                if (selectedAnswer != null && isCorrect == null)
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    
+                  if (isCorrect != null && currentQuestionIndex < questions.length - 1)
+                    // 下一題按鈕
+                    ElevatedButton(
+                      onPressed: _nextQuestion,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF38BDF8),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '下一題',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward, size: 20),
+                        ],
                       ),
                     ),
-                    onPressed: _checkAnswer,
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text('送出答案', style: TextStyle(fontSize: 16)),
-                      ],
-                    ),
-                  ),
-                if (currentQuestionIndex < questions.length - 1)
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    
+                  if (isCorrect != null && currentQuestionIndex == questions.length - 1)
+                    // 完成測驗按鈕
+                    ElevatedButton(
+                      onPressed: _showResultDialog,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFFF59E0B),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.emoji_events, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            '查看結果',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    onPressed: () {
-                      setState(() {
-                        currentQuestionIndex++;
-                        selectedAnswer = null;
-                        isCorrect = null;
-                      });
-                    },
-                    child: Row(
-                      children: [
-                        Text('下一題', style: TextStyle(fontSize: 16)),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward, color: Colors.white),
-                      ],
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
-} 
+}

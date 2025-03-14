@@ -150,7 +150,7 @@ class _ChatPageState extends State<ChatPage> {
 
       final response = await http.post(
         // Uri.parse("http://127.0.0.1:8000/chat"),
-        Uri.parse("http://172.20.10.2:8000/chat"),
+        Uri.parse("http://127.0.0.1:8000/chat"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
@@ -282,7 +282,7 @@ class _ChatPageState extends State<ChatPage> {
 
       final response = await http.post(
         // Uri.parse("http://127.0.0.1:8000/submit_question"),
-        Uri.parse("http://172.20.10.2:8000/submit_question"),
+        Uri.parse("http://127.0.0.1:8000/submit_question"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
@@ -302,100 +302,141 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF1B3B4B),
+          color: Color(0xFF102031),
         ),
-        padding: EdgeInsets.all(20),
+        //padding: EdgeInsets.all(20),
+        padding: EdgeInsets.zero,
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
+        
         child: Column(
+          
           children: [
-            SizedBox(height: 40),
-            Text(
-              "--- AI 問問題 ---",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 30),
-            Row(
+            Stack(
+              alignment: Alignment.center,
               children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedSubject,
-                      decoration: InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.transparent,
-                      ),
-                      icon: Icon(Icons.arrow_drop_down, color: Color(0xFF1E3875)),
-                      dropdownColor: Colors.white,
-                      style: TextStyle(
-                        color: Color(0xFF1E3875),
-                        fontSize: 16,
-                      ),
-                      items: _subjects.map((String subject) {
-                        return DropdownMenuItem<String>(
-                          value: subject,
-                          child: Text(subject),
-                        );
-                      }).toList(),
-                      onChanged: _onSubjectChanged,
-                      hint: Text('選擇科目', style: TextStyle(color: Color(0xFF1E3875))),
-                    ),
+                
+                Image.asset('assets/images/question-sea.png'),
+                /*
+                // 1. 背景圖片 (擴展到整個畫面)
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/question-sea.png',
+                    fit: BoxFit.fill, // 讓圖片填滿畫面
                   ),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      value: _selectedItem,
-                      decoration: InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.transparent,
-                      ),
-                      icon: Icon(Icons.arrow_drop_down, color: Color(0xFF1E3875)),
-                      dropdownColor: Colors.white,
+                */
+
+                // 2. 內容區塊
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  //mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(height: 60), // 增加間距
+                    /*
+                    Text(
+                      "汪汪題",
                       style: TextStyle(
-                        color: Color(0xFF1E3875),
-                        fontSize: 16,
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
                       ),
-                      items: _items.map((String item) {
-                        return DropdownMenuItem<String>(
-                          value: item,
-                          child: Text(item),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedItem = newValue;
-                        });
-                      },
-                      hint: Text('選擇章節', style: TextStyle(color: Color(0xFF1E3875))),
                     ),
-                  ),
+                    */
+                    //SizedBox(height: 30), // 增加間距
+                    Image.asset('assets/images/question-corgi.png'),
+                  ],
                 ),
+                Positioned(
+                  bottom: 5,
+                  left: 5,   // 左邊留白
+                  right: 5,  // 右邊留白
+                child: Row(
+                  
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedSubject,
+                          decoration: InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.transparent,
+                          ),
+                          icon: Icon(Icons.arrow_drop_down, color: Color(0xFF1E3875)),
+                          dropdownColor: Colors.white,
+                          style: TextStyle(
+                            color: Color(0xFF1E3875),
+                            fontSize: 16,
+                          ),
+                          items: _subjects.map((String subject) {
+                            return DropdownMenuItem<String>(
+                              value: subject,
+                              child: Text(subject),
+                            );
+                          }).toList(),
+                          onChanged: _onSubjectChanged,
+                          hint: Text('選擇科目', style: TextStyle(color: Color(0xFF1E3875))),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          isExpanded: true,
+                          value: _selectedItem,
+                          decoration: InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.transparent,
+                          ),
+                          icon: Icon(Icons.arrow_drop_down, color: Color(0xFF1E3875)),
+                          dropdownColor: Colors.white,
+                          style: TextStyle(
+                            color: Color(0xFF1E3875),
+                            fontSize: 16,
+                          ),
+                          items: _items.map((String item) {
+                            return DropdownMenuItem<String>(
+                              value: item,
+                              child: Text(item),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedItem = newValue;
+                            });
+                          },
+                          hint: Text('選擇章節', style: TextStyle(color: Color(0xFF1E3875))),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                ),
+
               ],
             ),
-            SizedBox(height: 16),
+
+            
+            //SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.9),
@@ -433,7 +474,11 @@ class _ChatPageState extends State<ChatPage> {
                         ),
                         padding: EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      child: Text("查詢", style: TextStyle(color: Colors.white)),
+                      child: Icon(
+                        Icons.send,  // 或者用 Icons.send
+                        color: Colors.white,
+                      ),
+                      //child: Text("查詢", style: TextStyle(color: Colors.white)),
                     ),
                   ),
                 ],

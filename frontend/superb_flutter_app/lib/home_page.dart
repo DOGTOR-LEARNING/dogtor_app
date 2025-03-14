@@ -12,7 +12,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 2;
+  int _selectedIndex = 1;
   ScrollController _scrollController = ScrollController();
   final double _maxPlanetSize = 200.0;  // 增加最大尺寸
   final double _minPlanetSize = 100.0;  // 增加最小尺寸
@@ -51,26 +51,37 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      
       body: IndexedStack(
+        //Image()
+        
         index: _selectedIndex,
         children: [
-          Center(child: Text('探索', style: TextStyle(color: Colors.white))),
+          
+          //Center(child: Text('探索', style: TextStyle(color: Colors.white))),
           MistakeBookPage(),  // Add MistakeBookPage here
           Container(
             decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/home-background.png'),
+                fit: BoxFit.fill,
+              ),
               color: Color(0xFF1B3B4B), // 深藍色微偏綠
             ),
             child: Column(
+              
               children: [
                 SizedBox(height: 60),
+                /*
                 Text(
-                  '首頁',
+                  '早安',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                */
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -173,7 +184,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           ChatPage(),
-          AuthPage(),
+          //AuthPage(),
         ],
       ),
       bottomNavigationBar: Container(
@@ -188,30 +199,28 @@ class _HomePageState extends State<HomePage> {
         child: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[
             BottomNavigationBarItem(
-              icon: Icon(Icons.search),
-              label: '探索',
+              icon: Image(
+                image: AssetImage('assets/images/toolbar-mistake.png'),
+              ),
+              label: '錯題本',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.book),
-              label: '錯題本',  // This should correspond to MistakeBookPage
+              icon: Image(
+                image: AssetImage('assets/images/toolbar-learn.png'),
+              ),
+              label: '學習',  // This should correspond to MistakeBookPage
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: '首頁',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat),
-              label: 'AI問答',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: '我的',
+              icon: Image(
+                image: AssetImage('assets/images/toolbar-ask.png'),
+              ),
+              label: '汪汪題',
             ),
           ],
           currentIndex: _selectedIndex,
           selectedItemColor: Colors.white,
           unselectedItemColor: Colors.white.withOpacity(0.5),
-          backgroundColor: Color(0xFF1B3B4B), // 深藍色微偏綠
+          backgroundColor: Color(0xFF102031), // 深藍色微偏綠
           type: BottomNavigationBarType.fixed,
           onTap: _onItemTapped,
         ),
@@ -222,51 +231,51 @@ class _HomePageState extends State<HomePage> {
   final List<Map<String, dynamic>> planets = [
     {
       'name': '自然',
-      'image': 'assets/pics/island1.png',
+      'image': 'assets/pics/home-island1.png',
     },
     {
       'name': '理化',
-      'image': 'assets/pics/planet2.png',
+      'image': 'assets/pics/home-island2.png',
     },
     {
       'name': '物理',
-      'image': 'assets/pics/planet3.png',
+      'image': 'assets/pics/home-island3.png',
     },
     {
       'name': '化學',
-      'image': 'assets/pics/planet4.png',
+      'image': 'assets/pics/home-island4.png',
     },
     {
       'name': '數學',
-      'image': 'assets/pics/planet3.png',
+      'image': 'assets/pics/home-island5.png',
     },
     {
       'name': '國文',
-      'image': 'assets/pics/planet4.png',
+      'image': 'assets/pics/home-island1.png',
     },
     {
       'name': '英文',
-      'image': 'assets/pics/planet1.png',  // 重複使用圖片
+      'image': 'assets/pics/home-island2.png',  // 重複使用圖片
     },
     {
       'name': '社會',
-      'image': 'assets/pics/island1.png',
+      'image': 'assets/pics/home-island3.png',
     },
     {
       'name': '地科',
-      'image': 'assets/pics/planet1.png',
+      'image': 'assets/pics/home-island4.png',
     },
     {
       'name': '生物',
-      'image': 'assets/pics/planet2.png',
+      'image': 'assets/pics/home-island5.png',
     },
     {
       'name': '歷史',
-      'image': 'assets/pics/planet3.png',
+      'image': 'assets/pics/home-island1.png',
     },
     {
       'name': '地理',
-      'image': 'assets/pics/planet4.png',
+      'image': 'assets/pics/home-island2.png',
     },
   ];
 }
