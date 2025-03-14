@@ -12,7 +12,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 2;  // AI 問問題在中間，索引為 2
+  int _selectedIndex = 2;
   ScrollController _scrollController = ScrollController();
   final double _maxPlanetSize = 200.0;  // 增加最大尺寸
   final double _minPlanetSize = 100.0;  // 增加最小尺寸
@@ -221,12 +221,20 @@ class _HomePageState extends State<HomePage> {
 
   final List<Map<String, dynamic>> planets = [
     {
-      'name': '社會',
-      'image': 'assets/pics/planet1.png',
+      'name': '自然',
+      'image': 'assets/pics/island1.png',
     },
     {
-      'name': '自然',
+      'name': '理化',
       'image': 'assets/pics/planet2.png',
+    },
+    {
+      'name': '物理',
+      'image': 'assets/pics/planet3.png',
+    },
+    {
+      'name': '化學',
+      'image': 'assets/pics/planet4.png',
     },
     {
       'name': '數學',
@@ -241,16 +249,8 @@ class _HomePageState extends State<HomePage> {
       'image': 'assets/pics/planet1.png',  // 重複使用圖片
     },
     {
-      'name': '理化',
-      'image': 'assets/pics/planet2.png',
-    },
-    {
-      'name': '物理',
-      'image': 'assets/pics/planet3.png',
-    },
-    {
-      'name': '化學',
-      'image': 'assets/pics/planet4.png',
+      'name': '社會',
+      'image': 'assets/pics/island1.png',
     },
     {
       'name': '地科',

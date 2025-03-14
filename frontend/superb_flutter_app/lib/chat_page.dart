@@ -149,7 +149,8 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        Uri.parse("http://127.0.0.1:8000/chat"),
+        // Uri.parse("http://127.0.0.1:8000/chat"),
+        Uri.parse("http://172.20.10.2:8000/chat"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
@@ -280,7 +281,8 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        Uri.parse("http://127.0.0.1:8000/submit_question"),
+        // Uri.parse("http://127.0.0.1:8000/submit_question"),
+        Uri.parse("http://172.20.10.2:8000/submit_question"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );

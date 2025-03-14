@@ -43,7 +43,8 @@ class _QuizPageState extends State<QuizPage> {
     try {
       // 向後端 API 發送請求獲取題目
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/generate_questions'),
+        // Uri.parse('http://127.0.0.1:8000/generate_questions'),
+        Uri.parse('http://172.20.10.2:8000/generate_questions'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'section': widget.section,
