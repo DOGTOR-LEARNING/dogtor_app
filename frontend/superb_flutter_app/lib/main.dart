@@ -36,9 +36,9 @@ class MyApp extends StatelessWidget {
       title: 'AI 學習助手',
       theme: ThemeData(
         primarySwatch: Colors.green,
-        scaffoldBackgroundColor: Color(0xFF1B3B4B), // 深藍色微偏綠
+        scaffoldBackgroundColor: Color(0xFF102031), // 深藍色微偏綠
         colorScheme: ColorScheme.dark(
-          primary: Color(0xFF235A6B),    // 藍綠色
+          primary: Color(0xFF102031),    // 藍綠色
           secondary: Color(0xFF2D7A8F),   // 淺藍綠色
           surface: Color(0xFF1B3B4B),     // 深藍色微偏綠
         ),
