@@ -71,17 +71,17 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               
               children: [
-                SizedBox(height: 60),
-                /*
+                SizedBox(height: 100),
+                
                 Text(
-                  '早安',
+                  'DOGTOR 逗課',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                */
+                
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -143,6 +143,17 @@ class _HomePageState extends State<HomePage> {
                                                 builder: (context) => ChapterDetailPage(
                                                   subject: '理化',
                                                   csvPath: 'assets/edu_data/junior_science_chapter.csv',
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                          if (planets[index]['name'] == '化學') {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => ChapterDetailPage(
+                                                  subject: '化學',
+                                                  csvPath: 'assets/edu_data/high_chemistry_chapter.csv',
                                                 ),
                                               ),
                                             );

@@ -149,8 +149,8 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        // Uri.parse("http://127.0.0.1:8000/chat"),
-        Uri.parse("http://127.0.0.1:8000/chat"),
+        // Uri.parse("http://10.120.227.18:8000/chat"),
+        Uri.parse("http://10.120.227.18:8000/chat"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
@@ -242,12 +242,18 @@ class _ChatPageState extends State<ChatPage> {
           ),
           actions: <Widget>[
             TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white, // 設定按鈕內文字的顏色
+              ),
               child: Text('Cancel'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white, // 設定按鈕內文字的顏色
+              ),
               child: Text('Submit'),
               onPressed: () {
                 _submitQuestion(difficulty);
@@ -281,8 +287,8 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        // Uri.parse("http://127.0.0.1:8000/submit_question"),
-        Uri.parse("http://127.0.0.1:8000/submit_question"),
+        // Uri.parse("http://10.120.227.18:8000/submit_question"),
+        Uri.parse("http://10.120.227.18:8000/submit_question"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
@@ -555,7 +561,9 @@ class _ChatPageState extends State<ChatPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showDifficultyDialog,
+        backgroundColor: Colors.white,
         child: Icon(Icons.add),
+        
       ),
     );
   }
