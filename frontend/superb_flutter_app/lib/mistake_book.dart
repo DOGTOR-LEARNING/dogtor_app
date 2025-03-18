@@ -10,8 +10,9 @@ class MistakeBookPage extends StatefulWidget {
 
 class _MistakeBookPageState extends State<MistakeBookPage> {
   List<Map<String, dynamic>> _mistakes = [];
-  //bool _imageExists = false;
-  //String _imageUrl = "";
+  List<Map<String, dynamic>> _filteredMistakes = [];
+  String _searchQuery = "";
+  String _selectedSubject = "All"; // Default selection
 
   @override
   void initState() {
@@ -23,14 +24,11 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
     try {
       final response = await http.get(Uri.parse('http://127.0.0.1:8000/mistake_book'));
       if (response.statusCode == 200) {
-        print(response);
-        // _mistakes = List<Map<String, dynamic>>.from(jsonDecode(response.body));
-
         setState(() {
           _mistakes = (jsonDecode(utf8.decode(response.bodyBytes)) as List)
-          //_mistakes = (jsonDecode(response.body) as List)
               .map((mistake) => Map<String, dynamic>.from(mistake))
               .toList();
+          _filteredMistakes = _mistakes; // Initially show all mistakes
         });
       } else {
         throw Exception('Failed to load mistakes');
@@ -42,62 +40,166 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
     }
   }
 
-  
+  // Function to filter mistakes based on search query and selected subject
+  void _filterMistakes() {
+    setState(() {
+      _filteredMistakes = _mistakes.where((mistake) {
+        bool matchesSearch = _searchQuery.isEmpty ||
+            mistake['q_id'].toString().contains(_searchQuery);
+        bool matchesSubject = _selectedSubject == "All" ||
+            mistake['subject'] == _selectedSubject;
+
+        return matchesSearch && matchesSubject;
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //appBar: AppBar(title: Text('Mistake Book')),
-      backgroundColor: Color(0xFF102031), // Set the background color here
+      backgroundColor: Color(0xFF102031),
       body: Stack(
         children: [
           Column(
             children: [
+              // Image at the Top
               Image.asset(
-                'assets/images/wrong.png', // Replace with your image path
-                //fit: BoxFit.cover,
-                //width: double.infinity,
-                //height: 200, // Adjust height as needed
+                'assets/images/wrong.png', // Keep original image at the top
               ),
+
+              // Search Bar and Select Dropdown
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    // Search Bar
+                    Expanded(
+                      child: TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                            _filterMistakes();
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: "Search by ID...",
+                          hintStyle: TextStyle(color: Colors.white54),
+                          filled: true,
+                          fillColor: Colors.white10,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          prefixIcon: Icon(Icons.search, color: Colors.white),
+                          contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16), 
+                        ),
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    SizedBox(width: 10), // Space between elements
+
+                    // Select Dropdown Button
+                    DropdownButton<String>(
+                      value: _selectedSubject,
+                      dropdownColor: Color(0xFF1A2B3C), // Dark dropdown background
+                      style: TextStyle(color: Colors.white), // Dropdown text color
+                      icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+                      items: ["All", "Math", "Science", "English", "History"]
+                          .map((subject) => DropdownMenuItem<String>(
+                                value: subject,
+                                child: Text(subject, style: TextStyle(color: Colors.white)),
+                              ))
+                          .toList(),
+                      onChanged: (newValue) {
+                        setState(() {
+                          _selectedSubject = newValue!;
+                          _filterMistakes();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              // Mistakes List
               Expanded(
                 child: ListView.builder(
-                  itemCount: _mistakes.length,
+                  itemCount: _filteredMistakes.length,
                   itemBuilder: (context, index) {
-                    final mistake = _mistakes[index];
-                    return Card(
-                      color: Color(0xFF102031),
-                      child: ListTile(
-                        title: Text('題目編號: ${mistake['q_id']}'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('加入時間: ${mistake['timestamp']}'),
-                            Text('科目: ${mistake['subject']}'),
-                            Text('章節: ${mistake['chapter']}'),
-                            Text('難度: ${'★' * _getDifficultyStars(mistake['difficulty'])}'),
-                          ],
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => MistakeDetailPage(mistake: mistake),
+                    final mistake = _filteredMistakes[_filteredMistakes.length - index - 1];
+                    final currentDate = mistake['timestamp'].split('T')[0];
+                    final previousDate = (index < _filteredMistakes.length - 1)
+                        ? _filteredMistakes[_filteredMistakes.length - index - 2]['timestamp'].split('T')[0]
+                        : null;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (index == 0 || currentDate != previousDate)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                            child: Text(
+                              currentDate,
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF42A5F5)),
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        Card(
+                          color: Color(0xFF102031),
+                          child: ListTile(
+                            title: Text('題目編號: ${mistake['q_id']}', style: TextStyle(color: Colors.white)),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('科目: ${mistake['subject']}', style: TextStyle(color: Colors.white70)),
+                                Text('章節: ${mistake['chapter']}', style: TextStyle(color: Colors.white70)),
+                                Text('難度: ${'★' * _getDifficultyStars(mistake['difficulty'])}', style: TextStyle(color: Colors.white70)),
+                              ],
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MistakeDetailPage(mistake: mistake),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
               ),
             ],
           ),
+
+          // "X" Button at the Top-Left Corner
+          Positioned(
+            top: 40,
+            left: 16,
+            child: IconButton(
+              icon: Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ),
         ],
       ),
+
+      // Floating Action Button
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'mistake_book_fab',
+        onPressed: () {
+          print('Floating Action Button Pressed');
+        },
+        backgroundColor: Colors.blue,
+        child: Icon(Icons.add, color: Colors.white),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
-
 class MistakeDetailPage extends StatelessWidget {
   final Map<String, dynamic> mistake;
 

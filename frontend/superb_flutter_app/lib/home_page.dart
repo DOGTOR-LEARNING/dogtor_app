@@ -42,11 +42,38 @@ class _HomePageState extends State<HomePage> {
     return minTextSize + (maxTextSize - minTextSize) * ratio;
   }
 
-  void _onItemTapped(int index) {
+void _onItemTapped(int index) {
+  if (index == 0) {  // If "錯題本" (Wrongbook) is tapped
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => MistakeBookPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(-1.0, 0.0); // Start from the left
+          const end = Offset.zero; // End at the normal position
+          const curve = Curves.easeInOut;
+
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var offsetAnimation = animation.drive(tween);
+
+          return SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          );
+        },
+      ),
+    );
+  } else if (index == 2) {  // If "汪汪題" (Chat) is tapped
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ChatPage()),
+    );
+  } else {
     setState(() {
-      _selectedIndex = index;
+      _selectedIndex = index;  // Only update state for "學習" (Learning)
     });
   }
+}
 
   @override
   Widget build(BuildContext context) {

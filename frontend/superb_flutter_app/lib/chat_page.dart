@@ -560,6 +560,7 @@ class _ChatPageState extends State<ChatPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'chat_fab',
         onPressed: _showDifficultyDialog,
         backgroundColor: Colors.white,
         child: Icon(Icons.add),
