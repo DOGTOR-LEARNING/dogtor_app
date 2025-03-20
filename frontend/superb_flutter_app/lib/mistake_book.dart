@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
+import 'package:markdown/markdown.dart' as md;
 
 class MistakeBookPage extends StatefulWidget {
   @override
@@ -200,24 +203,25 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
     );
   }
 }
+
 class MistakeDetailPage extends StatelessWidget {
   final Map<String, dynamic> mistake;
 
-  MistakeDetailPage({required this.mistake}); //傳遞參數
+  MistakeDetailPage({required this.mistake});
 
   // Function to check if the image exists
   Future<bool> _checkImageExistence(mistake) async {
     final url = 'http://127.0.0.1:8000/static/${mistake['q_id']}.jpg';
 
     try {
-      final response = await http.get(Uri.parse(url)); // 發送 GET 請求
+      final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        return true; // 如果狀態碼是 200，則返回 true
+        return true;
       } else {
-        return false; // 如果狀態碼不是 200，則返回 false
+        return false;
       }
     } catch (e) {
-      return false; // 如果發生錯誤，返回 false
+      return false;
     }
   }
 
@@ -234,21 +238,22 @@ class MistakeDetailPage extends StatelessWidget {
               Tab(text: '題目'),
               Tab(text: '詳解'),
             ],
-            labelColor: Colors.white, // Set the selected tab text color to white
-            unselectedLabelColor: Colors.white70, // Set the unselected tab text color to a lighter white
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
           ),
         ),
         body: TabBarView(
           children: [
+            // 題目頁面
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: FutureBuilder<bool>(
                 future: _checkImageExistence(mistake),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator(); // Show a loading indicator while waiting
+                    return CircularProgressIndicator();
                   } else if (snapshot.hasError) {
-                    return Text('Error loading image'); // Handle error
+                    return Text('Error loading image');
                   } else if (snapshot.data == true) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,16 +269,31 @@ class MistakeDetailPage extends StatelessWidget {
                 },
               ),
             ),
+            
+            // 詳解頁面 - 使用 Markdown 和 LaTeX 支援
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Text(mistake['detailed_answer'] ?? 'No detailed answer available'),
+              child: Markdown(
+                selectable: true,
+                data: mistake['detailed_answer'] ?? 'No detailed answer available',
+                builders: {
+                  'latex': LatexElementBuilder(
+                    textStyle: Theme.of(context).textTheme.bodyLarge!,
+                    textScaleFactor: 1.1,
+                  ),
+                },
+                extensionSet: md.ExtensionSet(
+                  [LatexBlockSyntax()],
+                  [LatexInlineSyntax()],
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
   }
-} 
+}
 
 int _getDifficultyStars(String difficulty) {
   switch (difficulty) {
