@@ -1,0 +1,101 @@
+
+--- Page 1 ---
+Problem 1 hive)
+Side /epciaue © Wh cxechath ki nets CO fabian -2 (0 66 Chin sitay)e Ke)
+- ; Fa Gueut: SBEDG ASS AS
+i ie & Final pth So B+ T+ PG B.o< ssh
+Aa Re  Admibility (08 Alor i cee tet
+if S 6 es a ct psctnity COs Nb) Eble) ve 0f2e2
+Y afer +7 a A 06 685 gE: 08 943
+"oO @ oF a ® elas Hence hy i6 still net cdnisible
+end 9 On
+
+C046 444 1a ee :
+
+DFS State. expansion $0222 1) hy Medsficetien
+
+Steck: SABEDG — SBEG = We shacld cheste acde A and awign it te nen.
+
+Final path: $5 b9 € 9G aes be mebe Wt adviilfe,
+(2) BES state expiasion: — Sinte Some cf the ewditiens are
+
+suuies $0 PCUEG SABLIEG not sotisfi, Wis net admissHes — US) AP yer the meksfcation, hy is still tant
+
+"1 . Hewever, the A¥ search stil) setwas .
+
+Final peth: S ate thy cptimel gelation ia ths cose (thoogh Gentider DE, whue 5-2-87 4-252
+
+PU SFEDG net recessarily).
+
+7’ iovrby yee: SPAED CS
+” Cevsistoney ChAD- AWS ostaa.c)
+Fival path: Sr B>E4D3G .
+A tot hie net covotent, Gensider POE,
+io ‘STALE NSighys
+MGeeny sia whe 6-324> 4-222,
+que SPRCOMEG
+
+Finel path: Se A? D> G
+
+E: 0¢ 33
+
+Pel Yexblem4 XutMye]  05tXes)
+Probe Povo? eke
+7 z
+Constraints: « Oe staple 0 Coasteeiats: eee Kage
+20 —F P Rew constegints For all vorialles with value v, the
+- (Ae?) mod 6 ale es ts gum of all adjocen( variables must gel Y,
+= * mod —@ ““ astro! :
+lo-FV& th3) @ 8 Shey oH cnstsies Densin: fol), whee 0 repeats sete
+\D-£E1% > _® Domains: and V represents mine,
+Ctpvmd6 —@ i244) xeefer} Xuelo) BED
+(2) start by assigning Jeo & {2} Xne fi Xi € fo!) Xas € fi)
+Ty Al c: {7,93 Wrefor) Keele) Mose fen]
+bP Oe 2)md b= 5 D: f5,95 6.
+E: £1.55 if Xuet,
+wee ‘ then X20, Xeel, and
+
+& F244 then Etonnet be 3 @) Gehry acy wacertioy
+4 ia R A?)
+ar ad a ~ 4 ow Poof The mivimim velve of his 6
+yr 0 recy OCGayed 6
+Fee saree : are D Assume k-2
+
+4 iF use|, come Values are still uncecter
+OAswume kos
+
+Ty Ae
+
+& Beg rs already occupied DTP we 65Gn 24 As
+
+; aa BF (as Xq,dk (010), Jone values ane
+é c: [24] still uncertain
+D: §1.3,4) @ Asyme keds
+bte4 Efus} OTEK Yas Yes) =(0 V9), Some
+a Cremrts) vikies are still uncertain
+shy filctatns 10 Avign 246A» Bilton lena non
+° v
+_ oO @ Oh pi 4 @ Mswme kes
+3 @ feign rte by Aasign ang powsble valvo-te any
+oO. Oz @ Asign 7+ © fur of the variables, Hee is alucys
+£ @; @ Paya Le D ‘ vnassgned value tat can be determing
+
+Q) Aw osigning Deo: @ Assign st E
+
+| A: 14.5]
+| Be (2.3.4.5) Chat Constrained by 4)
+
+cy 2h steed
+{0} Cassady Xo Vis tansistent if fu overq x
+
+D
+B f.2,4,5} step? there is seme g could be, ossighed wathont
+F fe J ~ styl visleting "Q" constrsiat )
+
+#9 fqn eo x@ Asin F225 viclote enstaint © (3) Asinn £=5 (valid) ;
+@ Asign C Comallest domain (4) © Assign F359 ABE T2485) «Final geht 0) @!
+b fick C=1 XD Asiyn A= 2 vishte eastaint @ ‘
+%@ (c)
+
+ Vordate. Fi domains {241 Assign Ae ¢- OAsin BZ +O,
+
