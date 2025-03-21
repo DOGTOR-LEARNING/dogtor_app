@@ -31,7 +31,7 @@ load_dotenv()
 
 # 獲取環境變數
 api_key = os.getenv("OPENAI_API_KEY")
-print("api:", api_key)
+# print("api:", api_key)
 client = OpenAI(api_key = api_key)
 
 # 定義數據模型
