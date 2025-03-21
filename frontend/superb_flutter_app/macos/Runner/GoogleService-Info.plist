@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>426092249907-sc4l7451jabjqsjtv8em1j40t776vijo.apps.googleusercontent.com</string>
+	<string>426092249907-olief71ue5k89idf9m1fpk05gqm3bs6l.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.426092249907-sc4l7451jabjqsjtv8em1j40t776vijo</string>
+	<string>com.googleusercontent.apps.426092249907-olief71ue5k89idf9m1fpk05gqm3bs6l</string>
 	<key>API_KEY</key>
 	<string>AIzaSyC08-ayj1WJn8FgaVi-Eq4gyB95pNPuTPI</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>bowen.example.app</string>
+	<string>com.dogtor.superbFlutterApp</string>
 	<key>PROJECT_ID</key>
 	<string>dogtor-c33d4</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:426092249907:ios:500a60c6c9dc7606633446</string>
+	<string>1:426092249907:ios:aa594c3ce723ac5f633446</string>
 </dict>
 </plist>

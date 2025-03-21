@@ -25,7 +25,7 @@ client = OpenAI(api_key=api_key)
 # 轉換 PDF 每一頁為圖片
 pdf_path = "/Users/bowen/Desktop/NTU/Grade2-2/人工智慧/B12705014_hw1_written.pdf"
 pdf_path = "/Users/bowen/Desktop/NTU/Grade2-2/DOGTOR/Dogtor_Database_Schema.pdf"
-img_path = "/Users/bowen/Desktop/Screenshots/math_test.png"
+img_path = "/Users/bowen/Desktop/Screenshots/a.png"
 #img_path = "/Users/bowen/Desktop/Screenshots/geography_test.png"
 #img_path = "/Users/bowen/Desktop/Screenshots/big.png"
 #img_path = "/Users/bowen/Desktop/Screenshots/three.png"
