@@ -14,6 +14,8 @@ import 'mistake_book.dart';
 import 'chat_page.dart';
 
 import 'login_page.dart';
+import 'firebase_options.dart';
+     import 'package:firebase_core/firebase_core.dart';
 
 
 Future<void> main() async {
@@ -24,6 +26,10 @@ Future<void> main() async {
     // url: 'https://zgccuixkrlsfmsgblbpe.supabase.co', // Pierre
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkanl0Z2JvanFzbGtmd2Z4bHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0NjEwNjUsImV4cCI6MjA1NjAzNzA2NX0.IAFreOpeUF0qxKyWaEbpyG3eQPWS3F58XisraV_Z8S8', // Bo
     // anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnY2N1aXhrcmxzZm1zZ2JsYnBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5NjI3MzksImV4cCI6MjA1MTUzODczOX0.6SVEK8ib3RDeQ7-Qj3oGUU6e0j_baKkfhH6MoL03sQM', // Pierre
+  );
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
   );
   
   runApp(MyApp());
