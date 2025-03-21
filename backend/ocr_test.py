@@ -14,7 +14,7 @@ img_path = "/Users/bowen/Desktop/Screenshots/small.png"
 
 #pdf_path = "/Users/bowen/Downloads/hello2.pdf"
 
-'''
+
 def encode_image(image_path):
     with open(image_path, "rb") as img_file:  # 读取图片为字节流
         img_bytes = img_file.read()
@@ -44,3 +44,4 @@ print(text)
 # 存成文字檔
 with open("output.txt", "w", encoding="utf-8") as f:
     f.write(text)
+'''
