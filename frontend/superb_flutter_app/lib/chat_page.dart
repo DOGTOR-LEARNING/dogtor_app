@@ -49,6 +49,7 @@ class _ChatPageState extends State<ChatPage> {
     if (_selectedSubject == null) {
       setState(() {
         _items = []; // 如果沒有選擇科目，清空章節列表
+        _selectedItem = null; // 重要：清空選擇的項目
       });
       return;
     }
@@ -68,31 +69,35 @@ class _ChatPageState extends State<ChatPage> {
 
       if (csvPath.isEmpty) {
         setState(() {
-          _items = [
-            '當前科目讀取章節失敗',
-          ];
+          _items = [];
+          _selectedItem = null; // 重要：清空選擇的項目
         });
         return;
       }
 
+      // 載入 CSV 檔案
       final String data = await DefaultAssetBundle.of(context).loadString(csvPath);
       final List<String> rows = data.split('\n');
       
+      // 從 CSV 中提取章節名稱
+      final List<String> chapters = rows.skip(1)
+          .where((row) => row.trim().isNotEmpty)
+          .map((row) {
+            final cols = row.split(',');
+            return cols[4]; // 章節名稱
+          })
+          .toSet() // 去除重複項
+          .toList();
+      
       setState(() {
-        _items = rows
-            .skip(1)
-            .where((row) => row.trim().isNotEmpty)
-            .map((row) => row.split(',')[4].trim())
-            .toSet()
-            .toList();
+        _items = chapters;
+        _selectedItem = chapters.isNotEmpty ? chapters[0] : null; // 選擇第一個章節或設為 null
       });
-
     } catch (e) {
       print('Error loading chapters: $e');
       setState(() {
-        _items = [
-          '發生錯誤',
-        ];
+        _items = [];
+        _selectedItem = null;
       });
     }
   }
@@ -100,9 +105,9 @@ class _ChatPageState extends State<ChatPage> {
   void _onSubjectChanged(String? newValue) {
     setState(() {
       _selectedSubject = newValue;
-      _selectedItem = null;
+      _selectedItem = null; // 重要：清空選擇的項目
     });
-    _loadItems();
+    _loadItems(); // 重新載入章節
   }
 
   void _showFullImage() {
