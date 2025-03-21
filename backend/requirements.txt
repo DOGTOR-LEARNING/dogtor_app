@@ -18,3 +18,5 @@ starlette==0.41.3
 tqdm==4.67.1
 typing_extensions==4.12.2
 uvicorn==0.34.0
+aiofiles
+python-multipart
