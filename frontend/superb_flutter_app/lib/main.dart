@@ -13,6 +13,8 @@ import 'auth_page.dart';
 import 'mistake_book.dart';
 import 'chat_page.dart';
 
+import 'login_page.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -37,6 +37,7 @@ dependencies:
   image_picker: ^1.0.7
   markdown: ^7.3.0
   google_fonts: ^6.2.1
+  google_sign_in: ^5.2.1
 
 
 dev_dependencies:
