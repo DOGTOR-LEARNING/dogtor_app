@@ -1,7 +1,7 @@
 # cloudbuild.yaml
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/superb-backend', '.']
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/superb-backend', '-f', 'backend/Dockerfile', 'backend']
 
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/superb-backend']
@@ -19,6 +19,6 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
-      
+
 options:
   default_logs_bucket_behavior: REGIONAL_USER_OWNED_BUCKET
