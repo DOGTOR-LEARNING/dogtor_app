@@ -25,7 +25,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
 
   Future<void> _loadMistakes() async {
     try {
-      final response = await http.get(Uri.parse('http://127.0.0.1:8000/mistake_book'));
+      final response = await http.get(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/mistake_book'));
       if (response.statusCode == 200) {
         setState(() {
           _mistakes = (jsonDecode(utf8.decode(response.bodyBytes)) as List)
@@ -211,7 +211,7 @@ class MistakeDetailPage extends StatelessWidget {
 
   // Function to check if the image exists
   Future<bool> _checkImageExistence(mistake) async {
-    final url = 'http://127.0.0.1:8000/static/${mistake['q_id']}.jpg';
+    final url = 'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg';
 
     try {
       final response = await http.get(Uri.parse(url));
@@ -258,7 +258,7 @@ class MistakeDetailPage extends StatelessWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.network('http://127.0.0.1:8000/static/${mistake['q_id']}.jpg'),
+                        Image.network('https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg'),
                         SizedBox(height: 10),
                         Text(mistake['description'] ?? 'No description available'),
                       ],

@@ -149,8 +149,7 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        // Uri.parse("http://127.0.0.1:8000/chat"),
-        Uri.parse("http://127.0.0.1:8000/chat"),
+        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/chat"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
@@ -287,8 +286,7 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        // Uri.parse("http://127.0.0.1:8000/submit_question"),
-        Uri.parse("http://127.0.0.1:8000/submit_question"),
+        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/submit_question"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );

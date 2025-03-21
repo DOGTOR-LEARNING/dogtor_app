@@ -16,7 +16,7 @@ class _AuthPageState extends State<AuthPage> {
 
   Future<void> _register() async {
     final response = await http.post(
-      Uri.parse('http://127.0.0.1:8000/register'),
+      Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/register'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         'email': _emailController.text,
@@ -36,7 +36,7 @@ class _AuthPageState extends State<AuthPage> {
   Future<void> _login() async {
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/login'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/login'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           'email': _emailController.text,

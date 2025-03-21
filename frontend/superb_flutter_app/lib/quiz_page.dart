@@ -58,7 +58,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   Future<void> _fetchQuestions() async {
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/generate_questions'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/generate_questions'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'section': widget.section,
