@@ -223,7 +223,7 @@ def get_db_connection():
 class User(BaseModel):
     user_id: str
     email: Optional[str] = None
-    display_name: Optional[str] = None
+    name: Optional[str] = None
     photo_url: Optional[str] = None
     created_at: Optional[str] = None
 
