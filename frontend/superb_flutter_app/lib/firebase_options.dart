@@ -21,10 +21,7 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
@@ -75,4 +72,13 @@ class DefaultFirebaseOptions {
     iosClientId: '426092249907-olief71ue5k89idf9m1fpk05gqm3bs6l.apps.googleusercontent.com',
     iosBundleId: 'com.dogtor.superbFlutterApp',
   );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyDvqaUZt60xqs-qmVOARUujjEBx9Y95KAA',
+    appId: '1:426092249907:android:01e1d32218306c07633446',
+    messagingSenderId: '426092249907',
+    projectId: 'dogtor-c33d4',
+    storageBucket: 'dogtor-c33d4.firebasestorage.app',
+  );
+
 }

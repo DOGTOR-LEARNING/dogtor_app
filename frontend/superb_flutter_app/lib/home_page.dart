@@ -5,6 +5,7 @@ import 'mistake_book.dart';  // Import the MistakeBookPage
 import 'dart:math';
 import 'chapter_detail_page.dart';  // Import the ChapterDetailPage
 import 'chat_page.dart';
+import 'user_profile_page.dart';  // 引入新的用戶中心頁面
 
 class HomePage extends StatefulWidget {
   @override
@@ -79,150 +80,199 @@ void _onItemTapped(int index) {
   Widget build(BuildContext context) {
     return Scaffold(
       
-      body: IndexedStack(
-        //Image()
-        
-        index: _selectedIndex,
+      body: Stack(
         children: [
-          
-          //Center(child: Text('探索', style: TextStyle(color: Colors.white))),
-          MistakeBookPage(),  // Add MistakeBookPage here
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/home-background.png'),
-                fit: BoxFit.fill,
-              ),
-              color: Color(0xFF1B3B4B), // 深藍色微偏綠
-            ),
-            child: Column(
-              
-              children: [
-                SizedBox(height: 100),
-                
-                Text(
-                  'DOGTOR 逗課',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+          IndexedStack(
+            index: _selectedIndex,
+            children: [
+              MistakeBookPage(),  // Add MistakeBookPage here
+              Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/home-background.png'),
+                    fit: BoxFit.fill,
                   ),
+                  color: Color(0xFF1B3B4B), // 深藍色微偏綠
                 ),
-                
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      _screenHeight = constraints.maxHeight;
-                      return ListView.builder(
-                        controller: _scrollController,
-                        itemCount: planets.length,
-                        itemBuilder: (context, index) {
-                          return AnimatedBuilder(
-                            animation: _scrollController,
-                            builder: (context, child) {
-                              double itemPosition = index * 180.0; // 減少間距
-                              double scrollPosition = _scrollController.hasClients 
-                                  ? _scrollController.offset 
-                                  : 0.0;
-                              double viewportCenter = constraints.maxHeight * 0.4;
-                              double size = calculatePlanetSize(
-                                scrollPosition + viewportCenter,
-                                itemPosition
-                              );
-                              
-                              bool isLeft = index.isEven; // 偶數在左，奇數在右
-                              
-                              return Container(
-                                height: 180,
-                                padding: EdgeInsets.symmetric(horizontal: 40), // 增加水平內邊距
-                                child: Row(
-                                  mainAxisAlignment: isLeft 
-                                      ? MainAxisAlignment.start 
-                                      : MainAxisAlignment.end,
-                                  children: [
-                                    if (!isLeft) Expanded(
-                                      child: Padding(
-                                        padding: EdgeInsets.only(right: 40), // 增加文字和圖片之間的間距
-                                        child: AnimatedDefaultTextStyle(
-                                          duration: Duration(milliseconds: 100),
-                                          style: Theme.of(context).textTheme.displayMedium!.copyWith(
-                                            fontSize: calculateTextSize(size),
-                                            color: Colors.white,
-                                          ),
-                                          child: Text(
-                                            planets[index]['name'],
-                                            textAlign: TextAlign.end,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    AnimatedContainer(
-                                      duration: Duration(milliseconds: 100),
-                                      width: size,
-                                      height: size,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          print('點擊了 ${planets[index]['name']}');
-                                          if (planets[index]['name'] == '理化') {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => ChapterDetailPage(
-                                                  subject: '理化',
-                                                  csvPath: 'assets/edu_data/junior_science_chapter.csv',
-                                                ),
+                child: Column(
+                  
+                  children: [
+                    SizedBox(height: 100),
+                    
+                    Text(
+                      'DOGTOR 逗課',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          _screenHeight = constraints.maxHeight;
+                          return ListView.builder(
+                            controller: _scrollController,
+                            itemCount: planets.length,
+                            itemBuilder: (context, index) {
+                              return AnimatedBuilder(
+                                animation: _scrollController,
+                                builder: (context, child) {
+                                  double itemPosition = index * 180.0; // 減少間距
+                                  double scrollPosition = _scrollController.hasClients 
+                                      ? _scrollController.offset 
+                                      : 0.0;
+                                  double viewportCenter = constraints.maxHeight * 0.4;
+                                  double size = calculatePlanetSize(
+                                    scrollPosition + viewportCenter,
+                                    itemPosition
+                                  );
+                                  
+                                  bool isLeft = index.isEven; // 偶數在左，奇數在右
+                                  
+                                  return Container(
+                                    height: 180,
+                                    padding: EdgeInsets.symmetric(horizontal: 40), // 增加水平內邊距
+                                    child: Row(
+                                      mainAxisAlignment: isLeft 
+                                          ? MainAxisAlignment.start 
+                                          : MainAxisAlignment.end,
+                                      children: [
+                                        if (!isLeft) Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.only(right: 40), // 增加文字和圖片之間的間距
+                                            child: AnimatedDefaultTextStyle(
+                                              duration: Duration(milliseconds: 100),
+                                              style: Theme.of(context).textTheme.displayMedium!.copyWith(
+                                                fontSize: calculateTextSize(size),
+                                                color: Colors.white,
                                               ),
-                                            );
-                                          }
-                                          if (planets[index]['name'] == '化學') {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => ChapterDetailPage(
-                                                  subject: '化學',
-                                                  csvPath: 'assets/edu_data/high_chemistry_chapter.csv',
-                                                ),
+                                              child: Text(
+                                                planets[index]['name'],
+                                                textAlign: TextAlign.end,
                                               ),
-                                            );
-                                          }
-                                        },
-                                        child: Image.asset(
-                                          planets[index]['image'],
-                                          fit: BoxFit.contain,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                    if (isLeft) Expanded(
-                                      child: Padding(
-                                        padding: EdgeInsets.only(left: 40), // 增加文字和圖片之間的間距
-                                        child: AnimatedDefaultTextStyle(
+                                        AnimatedContainer(
                                           duration: Duration(milliseconds: 100),
-                                          style: Theme.of(context).textTheme.displayMedium!.copyWith(
-                                            fontSize: calculateTextSize(size),
-                                            color: Colors.white,
-                                          ),
-                                          child: Text(
-                                            planets[index]['name'],
-                                            textAlign: TextAlign.start,
+                                          width: size,
+                                          height: size,
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              print('點擊了 ${planets[index]['name']}');
+                                              if (planets[index]['name'] == '理化') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '理化',
+                                                      csvPath: 'assets/edu_data/junior_science_chapter.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                              if (planets[index]['name'] == '化學') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '化學',
+                                                      csvPath: 'assets/edu_data/high_chemistry_chapter.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            },
+                                            child: Image.asset(
+                                              planets[index]['image'],
+                                              fit: BoxFit.contain,
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                        if (isLeft) Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.only(left: 40), // 增加文字和圖片之間的間距
+                                            child: AnimatedDefaultTextStyle(
+                                              duration: Duration(milliseconds: 100),
+                                              style: Theme.of(context).textTheme.displayMedium!.copyWith(
+                                                fontSize: calculateTextSize(size),
+                                                color: Colors.white,
+                                              ),
+                                              child: Text(
+                                                planets[index]['name'],
+                                                textAlign: TextAlign.start,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  );
+                                },
                               );
                             },
                           );
                         },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ChatPage(),
+              //AuthPage(),
+            ],
+          ),
+          // 添加懸浮的用戶中心按鈕
+          Positioned(
+            top: 50,
+            right: 20,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => UserProfilePage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(1.0, 0.0); // Start from the right
+                      const end = Offset.zero; // End at the normal position
+                      const curve = Curves.easeInOut;
+
+                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                      var offsetAnimation = animation.drive(tween);
+
+                      return SlideTransition(
+                        position: offsetAnimation,
+                        child: child,
                       );
                     },
                   ),
+                );
+              },
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      spreadRadius: 1,
+                      blurRadius: 3,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
-              ],
+                child: Icon(
+                  Icons.person,
+                  color: Colors.blue.shade700,
+                  size: 30,
+                ),
+              ),
             ),
           ),
-          ChatPage(),
-          //AuthPage(),
         ],
       ),
       bottomNavigationBar: Container(
