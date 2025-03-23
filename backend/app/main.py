@@ -203,14 +203,19 @@ async def submit_question(request: dict):
 
 # 連接到 Google Cloud SQL
 def get_db_connection():
-    connection = pymysql.connect(
-        host=os.getenv('DB_HOST', 'localhost'),
-        user=os.getenv('DB_USER', 'root'),
-        password=os.getenv('DB_PASSWORD', ''),
-        database=os.getenv('DB_NAME', 'dogtor'),
-        cursorclass=pymysql.cursors.DictCursor
-    )
-    return connection
+    try:
+        # 嘗試連接數據庫
+        connection = pymysql.connect(
+            host=os.getenv('DB_HOST', 'localhost'),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASSWORD', ''),
+            database=os.getenv('DB_NAME', 'dogtor'),
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        return connection
+    except Exception as e:
+        print(f"Database connection error: {str(e)}")
+        raise
 
 # 用戶模型
 class User(BaseModel):
@@ -223,6 +228,7 @@ class User(BaseModel):
 # 檢查用戶是否存在
 @app.get("/users/check")
 async def check_user(user_id: str):
+    connection = None  # 初始化為 None
     try:
         connection = get_db_connection()
         with connection.cursor() as cursor:
@@ -238,7 +244,8 @@ async def check_user(user_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     finally:
-        connection.close()
+        if connection:  # 只有在 connection 存在時才關閉
+            connection.close()
 
 # 創建新用戶
 @app.post("/users")
