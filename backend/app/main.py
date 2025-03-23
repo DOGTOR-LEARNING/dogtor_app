@@ -201,15 +201,17 @@ async def submit_question(request: dict):
 
     return {"status": "success", "message": "Question submitted successfully."}
 
+
+############### SQL
+
 # 連接到 Google Cloud SQL
 def get_db_connection():
     try:
-        # 嘗試連接數據庫
         connection = pymysql.connect(
-            host=os.getenv('DB_HOST', 'localhost'),
-            user=os.getenv('DB_USER', 'root'),
-            password=os.getenv('DB_PASSWORD', ''),
-            database=os.getenv('DB_NAME', 'dogtor'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            database=os.getenv('DB_NAME'),
+            unix_socket=f"/cloudsql/{os.getenv('INSTANCE_CONNECTION_NAME')}",
             cursorclass=pymysql.cursors.DictCursor
         )
         return connection
