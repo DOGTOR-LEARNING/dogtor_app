@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
@@ -8,7 +8,8 @@ import csv
 import os
 from dotenv import load_dotenv
 from datetime import datetime
-
+import pymysql
+import pymysql.cursors
 from typing import Optional
 from pydantic import BaseModel
 
@@ -31,7 +32,7 @@ load_dotenv()
 
 # 獲取環境變數
 api_key = os.getenv("OPENAI_API_KEY")
-print("api:", api_key)
+# print("api:", api_key)
 client = OpenAI(api_key = api_key)
 
 # 定義數據模型
@@ -199,4 +200,130 @@ async def submit_question(request: dict):
     })
 
     return {"status": "success", "message": "Question submitted successfully."}
+
+
+############### SQL
+
+# 連接到 Google Cloud SQL
+def get_db_connection():
+    try:
+        connection = pymysql.connect(
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            database=os.getenv('DB_NAME'),
+            unix_socket=f"/cloudsql/{os.getenv('INSTANCE_CONNECTION_NAME')}",
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        return connection
+    except Exception as e:
+        print(f"Database connection error: {str(e)}")
+        raise
+
+# 用戶模型.
+class User(BaseModel):
+    user_id: str
+    email: Optional[str] = None
+    name: Optional[str] = None
+    photo_url: Optional[str] = None
+    created_at: Optional[str] = None
+
+# 檢查用戶是否存在
+@app.get("/users/check")
+async def check_user(user_id: str):
+    connection = None  # 初始化為 None
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # 檢查用戶是否存在
+            sql = "SELECT * FROM users WHERE user_id = %s"
+            cursor.execute(sql, (user_id,))
+            result = cursor.fetchone()
+            
+            if result:
+                return {"exists": True, "user": result}
+            else:
+                return {"exists": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        if connection:  # 只有在 connection 存在時才關閉
+            connection.close()
+
+# 創建新用戶
+@app.post("/users")
+async def create_user(user: User):
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # 檢查用戶是否已存在
+            sql = "SELECT * FROM users WHERE user_id = %s"
+            cursor.execute(sql, (user.user_id,))
+            existing_user = cursor.fetchone()
+            
+            if existing_user:
+                return {"message": "User already exists", "user": existing_user}
+            
+            # 創建新用戶
+            sql = """
+            INSERT INTO users (user_id, email, name, photo_url, created_at)
+            VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (
+                user.user_id,
+                user.email,
+                user.name,
+                user.photo_url,
+                user.created_at or datetime.now().isoformat()
+            ))
+            connection.commit()
+            
+            # 獲取創建的用戶
+            sql = "SELECT * FROM users WHERE user_id = %s"
+            cursor.execute(sql, (user.user_id,))
+            new_user = cursor.fetchone()
+            
+            return {"message": "User created successfully", "user": new_user}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        connection.close()
+
+# 更新用戶信息
+@app.put("/users/{user_id}")
+async def update_user(user_id: str, user: User):
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # 檢查用戶是否存在
+            sql = "SELECT * FROM users WHERE user_id = %s"
+            cursor.execute(sql, (user_id,))
+            existing_user = cursor.fetchone()
+            
+            if not existing_user:
+                raise HTTPException(status_code=404, detail="User not found")
+            
+            # 更新用戶信息
+            sql = """
+            UPDATE users
+            SET email = %s, name = %s, photo_url = %s
+            WHERE user_id = %s
+            """
+            cursor.execute(sql, (
+                user.email,
+                user.display_name,
+                user.photo_url,
+                user_id
+            ))
+            connection.commit()
+            
+            # 獲取更新後的用戶
+            sql = "SELECT * FROM users WHERE user_id = %s"
+            cursor.execute(sql, (user_id,))
+            updated_user = cursor.fetchone()
+            
+            return {"message": "User updated successfully", "user": updated_user}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        connection.close()
 

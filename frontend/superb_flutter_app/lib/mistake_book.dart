@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
-import 'package:markdown/markdown.dart' as md;
 
 class MistakeBookPage extends StatefulWidget {
   @override
@@ -15,7 +12,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
   List<Map<String, dynamic>> _mistakes = [];
   List<Map<String, dynamic>> _filteredMistakes = [];
   String _searchQuery = "";
-  String _selectedSubject = "All"; // Default selection
+  String _selectedSubject = "全部"; // Default selection
 
   @override
   void initState() {
@@ -49,7 +46,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
       _filteredMistakes = _mistakes.where((mistake) {
         bool matchesSearch = _searchQuery.isEmpty ||
             mistake['q_id'].toString().contains(_searchQuery);
-        bool matchesSubject = _selectedSubject == "All" ||
+        bool matchesSubject = _selectedSubject == "全部" ||
             mistake['subject'] == _selectedSubject;
 
         return matchesSearch && matchesSubject;
@@ -72,11 +69,12 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
 
               // Search Bar and Select Dropdown
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.only(left: 20, right: 20, top: 0, bottom: 20),
                 child: Row(
                   children: [
                     // Search Bar
                     Expanded(
+
                       child: TextField(
                         onChanged: (value) {
                           setState(() {
@@ -86,7 +84,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                         },
                         decoration: InputDecoration(
                           hintText: "Search by ID...",
-                          hintStyle: TextStyle(color: Colors.white54),
+                          hintStyle: TextStyle(color: Colors.white54,fontSize:16),
                           filled: true,
                           fillColor: Colors.white10,
                           border: OutlineInputBorder(
@@ -99,26 +97,39 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                         style: TextStyle(color: Colors.white),
                       ),
                     ),
-                    SizedBox(width: 10), // Space between elements
+
+                    SizedBox(width: 20), // Space between elements
 
                     // Select Dropdown Button
-                    DropdownButton<String>(
-                      value: _selectedSubject,
-                      dropdownColor: Color(0xFF1A2B3C), // Dark dropdown background
-                      style: TextStyle(color: Colors.white), // Dropdown text color
-                      icon: Icon(Icons.arrow_drop_down, color: Colors.white),
-                      items: ["All", "Math", "Science", "English", "History"]
-                          .map((subject) => DropdownMenuItem<String>(
-                                value: subject,
-                                child: Text(subject, style: TextStyle(color: Colors.white)),
-                              ))
-                          .toList(),
-                      onChanged: (newValue) {
-                        setState(() {
-                          _selectedSubject = newValue!;
-                          _filterMistakes();
-                        });
-                      },
+                    Container(
+                      height: 50, // Set height
+                      width: 80, // Set width
+                      padding: EdgeInsets.symmetric(horizontal: 10), // Add padding inside the button
+                      decoration: BoxDecoration(
+                        color: Color(0xFF1A2B3C), // Dark background
+                        borderRadius: BorderRadius.circular(10), // Rounded corners
+                      ),
+                      child: DropdownButtonHideUnderline( // Removes default underline
+                        child: DropdownButton<String>(
+                          value: _selectedSubject,
+                          borderRadius: BorderRadius.circular(10),
+                          dropdownColor: Color(0xFF1A2B3C), // Dark dropdown background
+                          style: TextStyle(color: Colors.white, fontSize: 16), // Adjust font size
+                          icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+                          items: ["全部", "數學", "國文", "理化", "歷史"]
+                              .map((subject) => DropdownMenuItem<String>(
+                                    value: subject,
+                                    child: Text(subject, style: TextStyle(color: Colors.white)),
+                                  ))
+                              .toList(),
+                          onChanged: (newValue) {
+                            setState(() {
+                              _selectedSubject = newValue!;
+                              _filterMistakes();
+                            });
+                          },
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -127,6 +138,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
               // Mistakes List
               Expanded(
                 child: ListView.builder(
+                  padding: EdgeInsets.only(top: 4, left: 6, right: 6), 
                   itemCount: _filteredMistakes.length,
                   itemBuilder: (context, index) {
                     final mistake = _filteredMistakes[_filteredMistakes.length - index - 1];
@@ -140,34 +152,77 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                       children: [
                         if (index == 0 || currentDate != previousDate)
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0), // Reduce date spacing
                             child: Text(
                               currentDate,
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF42A5F5)),
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color.fromARGB(255, 77, 210, 247)),
                             ),
                           ),
-                        Card(
-                          color: Color(0xFF102031),
-                          child: ListTile(
-                            title: Text('題目編號: ${mistake['q_id']}', style: TextStyle(color: Colors.white)),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('科目: ${mistake['subject']}', style: TextStyle(color: Colors.white70)),
-                                Text('章節: ${mistake['chapter']}', style: TextStyle(color: Colors.white70)),
-                                Text('難度: ${'★' * _getDifficultyStars(mistake['difficulty'])}', style: TextStyle(color: Colors.white70)),
-                              ],
+                        
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5), // Reduce space between cards
+                            child: Card(
+                              elevation: 20,
+                              color: Color.fromARGB(192, 0, 0, 0),
+                              margin: EdgeInsets.zero, // Remove default card margins
+                              child: ListTile(
+                                visualDensity: VisualDensity.compact, // Make ListTile more compact
+                                title: Text('題目編號: ${mistake['q_id']}', style: TextStyle(color: Colors.white)),
+                                
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Wrap(
+                                      spacing: 8, // Horizontal space between tags
+                                      runSpacing: 10, // Vertical space if it wraps
+                                      children: [
+                                        _buildTag('${mistake['subject']}'),
+                                        _buildTag('${mistake['chapter']}'),
+                                        _buildTag('${'★' * _getDifficultyStars(mistake['difficulty'])}'),
+                                      ],
+                                    ),
+                                    SizedBox(height: 10), // Space before preview
+                                    FutureBuilder(
+                                      future: http.head(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg')),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState == ConnectionState.waiting) {
+                                          return SizedBox.shrink(); // Don't show anything while loading
+                                        } else if (snapshot.hasError || snapshot.data?.statusCode != 200) {
+                                          return Text(
+                                            mistake['description'] != null
+                                                ? mistake['description'].length > 50
+                                                    ? '${mistake['description'].substring(0, 50)}...' // Show first 50 characters
+                                                    : mistake['description'] // Show full text if short
+                                                : 'No detailed explanation available',
+                                            style: TextStyle(color: Colors.white54, fontStyle: FontStyle.italic),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          );
+                                        } else {
+                                          return ClipRRect(
+                                            borderRadius: BorderRadius.circular(8), // Rounded corners for preview
+                                            child: Image.network(
+                                              'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg', // Image URL
+                                              height: 60, // Thumbnail size
+                                              width: double.infinity,
+                                              fit: BoxFit.cover, // Adjust image size
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => MistakeDetailPage(mistake: mistake),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MistakeDetailPage(mistake: mistake),
-                                ),
-                              );
-                            },
                           ),
-                        ),
                       ],
                     );
                   },
@@ -204,24 +259,41 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
   }
 }
 
+Widget _buildTag(String text) {
+  return Container(
+    width: text.length * 17 + 6, // Set a fixed width if needed (optional)
+    height: 22,
+    padding: EdgeInsets.symmetric(vertical: 0, horizontal: 5), // Padding inside the tag
+    decoration: BoxDecoration(
+      color: Colors.blueGrey[800], // Dark background
+      borderRadius: BorderRadius.circular(8), // Rounded corners
+    ),
+    child: Text(
+      text,
+      style: TextStyle(color: Colors.white, fontSize: 14),
+    ),
+  );
+}
+
+
 class MistakeDetailPage extends StatelessWidget {
   final Map<String, dynamic> mistake;
 
-  MistakeDetailPage({required this.mistake});
+  MistakeDetailPage({required this.mistake}); //傳遞參數
 
   // Function to check if the image exists
   Future<bool> _checkImageExistence(mistake) async {
     final url = 'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg';
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url)); // 發送 GET 請求
       if (response.statusCode == 200) {
-        return true;
+        return true; // 如果狀態碼是 200，則返回 true
       } else {
-        return false;
+        return false; // 如果狀態碼不是 200，則返回 false
       }
     } catch (e) {
-      return false;
+      return false; // 如果發生錯誤，返回 false
     }
   }
 
@@ -231,29 +303,28 @@ class MistakeDetailPage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Mistake Details'),
+          title: Text('Mis Color(0xFF102031)take Details'),
           backgroundColor: Color(0xFF102031),
           bottom: TabBar(
             tabs: [
               Tab(text: '題目'),
               Tab(text: '詳解'),
             ],
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
+            labelColor: Colors.white, // Set the selected tab text color to white
+            unselectedLabelColor: Colors.white70, // Set the unselected tab text color to a lighter white
           ),
         ),
         body: TabBarView(
           children: [
-            // 題目頁面
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: FutureBuilder<bool>(
                 future: _checkImageExistence(mistake),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
+                    return CircularProgressIndicator(); // Show a loading indicator while waiting
                   } else if (snapshot.hasError) {
-                    return Text('Error loading image');
+                    return Text('Error loading image'); // Handle error
                   } else if (snapshot.data == true) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,31 +340,16 @@ class MistakeDetailPage extends StatelessWidget {
                 },
               ),
             ),
-            
-            // 詳解頁面 - 使用 Markdown 和 LaTeX 支援
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Markdown(
-                selectable: true,
-                data: mistake['detailed_answer'] ?? 'No detailed answer available',
-                builders: {
-                  'latex': LatexElementBuilder(
-                    textStyle: Theme.of(context).textTheme.bodyLarge!,
-                    textScaleFactor: 1.1,
-                  ),
-                },
-                extensionSet: md.ExtensionSet(
-                  [LatexBlockSyntax()],
-                  [LatexInlineSyntax()],
-                ),
-              ),
+              child: Text(mistake['detailed_answer'] ?? 'No detailed answer available'),
             ),
           ],
         ),
       ),
     );
   }
-}
+} 
 
 int _getDifficultyStars(String difficulty) {
   switch (difficulty) {
