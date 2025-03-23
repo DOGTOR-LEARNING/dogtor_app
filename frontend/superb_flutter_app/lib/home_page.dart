@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';  // 引入原來的 AI 問問題頁面
 import 'auth_page.dart';  // Import the AuthPage
 import 'mistake_book.dart';  // Import the MistakeBookPage
 import 'dart:math';
 import 'chapter_detail_page.dart';  // Import the ChapterDetailPage
-import 'chat_page.dart';
+import 'chat_page_s.dart';
 import 'user_profile_page.dart';  // 引入新的用戶中心頁面
 
 class HomePage extends StatefulWidget {
@@ -12,13 +13,43 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedIndex = 1;
   ScrollController _scrollController = ScrollController();
   final double _maxPlanetSize = 200.0;  // 增加最大尺寸
   final double _minPlanetSize = 100.0;  // 增加最小尺寸
   double _screenHeight = 600.0;  // 初始值
+  String? _userPhotoUrl;  // 添加用戶頭像 URL 狀態變量
   
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadUserPhoto();  // 在初始化時加載用戶頭像
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+ 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadUserPhoto(); // 當應用程序從後台恢復時重新加載頭像
+    }
+  }
+
+  // 加載用戶頭像
+  Future<void> _loadUserPhoto() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userPhotoUrl = prefs.getString('photo_url');
+      print("頭像 URL: $_userPhotoUrl");
+    });
+  }
+
   // 計算星球大小的方法
   double calculatePlanetSize(double scrollPosition, double itemPosition) {
     // 調整中心點位置（向上偏移 20%）
@@ -79,35 +110,95 @@ void _onItemTapped(int index) {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
+          // 主要內容區域
           IndexedStack(
             index: _selectedIndex,
             children: [
-              MistakeBookPage(),  // Add MistakeBookPage here
+              MistakeBookPage(),
               Container(
                 decoration: BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/images/home-background.png'),
                     fit: BoxFit.fill,
                   ),
-                  color: Color(0xFF1B3B4B), // 深藍色微偏綠
+                  color: Color(0xFF1B3B4B),
                 ),
                 child: Column(
-                  
                   children: [
-                    SizedBox(height: 100),
-                    
-                    Text(
-                      'DOGTOR 逗課',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                    SizedBox(height: 50),
+                    // Dogtor 標題和用戶頭像在同一列
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'DOGTOR 逗課',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                  pageBuilder: (context, animation, secondaryAnimation) => UserProfilePage(),
+                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                    const begin = Offset(1.0, 0.0);
+                                    const end = Offset.zero;
+                                    const curve = Curves.easeInOut;
+                                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                    var offsetAnimation = animation.drive(tween);
+                                    return SlideTransition(
+                                      position: offsetAnimation,
+                                      child: child,
+                                    );
+                                  },
+                                ),
+                              ).then((_) {
+                                _loadUserPhoto();
+                              });
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    spreadRadius: 1,
+                                    blurRadius: 3,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                                image: _userPhotoUrl != null && _userPhotoUrl!.isNotEmpty
+                                    ? DecorationImage(
+                                        image: NetworkImage(_userPhotoUrl!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                              ),
+                              child: _userPhotoUrl == null || _userPhotoUrl!.isEmpty
+                                  ? Icon(
+                                      Icons.person,
+                                      color: Colors.blue.shade700,
+                                      size: 24,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    
+                    SizedBox(height: 20),
+                    // 學科列表
                     Expanded(
                       child: LayoutBuilder(
                         builder: (context, constraints) {
@@ -119,7 +210,7 @@ void _onItemTapped(int index) {
                               return AnimatedBuilder(
                                 animation: _scrollController,
                                 builder: (context, child) {
-                                  double itemPosition = index * 180.0; // 減少間距
+                                  double itemPosition = index * 180.0;
                                   double scrollPosition = _scrollController.hasClients 
                                       ? _scrollController.offset 
                                       : 0.0;
@@ -129,11 +220,11 @@ void _onItemTapped(int index) {
                                     itemPosition
                                   );
                                   
-                                  bool isLeft = index.isEven; // 偶數在左，奇數在右
+                                  bool isLeft = index.isEven;
                                   
                                   return Container(
                                     height: 180,
-                                    padding: EdgeInsets.symmetric(horizontal: 40), // 增加水平內邊距
+                                    padding: EdgeInsets.symmetric(horizontal: 40),
                                     child: Row(
                                       mainAxisAlignment: isLeft 
                                           ? MainAxisAlignment.start 
@@ -141,7 +232,7 @@ void _onItemTapped(int index) {
                                       children: [
                                         if (!isLeft) Expanded(
                                           child: Padding(
-                                            padding: EdgeInsets.only(right: 40), // 增加文字和圖片之間的間距
+                                            padding: EdgeInsets.only(right: 40),
                                             child: AnimatedDefaultTextStyle(
                                               duration: Duration(milliseconds: 100),
                                               style: Theme.of(context).textTheme.displayMedium!.copyWith(
@@ -193,7 +284,7 @@ void _onItemTapped(int index) {
                                         ),
                                         if (isLeft) Expanded(
                                           child: Padding(
-                                            padding: EdgeInsets.only(left: 40), // 增加文字和圖片之間的間距
+                                            padding: EdgeInsets.only(left: 40),
                                             child: AnimatedDefaultTextStyle(
                                               duration: Duration(milliseconds: 100),
                                               style: Theme.of(context).textTheme.displayMedium!.copyWith(
@@ -221,60 +312,11 @@ void _onItemTapped(int index) {
                 ),
               ),
               ChatPage(),
-              //AuthPage(),
             ],
-          ),
-          // 添加懸浮的用戶中心按鈕
-          Positioned(
-            top: 50,
-            right: 20,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) => UserProfilePage(),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      const begin = Offset(1.0, 0.0); // Start from the right
-                      const end = Offset.zero; // End at the normal position
-                      const curve = Curves.easeInOut;
-
-                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                      var offsetAnimation = animation.drive(tween);
-
-                      return SlideTransition(
-                        position: offsetAnimation,
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.person,
-                  color: Colors.blue.shade700,
-                  size: 30,
-                ),
-              ),
-            ),
           ),
         ],
       ),
+      // 底部導航欄
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -296,7 +338,7 @@ void _onItemTapped(int index) {
               icon: Image(
                 image: AssetImage('assets/images/toolbar-learn.png'),
               ),
-              label: '學習',  // This should correspond to MistakeBookPage
+              label: '學習',
             ),
             BottomNavigationBarItem(
               icon: Image(
@@ -308,7 +350,7 @@ void _onItemTapped(int index) {
           currentIndex: _selectedIndex,
           selectedItemColor: Colors.white,
           unselectedItemColor: Colors.white.withOpacity(0.5),
-          backgroundColor: Color(0xFF102031), // 深藍色微偏綠
+          backgroundColor: Color(0xFF102031),
           type: BottomNavigationBarType.fixed,
           onTap: _onItemTapped,
         ),

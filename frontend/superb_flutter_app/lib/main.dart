@@ -11,7 +11,7 @@ import 'dart:io';
 import 'home_page.dart';
 import 'auth_page.dart';
 import 'mistake_book.dart';
-import 'chat_page.dart';
+import 'chat_page_s.dart';
 
 import 'login_page.dart';
 import 'firebase_options.dart';
