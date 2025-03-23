@@ -23,26 +23,50 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   // 從 SharedPreferences 加載用戶數據
   Future<void> _loadUserData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userId = prefs.getString('user_id') ?? '';
-      _email = prefs.getString('email') ?? '';
-      _displayName = prefs.getString('name') ?? '';
-      _photoUrl = prefs.getString('photo_url') ?? '';
-      // 如果有保存其他信息，也可以在這裡加載
-    });
+    try {
+      print("開始加載用戶數據...");
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      
+      // 輸出所有保存的鍵值對，用於調試
+      print("SharedPreferences 中的所有鍵：${prefs.getKeys()}");
+      prefs.getKeys().forEach((key) {
+        print("$key: ${prefs.get(key)}");
+      });
+      
+      setState(() {
+        _userId = prefs.getString('user_id') ?? '';
+        _email = prefs.getString('email') ?? '';
+        _displayName = prefs.getString('display_name') ?? '';
+        _photoUrl = prefs.getString('photo_url') ?? '';
+        
+        print("加載的用戶數據：");
+        print("用戶 ID: $_userId");
+        print("電子郵件: $_email");
+        print("顯示名稱: $_displayName");
+        print("頭像 URL: $_photoUrl");
+      });
+      print("用戶數據加載完成");
+    } catch (e) {
+      print("加載用戶數據時出錯: $e");
+    }
   }
 
   // 登出並清除本地存儲的用戶數據
   Future<void> _logout(BuildContext context) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // 清除所有保存的數據
+    try {
+      print("開始登出...");
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.clear(); // 清除所有保存的數據
+      print("已清除所有用戶數據");
 
-    // 導航回登入頁面，並清除導航堆疊
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => LoginPage()),
-      (Route<dynamic> route) => false,
-    );
+      // 導航回登入頁面，並清除導航堆疊
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => LoginPage()),
+        (Route<dynamic> route) => false,
+      );
+    } catch (e) {
+      print("登出時出錯: $e");
+    }
   }
 
   @override

@@ -27,12 +27,36 @@ class LoginPage extends StatelessWidget {
     return userId != null;
   }
 
-  // 保存用戶登入狀態
-  Future<void> _saveUserLoginState(String userId, String email, String displayName) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_id', userId);
-    await prefs.setString('email', email);
-    await prefs.setString('display_name', displayName);
+  // 保存用戶登入狀態到 SharedPreferences
+  Future<void> _saveUserLoginState(String userId, String email, String displayName, [String photoUrl = '']) async {
+    try {
+      print("開始保存用戶登入狀態...");
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      
+      // 保存用戶數據
+      await prefs.setString('user_id', userId);
+      await prefs.setString('email', email);
+      await prefs.setString('display_name', displayName);
+      await prefs.setString('photo_url', photoUrl);
+      
+      // 輸出保存的數據，用於調試
+      print("已保存的用戶數據：");
+      print("user_id: $userId");
+      print("email: $email");
+      print("display_name: $displayName");
+      print("photo_url: $photoUrl");
+      
+      // 檢查數據是否成功保存
+      print("檢查保存的數據：");
+      print("user_id: ${prefs.getString('user_id')}");
+      print("email: ${prefs.getString('email')}");
+      print("display_name: ${prefs.getString('display_name')}");
+      print("photo_url: ${prefs.getString('photo_url')}");
+      
+      print("用戶登入狀態已保存");
+    } catch (e) {
+      print("保存用戶登入狀態時出錯: $e");
+    }
   }
 
   // 檢查用戶是否存在於數據庫，如果不存在則創建
@@ -82,6 +106,20 @@ class LoginPage extends StatelessWidget {
           
           print("創建用戶響應狀態碼: ${createResponse.statusCode}");
           print("創建用戶響應內容: ${createResponse.body}");
+          
+          if (createResponse.statusCode == 200) {
+            final userData = jsonDecode(createResponse.body);
+            print("用戶創建成功，保存登入狀態...");
+            
+            // 從響應中獲取用戶數據
+            final user = userData['user'];
+            await _saveUserLoginState(
+              user['user_id'] ?? firebaseUser.uid,
+              user['email'] ?? firebaseUser.email ?? '',
+              user['name'] ?? firebaseUser.displayName ?? '',
+              user['photo_url'] ?? firebaseUser.photoURL ?? '',
+            );
+          }
         }
       } else {
         print("API 錯誤: ${response.statusCode} - ${response.body}");
@@ -94,6 +132,7 @@ class LoginPage extends StatelessWidget {
         firebaseUser.uid,
         firebaseUser.email ?? '',
         firebaseUser.displayName ?? '',
+        firebaseUser.photoURL ?? '',
       );
       print("用戶登入狀態已保存");
     } catch (error) {
@@ -104,6 +143,7 @@ class LoginPage extends StatelessWidget {
         firebaseUser.uid,
         firebaseUser.email ?? '',
         firebaseUser.displayName ?? '',
+        firebaseUser.photoURL ?? '',
       );
     }
   }
