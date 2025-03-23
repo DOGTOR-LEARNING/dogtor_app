@@ -219,7 +219,7 @@ def get_db_connection():
         print(f"Database connection error: {str(e)}")
         raise
 
-# 用戶模型
+# 用戶模型.
 class User(BaseModel):
     user_id: str
     email: Optional[str] = None
