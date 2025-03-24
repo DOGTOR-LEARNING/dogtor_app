@@ -5,7 +5,7 @@ import 'auth_page.dart';  // Import the AuthPage
 import 'mistake_book.dart';  // Import the MistakeBookPage
 import 'dart:math';
 import 'chapter_detail_page.dart';  // Import the ChapterDetailPage
-import 'chat_page_s.dart';
+import 'chat_page.dart';
 import 'user_profile_page.dart';  // 引入新的用戶中心頁面
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -263,18 +263,7 @@ void _onItemTapped(int index) {
                                                   MaterialPageRoute(
                                                     builder: (context) => ChapterDetailPage(
                                                       subject: '理化',
-                                                      csvPath: 'assets/edu_data/junior_science_chapter.csv',
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                              if (planets[index]['name'] == '化學') {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) => ChapterDetailPage(
-                                                      subject: '化學',
-                                                      csvPath: 'assets/edu_data/high_chemistry_chapter.csv',
+                                                      csvPath: 'assets/edu_data/level_info/junior_science_level.csv',
                                                     ),
                                                   ),
                                                 );

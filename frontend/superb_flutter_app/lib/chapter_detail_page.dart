@@ -65,7 +65,10 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
           .where((row) => row.trim().isNotEmpty)
           .map((row) {
             final cols = row.split(',');
+            if (cols.length < 9) return null; // 確保有足夠的列
+            
             return {
+              'level_id': cols[0],       // 關卡編號
               'year_grade': cols[1],     // 年級
               'book': cols[2],           // 冊別
               'chapter_num': cols[3],    // 章節編號
@@ -73,10 +76,13 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
               'section_num': cols[5],    // 小節編號
               'section_name': cols[6],   // 小節名稱
               'knowledge_spots': cols[7], // 知識點列表
-              'section_summary': cols[8], // 課綱內容摘要
+              'level_name': cols[8],     // 關卡名稱
               'stars': 0,                // 學習進度星星數（預設為0）
             };
-          }).toList();
+          })
+          .where((item) => item != null)
+          .cast<Map<String, dynamic>>()
+          .toList();
 
       setState(() {
         sections = allSections;
@@ -376,7 +382,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                       leading: CircleAvatar(
                                         backgroundColor: accentColor.withOpacity(0.3),
                                         child: Text(
-                                          section['section_num'],
+                                          section['level_id'], // 使用關卡編號
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
@@ -384,7 +390,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                         ),
                                       ),
                                       title: Text(
-                                        section['section_name'],
+                                        section['level_name'], // 使用關卡名稱
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.w500,
@@ -439,9 +445,9 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                           context,
                                           MaterialPageRoute(
                                             builder: (context) => QuizPage(
-                                              section: section['section_name'],
+                                              section: section['level_name'], // 使用關卡名稱
                                               knowledgePoints: knowledgePoints,
-                                              sectionSummary: section['section_summary'],
+                                              sectionSummary: section['section_name'], // 使用小節名稱作為摘要
                                             ),
                                           ),
                                         );

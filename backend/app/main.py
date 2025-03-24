@@ -12,6 +12,7 @@ import pymysql
 import pymysql.cursors
 from typing import Optional
 from pydantic import BaseModel
+import io
 
 
 app = FastAPI()
@@ -42,6 +43,7 @@ class ChatRequest(BaseModel):
     subject: Optional[str] = None      # 添加科目
     chapter: Optional[str] = None      # 添加章節
 
+# 用途可以是釐清概念或是問題目
 @app.post("/chat")
 async def chat_with_openai(request: ChatRequest):
     system_message = "你是個幽默的臺灣國高中老師，請用繁體中文回答問題，"
@@ -166,18 +168,21 @@ async def get_mistakes():
             reader = csv.DictReader(file)
             for row in reader:
                 mistakes.append(row)
+        print(mistakes)
     return mistakes
 
 # Modify the submit_question endpoint to use the new q_id logic
 @app.post("/submit_question")
 async def submit_question(request: dict):
     q_id = await get_next_q_id()
+    summary = request.get('summary')
     subject = request.get('subject')
     chapter = request.get('chapter')
     description = request.get('description')
     difficulty = request.get('difficulty')
     simple_answer = request.get('simple_answer', '')
     detailed_answer = request.get('detailed_answer', '')
+    tag = request.get('tag', '') #給自己的小提醒
     timestamp = datetime.now().isoformat()
 
     # Save image if provided
@@ -190,17 +195,53 @@ async def submit_question(request: dict):
     # Save question data to CSV
     await save_question_to_csv({
         'q_id': q_id,
+        'summary': summary,
         'subject': subject,
         'chapter': chapter,
         'description': description,
         'difficulty': difficulty,
         'simple_answer': simple_answer,
         'detailed_answer': detailed_answer,
+        'tag': tag,
         'timestamp': timestamp
     })
 
     return {"status": "success", "message": "Question submitted successfully."}
 
+# 串 GPT 統整問題摘要
+# 回傳摘要、科目
+@app.post("/summarize")
+async def chat_with_openai(request: ChatRequest):
+    message = "請你分辨輸入圖片的科目類型（國文、數學、英文、社會、自然），並且用十個字以內的話總結這個題目的重點。回傳csv格式為：科目,十字總結"
+    
+    if request.image_base64:
+        messages = {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": message},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{request.image_base64}"
+                    }
+                }
+            ]
+        }
+    else:
+        messages = {"role": "user", "content": message}
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        max_tokens=500 # why
+    )
+    
+    return {"response": response.choices[0].message.content}
+
+'''
+# 串 GPT 解答錯題本中問題
+@app.post("/answer")
+'''
 
 ############### SQL
 
@@ -326,4 +367,91 @@ async def update_user(user_id: str, user: User):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     finally:
         connection.close()
+
+@app.post("/admin/import-knowledge-points")
+async def import_knowledge_points(file: UploadFile = File(...)):
+    """
+    導入知識點 CSV 文件
+    """
+    print("開始導入知識點...")
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="只接受 CSV 文件")
+    
+    # 讀取上傳的文件內容
+    contents = await file.read()
+    csv_file = io.StringIO(contents.decode('utf-8'))
+    csv_reader = csv.reader(csv_file)
+    
+    # 跳過標題行（如果有）
+    next(csv_reader, None)
+    
+    connection = None
+    imported_count = 0
+    
+    try:
+        connection = get_db_connection()
+        
+        for row in csv_reader:
+            if len(row) < 4:
+                print(f"跳過無效行: {row}")
+                continue
+            
+            chapter_name = row[0].strip()
+            section_num = int(row[1].strip())
+            section_name = row[2].strip()
+            knowledge_points_str = row[3].strip()
+            
+            # 查找 chapter_id
+            with connection.cursor() as cursor:
+                sql = "SELECT id FROM chapter_list WHERE chapter_name = %s"
+                cursor.execute(sql, (chapter_name,))
+                result = cursor.fetchone()
+                
+                if not result:
+                    print(f"找不到章節: {chapter_name}，跳過")
+                    continue
+                
+                chapter_id = result['id']
+                print(f"找到章節 ID: {chapter_id} 對應章節: {chapter_name}")
+                
+                # 分割知識點
+                knowledge_points = [kp.strip() for kp in knowledge_points_str.split('、')]
+                
+                # 插入每個知識點
+                for point_name in knowledge_points:
+                    if not point_name:
+                        continue
+                    
+                    try:
+                        sql = """
+                        INSERT INTO knowledge_points 
+                        (section_num, section_name, point_name, chapter_id)
+                        VALUES (%s, %s, %s, %s)
+                        """
+                        cursor.execute(sql, (section_num, section_name, point_name, chapter_id))
+                        imported_count += 1
+                        print(f"已插入知識點: {point_name}")
+                    except pymysql.err.IntegrityError as e:
+                        if "Duplicate entry" in str(e):
+                            print(f"知識點已存在，跳過: {point_name}")
+                        else:
+                            print(f"插入知識點時出錯: {e}")
+                            continue
+            
+            # 提交事務
+            connection.commit()
+            print(f"已完成行: {row}")
+    
+    except Exception as e:
+        print(f"處理 CSV 文件時出錯: {e}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"導入失敗: {str(e)}")
+    finally:
+        if connection:
+            connection.close()
+            print("數據庫連接已關閉")
+    
+    return {"message": f"成功導入 {imported_count} 個知識點"}
 
