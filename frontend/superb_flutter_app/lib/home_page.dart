@@ -259,18 +259,7 @@ void _onItemTapped(int index) {
                                                   MaterialPageRoute(
                                                     builder: (context) => ChapterDetailPage(
                                                       subject: '理化',
-                                                      csvPath: 'assets/edu_data/junior_science_chapter.csv',
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                              if (planets[index]['name'] == '化學') {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) => ChapterDetailPage(
-                                                      subject: '化學',
-                                                      csvPath: 'assets/edu_data/high_chemistry_chapter.csv',
+                                                      csvPath: 'assets/edu_data/level_info/junior_science_level.csv',
                                                     ),
                                                   ),
                                                 );
