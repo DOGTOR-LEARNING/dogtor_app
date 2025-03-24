@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import 'add_mistake_page.dart';
 
 class MistakeBookPage extends StatefulWidget {
   @override
@@ -29,6 +30,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
               .map((mistake) => Map<String, dynamic>.from(mistake))
               .toList();
           _filteredMistakes = _mistakes; // Initially show all mistakes
+          print(_mistakes);
         });
       } else {
         throw Exception('Failed to load mistakes');
@@ -249,7 +251,11 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
       floatingActionButton: FloatingActionButton(
         heroTag: 'mistake_book_fab',
         onPressed: () {
-          print('Floating Action Button Pressed');
+          print('Add Mistake Button Pressed');
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddMistakePage()), // 導航到新增錯題頁面
+          );
         },
         backgroundColor: Colors.blue,
         child: Icon(Icons.add, color: Colors.white),
