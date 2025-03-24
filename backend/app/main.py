@@ -42,6 +42,7 @@ class ChatRequest(BaseModel):
     subject: Optional[str] = None      # 添加科目
     chapter: Optional[str] = None      # 添加章節
 
+# 用途可以是釐清概念或是問題目
 @app.post("/chat")
 async def chat_with_openai(request: ChatRequest):
     system_message = "你是個幽默的臺灣國高中老師，請用繁體中文回答問題，"
@@ -172,12 +173,14 @@ async def get_mistakes():
 @app.post("/submit_question")
 async def submit_question(request: dict):
     q_id = await get_next_q_id()
+    summary = request.get('summary')
     subject = request.get('subject')
     chapter = request.get('chapter')
     description = request.get('description')
     difficulty = request.get('difficulty')
     simple_answer = request.get('simple_answer', '')
     detailed_answer = request.get('detailed_answer', '')
+    tag = request.get('tag', '') #給自己的小提醒
     timestamp = datetime.now().isoformat()
 
     # Save image if provided
@@ -190,17 +193,27 @@ async def submit_question(request: dict):
     # Save question data to CSV
     await save_question_to_csv({
         'q_id': q_id,
+        'summary': summary,
         'subject': subject,
         'chapter': chapter,
         'description': description,
         'difficulty': difficulty,
         'simple_answer': simple_answer,
         'detailed_answer': detailed_answer,
+        'tag': tag,
         'timestamp': timestamp
     })
 
     return {"status": "success", "message": "Question submitted successfully."}
 
+# 串 GPT 統整問題摘要
+'''
+@app.post("/summarize")
+async def 
+
+# 串 GPT 解答錯題本中問題
+@app.post("/answer")
+'''
 
 ############### SQL
 

@@ -1,4 +1,4 @@
-q_id,subject,chapter,description,difficulty,simple_answer,detailed_answer,timestamp
+q_id,summary,subject,chapter,description,difficulty,simple_answer,detailed_answer,tag,timestamp
 1,,,,Medium,,,2025-03-07T23:21:47.231590
 2,,,1+1=?,Easy,,,2025-03-07T23:28:33.815497
 3,數學,,answer the question,Medium,,"這題考到**三角形重心**的概念。
