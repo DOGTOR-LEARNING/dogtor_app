@@ -7,6 +7,9 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
+import 'dart:typed_data';
+import 'dart:html' as html; // Flutter Web only
+
 class AddMistakePage extends StatefulWidget {
   @override
   _AddMistakePageState createState() => _AddMistakePageState();
@@ -21,6 +24,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
   final ImagePicker _picker = ImagePicker();
   XFile? _selectedImage; // 用於存儲選擇的圖片
   String _response = ""; // 存儲 AI 的回應
+  Uint8List? _imageBytes; // for web //late變數型態
   bool _isLoading = false; // 加載狀態
   
   Future<void> _submitData() async {
@@ -63,12 +67,14 @@ class _AddMistakePageState extends State<AddMistakePage> {
   }
 
   Future<void> _generateAnswer() async {
+    /*
     if (_selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('請選擇一張圖片')),
       );
       return;
     }
+    */
 
     setState(() {
       _isLoading = true; // 開始加載
@@ -76,8 +82,10 @@ class _AddMistakePageState extends State<AddMistakePage> {
 
     try {
       // 將選擇的圖片轉換為 Base64 編碼
-      final bytes = await _selectedImage!.readAsBytes();
-      final base64Image = base64Encode(bytes);
+      //final bytes = await _selectedImage!.readAsBytes();
+      //final base64Image = base64Encode(bytes);
+      
+      final base64Image = base64Encode(_imageBytes!);
 
       // 構建請求體
       final Map<String, dynamic> requestBody = {
@@ -159,7 +167,20 @@ class _AddMistakePageState extends State<AddMistakePage> {
                   },
                   child: Text('打開相機'),
                 ),
-                                ElevatedButton(
+                ElevatedButton(
+                  onPressed: () async {
+                    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+                    if (image != null) {
+                      final bytes = await image.readAsBytes();  // ✅ 可跨平台 Web/iOS/Android
+                      setState(() {
+                        _imageBytes = bytes;
+                      });
+                    }
+                  },
+                  child: Text("從相簿中選擇"),
+                ),
+                /*
+                ElevatedButton(
                   onPressed: () async {
                     // 從相簿中選擇
                     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -171,6 +192,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                   },
                   child: Text('從相簿中選擇'),
                 ),
+                */
                 ElevatedButton(
                   onPressed: _generateAnswer, // 生成回答
                   child: Text('生成摘要'),
@@ -182,6 +204,9 @@ class _AddMistakePageState extends State<AddMistakePage> {
                   Image.file(File(_selectedImage!.path), height: 100), // 顯示選擇的圖片
                 ],
                 */
+                _imageBytes != null
+                ? Image.memory(_imageBytes!)
+                : Text("尚未選擇圖片")
               ],
             ),
 

@@ -168,6 +168,7 @@ async def get_mistakes():
             reader = csv.DictReader(file)
             for row in reader:
                 mistakes.append(row)
+        print(mistakes)
     return mistakes
 
 # Modify the submit_question endpoint to use the new q_id logic
@@ -208,10 +209,36 @@ async def submit_question(request: dict):
     return {"status": "success", "message": "Question submitted successfully."}
 
 # 串 GPT 統整問題摘要
-'''
+# 回傳摘要、科目
 @app.post("/summarize")
-async def 
+async def chat_with_openai(request: ChatRequest):
+    message = "請你分辨輸入圖片的科目類型（國文、數學、英文、社會、自然），並且用十個字以內的話總結這個題目的重點。回傳csv格式為：科目,十字總結"
+    
+    if request.image_base64:
+        messages = {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": message},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{request.image_base64}"
+                    }
+                }
+            ]
+        }
+    else:
+        messages = {"role": "user", "content": message}
 
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        max_tokens=500 # why
+    )
+    
+    return {"response": response.choices[0].message.content}
+
+'''
 # 串 GPT 解答錯題本中問題
 @app.post("/answer")
 '''
