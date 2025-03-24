@@ -12,6 +12,7 @@ import pymysql
 import pymysql.cursors
 from typing import Optional
 from pydantic import BaseModel
+import io
 
 
 app = FastAPI()
@@ -339,4 +340,91 @@ async def update_user(user_id: str, user: User):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     finally:
         connection.close()
+
+@app.post("/admin/import-knowledge-points")
+async def import_knowledge_points(file: UploadFile = File(...)):
+    """
+    導入知識點 CSV 文件
+    """
+    print("開始導入知識點...")
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="只接受 CSV 文件")
+    
+    # 讀取上傳的文件內容
+    contents = await file.read()
+    csv_file = io.StringIO(contents.decode('utf-8'))
+    csv_reader = csv.reader(csv_file)
+    
+    # 跳過標題行（如果有）
+    next(csv_reader, None)
+    
+    connection = None
+    imported_count = 0
+    
+    try:
+        connection = get_db_connection()
+        
+        for row in csv_reader:
+            if len(row) < 4:
+                print(f"跳過無效行: {row}")
+                continue
+            
+            chapter_name = row[0].strip()
+            section_num = int(row[1].strip())
+            section_name = row[2].strip()
+            knowledge_points_str = row[3].strip()
+            
+            # 查找 chapter_id
+            with connection.cursor() as cursor:
+                sql = "SELECT id FROM chapter_list WHERE chapter_name = %s"
+                cursor.execute(sql, (chapter_name,))
+                result = cursor.fetchone()
+                
+                if not result:
+                    print(f"找不到章節: {chapter_name}，跳過")
+                    continue
+                
+                chapter_id = result['id']
+                print(f"找到章節 ID: {chapter_id} 對應章節: {chapter_name}")
+                
+                # 分割知識點
+                knowledge_points = [kp.strip() for kp in knowledge_points_str.split('、')]
+                
+                # 插入每個知識點
+                for point_name in knowledge_points:
+                    if not point_name:
+                        continue
+                    
+                    try:
+                        sql = """
+                        INSERT INTO knowledge_points 
+                        (section_num, section_name, point_name, chapter_id)
+                        VALUES (%s, %s, %s, %s)
+                        """
+                        cursor.execute(sql, (section_num, section_name, point_name, chapter_id))
+                        imported_count += 1
+                        print(f"已插入知識點: {point_name}")
+                    except pymysql.err.IntegrityError as e:
+                        if "Duplicate entry" in str(e):
+                            print(f"知識點已存在，跳過: {point_name}")
+                        else:
+                            print(f"插入知識點時出錯: {e}")
+                            continue
+            
+            # 提交事務
+            connection.commit()
+            print(f"已完成行: {row}")
+    
+    except Exception as e:
+        print(f"處理 CSV 文件時出錯: {e}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"導入失敗: {str(e)}")
+    finally:
+        if connection:
+            connection.close()
+            print("數據庫連接已關閉")
+    
+    return {"message": f"成功導入 {imported_count} 個知識點"}
 
