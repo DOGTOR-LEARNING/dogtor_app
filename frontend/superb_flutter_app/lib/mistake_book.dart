@@ -30,6 +30,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
               .map((mistake) => Map<String, dynamic>.from(mistake))
               .toList();
           _filteredMistakes = _mistakes; // Initially show all mistakes
+          print(_mistakes);
         });
       } else {
         throw Exception('Failed to load mistakes');
