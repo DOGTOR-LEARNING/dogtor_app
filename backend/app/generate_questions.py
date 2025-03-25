@@ -9,6 +9,8 @@ from google.cloud import aiplatform
 from openai import OpenAI
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
+from vertexai.generative_models import GenerativeModel
+import vertexai
 
 # 加載 .env 文件
 load_dotenv()
@@ -195,31 +197,32 @@ def verify_question_with_deepseek(question_data: Dict[str, Any]) -> Tuple[bool, 
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請分析這道題目，判斷給出的答案是否正確。如果不正確，請給出正確的答案(1-4)。
-回答格式:
-{{
-  "is_correct": true/false,
-  "correct_answer": "正確選項的數字(1-4)",
-  "explanation": "簡短解釋為什麼這是正確答案"
-}}
+請分析這道題目，判斷給出的答案是否正確。
+如果答案正確，請只回答 "Y"。
+如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
+不要提供任何其他解釋或格式。
 """
 
         # 調用 DeepSeek Reasoner API
-        response = deepseek_client.chat.completions.create(  # 使用 deepseek_client
-            model="deepseek-reasoner",  # DeepSeek Reasoner 模型
+        response = deepseek_client.chat.completions.create(
+            model="deepseek-reasoner",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
+            max_tokens=10,  # 限制回應長度
         )
         
         # 解析回應
-        content = response.choices[0].message.content
-        result = json.loads(content)
+        content = response.choices[0].message.content.strip()
         
-        return (
-            result.get("is_correct", False), 
-            result.get("correct_answer", ""), 
-            result.get("explanation", "")
-        )
+        # 判斷結果
+        is_correct = content == "Y"
+        correct_answer = ""
+        explanation = ""
+        
+        if not is_correct and content in ["1", "2", "3", "4"]:
+            correct_answer = content
+        
+        return is_correct, correct_answer, explanation
     except Exception as e:
         print(f"使用 DeepSeek 驗證題目時出錯: {e}")
         return False, "", ""
@@ -238,31 +241,31 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請分析這道題目，判斷給出的答案是否正確。如果不正確，請給出正確的答案(1-4)。
-回答格式:
-{{
-  "is_correct": true/false,
-  "correct_answer": "正確選項的數字(1-4)",
-  "explanation": "簡短解釋為什麼這是正確答案"
-}}
+請分析這道題目，判斷給出的答案是否正確。
+如果答案正確，請只回答 "Y"。
+如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
+不要提供任何其他解釋或格式。
 """
 
         # 調用 o3-mini API
         response = openai_client.chat.completions.create(
-            model="o3-mini",  # 改為使用 o3-mini
+            model="o3-mini",
             messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
+            max_tokens=10,  # 限制回應長度
         )
         
         # 解析回應
-        content = response.choices[0].message.content
-        result = json.loads(content)
+        content = response.choices[0].message.content.strip()
         
-        return (
-            result.get("is_correct", False), 
-            result.get("correct_answer", ""), 
-            result.get("explanation", "")
-        )
+        # 判斷結果
+        is_correct = content == "Y"
+        correct_answer = ""
+        explanation = ""
+        
+        if not is_correct and content in ["1", "2", "3", "4"]:
+            correct_answer = content
+        
+        return is_correct, correct_answer, explanation
     except Exception as e:
         print(f"使用 o3-mini 驗證題目時出錯: {e}")
         return False, "", ""
@@ -281,31 +284,33 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請分析這道題目，判斷給出的答案是否正確。如果不正確，請給出正確的答案(1-4)。
-回答格式:
-{{
-  "is_correct": true/false,
-  "correct_answer": "正確選項的數字(1-4)",
-  "explanation": "簡短解釋為什麼這是正確答案"
-}}
+請分析這道題目，判斷給出的答案是否正確。
+如果答案正確，請只回答 "Y"。
+如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
+不要提供任何其他解釋或格式。
 """
 
-        # 調用 Gemini API
-        model = aiplatform.VertexAI(
-            model_name="gemini-1.5-flash",
-            temperature=0.1,
-            max_output_tokens=1024,
-        )
-        response = model.predict(prompt=prompt)
+
+        vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="asia-east1-c")
+        
+        # 創建模型實例
+        model = GenerativeModel("gemini-1.5-flash-002")
+        
+        # 生成回應
+        response = model.generate_content(prompt)
         
         # 解析回應
-        result = json.loads(response.text)
+        content = response.text.strip()
         
-        return (
-            result.get("is_correct", False), 
-            result.get("correct_answer", ""), 
-            result.get("explanation", "")
-        )
+        # 判斷結果
+        is_correct = content == "Y"
+        correct_answer = ""
+        explanation = ""
+        
+        if not is_correct and content in ["1", "2", "3", "4"]:
+            correct_answer = content
+        
+        return is_correct, correct_answer, explanation
     except Exception as e:
         print(f"使用 Gemini 驗證題目時出錯: {e}")
         return False, "", ""
@@ -487,7 +492,7 @@ def process_question(connection, knowledge_id: int, question_data: Dict[str, Any
         else:
             print(f"題目被捨棄: {question_data['question'][:30]}...")
             print(f"DeepSeek: 正確={deepseek_correct}, 答案={deepseek_answer}")
-            print(f"o3mini: 正確={gpt4_correct}, 答案={gpt4_answer}")  # 更新日誌輸出
+            print(f"o3mini: 正確={gpt4_correct}, 答案={gpt4_answer}")
             print(f"Gemini: 正確={gemini_correct}, 答案={gemini_answer}")
             return False
     except Exception as e:
