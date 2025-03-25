@@ -112,74 +112,70 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
     # 將知識點分成小批次
     for i in range(0, len(knowledge_points), batch_size):
         batch_points = knowledge_points[i:i+batch_size]
-        print(f"處理知識點批次 {i//batch_size + 1}/{(len(knowledge_points) + batch_size - 1)//batch_size}: {', '.join(batch_points)}")
+        print(f"[生成題目] 處理知識點批次 {i//batch_size + 1}/{(len(knowledge_points) + batch_size - 1)//batch_size}: {', '.join(batch_points)}")
         
-        try:
-            # 構建提示
-            prompt = f"""
-你是一個專業的教育內容生成器。我需要你為以下教育內容生成選擇題：
+        # 構建提示
+        prompt = f"""
+請為國中{section_data['year_grade']}年級{section_data['book']}的「{section_data['chapter_name']}」章節中的以下知識點生成選擇題：
 
-年級: {section_data['year_grade']}
-冊數: {section_data['book']}
-章節: {section_data['chapter_num']} {section_data['chapter_name']}
-小節: {section_data['section_num']} {section_data['section_name']}
-小節描述: {section_data['description']}
+知識點：{', '.join(batch_points)}
 
-這個小節包含以下所有知識點:
-{', '.join(section_data['knowledge_points'])}
+請為每個知識點生成3道選擇題，每道題有4個選項，只有1個正確答案。
+題目應該符合國中學生的認知水平，難度適中。
 
-但在本次請求中，我只需要你為以下知識點生成題目:
-{', '.join(batch_points)}
-
-請為每個指定的知識點生成 20 道選擇題，每道題有 4 個選項，只有 1 個正確答案。
-
-要求:
-1. 題目難度要適合該年級學生
-2. 題目要清晰、準確，沒有歧義
-3. 選項要合理，干擾項要有迷惑性
-4. 正確答案必須是 1、2、3、4 中的一個數字
-
-請以 JSON 格式回傳，格式如下:
+請按照以下JSON格式返回：
 {{
-  "知識點1": [
+  "questions": [
     {{
+      "knowledge_point": "知識點名稱",
       "question": "題目內容",
       "options": ["選項1", "選項2", "選項3", "選項4"],
-      "answer": "正確選項的數字(1-4)"
+      "answer": "正確答案的編號(1-4)"
     }},
     // 更多題目...
-  ],
-  "知識點2": [
-    // 該知識點的題目...
   ]
 }}
-
-請確保 JSON 格式正確，可以被直接解析。
 """
 
+        try:
+            print(f"[生成題目] 調用 GPT-4o API")
             # 調用 GPT-4o API
             response = openai_client.chat.completions.create(
                 model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=10000,
+                messages=[
+                    {"role": "system", "content": "你是一個專業的教育題目生成器，專注於生成符合國中學生認知水平的選擇題。"},
+                    {"role": "user", "content": prompt}
+                ],
                 response_format={"type": "json_object"}
             )
             
             # 解析回應
             content = response.choices[0].message.content
-            batch_questions = json.loads(content)
+            result = json.loads(content)
             
-            # 合併到總結果中
-            all_questions.update(batch_questions)
+            # 處理生成的題目
+            for question in result.get("questions", []):
+                knowledge_point = question.get("knowledge_point", "")
+                
+                # 確保知識點存在於字典中
+                if knowledge_point not in all_questions:
+                    all_questions[knowledge_point] = []
+                
+                # 添加題目
+                all_questions[knowledge_point].append({
+                    "question": question.get("question", ""),
+                    "options": question.get("options", []),
+                    "answer": question.get("answer", "")
+                })
             
-            print(f"成功為批次 {i//batch_size + 1} 生成題目")
-            
-            # 添加延遲以避免 API 限制
-            time.sleep(2)
+            print(f"[生成題目] 成功為批次 {i//batch_size + 1} 生成 {len(result.get('questions', []))} 個題目")
             
         except Exception as e:
-            print(f"為批次 {i//batch_size + 1} 生成題目時出錯: {e}")
+            print(f"[生成題目] 生成題目時出錯: {e}")
+    
+    # 打印生成的題目數量
+    total_questions = sum(len(questions) for questions in all_questions.values())
+    print(f"[生成題目] 總共為 {len(all_questions)} 個知識點生成了 {total_questions} 個題目")
     
     return all_questions
 
@@ -458,19 +454,28 @@ def get_or_create_knowledge_point(connection, chapter_id: int, section_data: Dic
 def process_question(connection, knowledge_id: int, question_data: Dict[str, Any]):
     """處理單個題目：驗證並保存到數據庫"""
     try:
+        print(f"  [驗證開始] 使用三個模型驗證題目")
+        
         # 使用三個模型驗證題目
+        print(f"  [驗證 1/3] 使用 DeepSeek 驗證")
         deepseek_result = verify_question_with_deepseek(question_data)
+        print(f"  [驗證 2/3] 使用 o3-mini 驗證")
         gpt4_result = verify_question_with_o3mini(question_data)
+        print(f"  [驗證 3/3] 使用 Gemini 驗證")
         gemini_result = verify_question_with_gemini(question_data)
         
         deepseek_correct, deepseek_answer, _ = deepseek_result
         gpt4_correct, gpt4_answer, _ = gpt4_result
         gemini_correct, gemini_answer, _ = gemini_result
         
+        print(f"  [驗證結果] DeepSeek: {deepseek_correct}, o3-mini: {gpt4_correct}, Gemini: {gemini_correct}")
+        
         # 如果三個模型都認為答案正確
         if deepseek_correct and gpt4_correct and gemini_correct:
+            print(f"  [處理] 三個模型都認為答案正確，生成解釋")
             # 生成解釋並保存題目
             explanation = generate_explanation_with_o3mini(question_data)
+            print(f"  [保存] 保存題目到數據庫")
             save_question_to_database(connection, knowledge_id, question_data, explanation)
             return True
         
@@ -479,70 +484,81 @@ def process_question(connection, knowledge_id: int, question_data: Dict[str, Any
               deepseek_answer == gpt4_answer == gemini_answer and
               deepseek_answer in ["1", "2", "3", "4"]):
             
+            print(f"  [處理] 三個模型都給出相同的不同答案: {deepseek_answer}，修正答案")
             # 修正答案
             question_data['answer'] = deepseek_answer
             
             # 生成解釋並保存題目
+            print(f"  [生成] 生成解釋")
             explanation = generate_explanation_with_o3mini(question_data)
+            print(f"  [保存] 保存修正後的題目到數據庫")
             save_question_to_database(connection, knowledge_id, question_data, explanation)
             return True
         
         # 其他情況：模型給出不同答案或認為題目有問題
         else:
-            print(f"題目被捨棄: {question_data['question'][:30]}...")
-            print(f"DeepSeek: 正確={deepseek_correct}, 答案={deepseek_answer}")
-            print(f"o3mini: 正確={gpt4_correct}, 答案={gpt4_answer}")
-            print(f"Gemini: 正確={gemini_correct}, 答案={gemini_answer}")
+            print(f"  [捨棄] 題目被捨棄: {question_data['question'][:30]}...")
+            print(f"  [詳情] DeepSeek: 正確={deepseek_correct}, 答案={deepseek_answer}")
+            print(f"  [詳情] o3mini: 正確={gpt4_correct}, 答案={gpt4_answer}")
+            print(f"  [詳情] Gemini: 正確={gemini_correct}, 答案={gemini_answer}")
             return False
     except Exception as e:
-        print(f"處理題目時出錯: {e}")
+        print(f"  [錯誤] 處理題目時出錯: {e}")
         return False
 
 def process_section(subject: str, section_data: Dict[str, Any]):
     """處理單個小節的所有知識點和題目"""
     connection = None
     try:
+        print(f"\n===== 開始處理小節: {section_data['section_name']} =====")
         connection = get_db_connection()
         
         # 獲取或創建章節
+        print(f"[檢查點 1] 嘗試獲取或創建章節: {section_data['chapter_name']}")
         chapter_id = get_or_create_chapter(connection, subject, section_data)
         if not chapter_id:
             print(f"無法獲取或創建章節，跳過處理小節: {section_data['section_name']}")
             return
+        print(f"[檢查點 1 完成] 成功獲取章節 ID: {chapter_id}")
         
         # 獲取知識點列表
         knowledge_points = section_data['knowledge_points']
-        print(f"小節 {section_data['section_name']} 包含 {len(knowledge_points)} 個知識點")
+        print(f"[檢查點 2] 小節 {section_data['section_name']} 包含 {len(knowledge_points)} 個知識點")
         
         # 使用 GPT-4o 分批生成題目
+        print(f"[檢查點 3] 開始使用 GPT-4o 生成題目")
         questions_by_point = generate_questions_with_gpt4o(knowledge_points, section_data, batch_size=2)
+        print(f"[檢查點 3 完成] 成功生成 {sum(len(qs) for qs in questions_by_point.values())} 個題目")
         
         # 處理每個知識點
         for point_name, questions in questions_by_point.items():
+            print(f"\n[檢查點 4] 開始處理知識點: {point_name}")
             # 獲取或創建知識點
             knowledge_id = get_or_create_knowledge_point(connection, chapter_id, section_data, point_name)
             if not knowledge_id:
                 print(f"無法獲取或創建知識點，跳過處理: {point_name}")
                 continue
             
-            print(f"處理知識點: {point_name} (ID: {knowledge_id})")
+            print(f"[檢查點 4.1] 成功獲取知識點 ID: {knowledge_id}")
             
             # 處理該知識點的所有題目
             successful_questions = 0
-            for question_data in questions:
+            for i, question_data in enumerate(questions):
+                print(f"[檢查點 4.2] 處理題目 {i+1}/{len(questions)}: {question_data['question'][:30]}...")
                 # 添加延遲以避免 API 限制
                 time.sleep(1)
                 
                 if process_question(connection, knowledge_id, question_data):
                     successful_questions += 1
             
-            print(f"知識點 {point_name} 成功保存 {successful_questions}/{len(questions)} 個題目")
+            print(f"[檢查點 4 完成] 知識點 {point_name} 成功保存 {successful_questions}/{len(questions)} 個題目")
     
     except Exception as e:
         print(f"處理小節時出錯: {e}")
     finally:
         if connection:
             connection.close()
+        print(f"===== 完成處理小節: {section_data['section_name']} =====\n")
 
 def main():
     parser = argparse.ArgumentParser(description='從 CSV 生成題庫並存儲到數據庫')
