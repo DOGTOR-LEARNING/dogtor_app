@@ -221,7 +221,7 @@ def verify_question_with_deepseek(question_data: Dict[str, Any]) -> Tuple[bool, 
 
         # 調用 DeepSeek Reasoner API
         response = deepseek_client.chat.completions.create(
-            model="deepseek-reasoner",
+            model="deepseek-chat",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=10,  # 限制回應長度
