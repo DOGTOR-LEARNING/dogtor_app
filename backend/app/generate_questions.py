@@ -116,12 +116,27 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
         
         # 構建提示
         prompt = f"""
-請為國中{section_data['year_grade']}年級{section_data['book']}的「{section_data['chapter_name']}」章節中的以下知識點生成選擇題：
+你是一個專業的教育內容生成器。我需要你為以下教育內容生成選擇題：
 
-知識點：{', '.join(batch_points)}
+年級: {section_data['year_grade']}
+冊數: {section_data['book']}
+章節: {section_data['chapter_num']} {section_data['chapter_name']}
+小節: {section_data['section_num']} {section_data['section_name']}
+小節概述: {section_data['description']}
 
-請為每個知識點生成3道選擇題，每道題有4個選項，只有1個正確答案。
-題目應該符合國中學生的認知水平，難度適中。
+這個小節包含以下所有知識點:
+{', '.join(section_data['knowledge_points'])}
+
+但在本次請求中，我只需要你為以下知識點生成題目:
+{', '.join(batch_points)}
+
+請為每個指定的知識點生成 15 道選擇題，題型可以是一般的選擇題，或是挖空格選出正確選項的挖空選擇題。每道題有 4 個選項，只有 1 個正確答案。
+
+要求:
+1. 題目難度要適合該年級學生
+2. 題目要清晰、準確，沒有歧義
+3. 選項要合理，干擾項要有迷惑性
+4. 正確答案必須是 1、2、3、4 中的一個數字
 
 請按照以下JSON格式返回：
 {{
@@ -135,6 +150,8 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
     // 更多題目...
   ]
 }}
+
+請確保 JSON 格式正確，可以被直接解析。
 """
 
         try:
@@ -286,7 +303,7 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
 """
 
 
-        vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="asia-east1")
+        vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
         
         # 創建模型實例
         model = GenerativeModel("gemini-2.0-flash")
@@ -332,7 +349,6 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
         response = openai_client.chat.completions.create(
             model="o3-mini",  # 改為使用 o3-mini
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1000
         )
         
         # 獲取解釋
