@@ -209,7 +209,6 @@ def verify_question_with_deepseek(question_data: Dict[str, Any]) -> Tuple[bool, 
             model="deepseek-reasoner",  # DeepSeek Reasoner 模型
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
-            response_format={"type": "json_object"}
         )
         
         # 解析回應
@@ -252,7 +251,6 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
         response = openai_client.chat.completions.create(
             model="o3-mini",  # 改為使用 o3-mini
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
             response_format={"type": "json_object"}
         )
         
@@ -334,7 +332,6 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
         response = openai_client.chat.completions.create(
             model="o3-mini",  # 改為使用 o3-mini
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
             max_tokens=1000
         )
         
