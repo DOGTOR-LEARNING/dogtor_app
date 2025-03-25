@@ -158,7 +158,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0), // Reduce date spacing
                             child: Text(
                               currentDate,
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color.fromARGB(255, 77, 210, 247)),
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Medium', color: Color.fromARGB(234, 68, 154, 228)),
                             ),
                           ),
                         
@@ -166,15 +166,16 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                             padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5), // Reduce space between cards
                             child: Card(
                               elevation: 20,
-                              color: Color.fromARGB(192, 0, 0, 0),
+                              color:  Colors.white10,
                               margin: EdgeInsets.zero, // Remove default card margins
                               child: ListTile(
                                 visualDensity: VisualDensity.compact, // Make ListTile more compact
-                                title: Text('題目編號: ${mistake['q_id']}', style: TextStyle(color: Colors.white)),
+                                title: Text('題目編號: ${mistake['q_id']}', style: TextStyle( fontFamily: 'Medium',color: const Color.fromARGB(255, 255, 255, 255))),
                                 
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    SizedBox(height: 8),
                                     Wrap(
                                       spacing: 8, // Horizontal space between tags
                                       runSpacing: 10, // Vertical space if it wraps
@@ -214,6 +215,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                         }
                                       },
                                     ),
+                                    SizedBox(height: 5),
                                   ],
                                 ),onTap: () {
                                   Navigator.push(
@@ -272,91 +274,158 @@ Widget _buildTag(String text) {
     height: 22,
     padding: EdgeInsets.symmetric(vertical: 0, horizontal: 5), // Padding inside the tag
     decoration: BoxDecoration(
-      color: Colors.blueGrey[800], // Dark background
+      color: const Color.fromARGB(202, 95, 123, 138), // Dark background
       borderRadius: BorderRadius.circular(8), // Rounded corners
     ),
     child: Text(
       text,
-      style: TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: const Color.fromARGB(255, 255, 255, 255), fontSize: 14),
     ),
   );
 }
 
-
-class MistakeDetailPage extends StatelessWidget {
+class MistakeDetailPage extends StatefulWidget {
   final Map<String, dynamic> mistake;
 
-  MistakeDetailPage({required this.mistake}); //傳遞參數
+  MistakeDetailPage({required this.mistake});
 
-  // Function to check if the image exists
+  @override
+  _MistakeDetailPageState createState() => _MistakeDetailPageState();
+}
+
+class _MistakeDetailPageState extends State<MistakeDetailPage> {
+  bool _showDetailedAnswer = false;
+
   Future<bool> _checkImageExistence(mistake) async {
     final url = 'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg';
 
     try {
-      final response = await http.get(Uri.parse(url)); // 發送 GET 請求
+      final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        return true; // 如果狀態碼是 200，則返回 true
+        return true;
       } else {
-        return false; // 如果狀態碼不是 200，則返回 false
+        return false;
       }
     } catch (e) {
-      return false; // 如果發生錯誤，返回 false
+      return false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('Mis Color(0xFF102031)take Details'),
-          backgroundColor: Color(0xFF102031),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: '題目'),
-              Tab(text: '詳解'),
-            ],
-            labelColor: Colors.white, // Set the selected tab text color to white
-            unselectedLabelColor: Colors.white70, // Set the unselected tab text color to a lighter white
-          ),
-        ),
-        body: TabBarView(
+    return Scaffold(
+      backgroundColor: Color(0xFF102031),
+      appBar: AppBar(
+        title: Text('錯題詳情'),
+        backgroundColor: Color(0xFF102031),
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: FutureBuilder<bool>(
-                future: _checkImageExistence(mistake),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator(); // Show a loading indicator while waiting
-                  } else if (snapshot.hasError) {
-                    return Text('Error loading image'); // Handle error
-                  } else if (snapshot.data == true) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Image.network('https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg'),
-                        SizedBox(height: 10),
-                        Text(mistake['description'] ?? 'No description available'),
-                      ],
-                    );
-                  } else {
-                    return Text(mistake['description'] ?? 'No description available');
-                  }
-                },
+            FutureBuilder<bool>(
+              future: _checkImageExistence(widget.mistake),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Text('Error loading image', style: TextStyle(color: Colors.white));
+                } else if (snapshot.data == true) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          'https://superb-backend-1041765261654.asia-east1.run.app/static/${widget.mistake['q_id']}.jpg',
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                    ],
+                  );
+                }
+                return SizedBox.shrink();
+              },
+            ),
+            if (widget.mistake['description'] != null) ...[
+              Text(
+                '題目描述',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(mistake['detailed_answer'] ?? 'No detailed answer available'),
-            ),
+              SizedBox(height: 8),
+              Text(
+                widget.mistake['description'],
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                  height: 1.5,
+                ),
+              ),
+              SizedBox(height: 24),
+            ],
+            if (widget.mistake['detailed_answer'] != null) ...[
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showDetailedAnswer = !_showDetailedAnswer;
+                  });
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      '詳細解答',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    AnimatedRotation(
+                      duration: Duration(milliseconds: 300),
+                      turns: _showDetailedAnswer ? 0.5 : 0,
+                      child: Icon(
+                        Icons.expand_more,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ClipRect(
+                child: AnimatedSize(
+                  duration: Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: Container(
+                    height: _showDetailedAnswer ? null : 0,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        widget.mistake['detailed_answer'],
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
-} 
+}
 
 int _getDifficultyStars(String difficulty) {
   switch (difficulty) {
