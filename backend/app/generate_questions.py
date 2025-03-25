@@ -251,7 +251,6 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
         response = openai_client.chat.completions.create(
             model="o3-mini",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,  # 限制回應長度
         )
         
         # 解析回應
@@ -291,10 +290,10 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
 """
 
 
-        vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="asia-east1-c")
+        vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="asia-east1")
         
         # 創建模型實例
-        model = GenerativeModel("gemini-1.5-flash-002")
+        model = GenerativeModel("gemini-2.0-flash")
         
         # 生成回應
         response = model.generate_content(prompt)
