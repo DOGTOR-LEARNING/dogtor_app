@@ -116,7 +116,7 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
         
         # 構建提示
         prompt = f"""
-你是一個專業的教育內容生成器。我需要你為以下教育內容生成選擇題：
+你是一個專業的臺灣教育內容生成器。我需要你為以下教育內容生成選擇題：
 
 年級: {section_data['year_grade']}
 冊數: {section_data['book']}
@@ -163,7 +163,7 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
             response = openai_client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "你是一個專業的教育題目生成器，專注於生成符合國中學生認知水平的選擇題。"},
+                    {"role": "system", "content": "你是一個專業的臺灣教育題目生成器，專注於生成符合中學學生認知水平的選擇題，中文字一律用繁體中文，不要使用簡體中文。"},
                     {"role": "user", "content": prompt}
                 ],
                 response_format={"type": "json_object"}
@@ -334,7 +334,7 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
     """使用 o3-mini 生成題目解釋"""
     try:
         prompt = f"""
-請以中學學習助理的口吻為以下選擇題生成清晰、簡潔的解釋:
+請以臺灣中學學習助理的口吻為以下選擇題生成清晰、簡短的解釋:
 
 題目: {question_data['question']}
 選項:
@@ -344,8 +344,8 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
 4. {question_data['options'][3]}
 正確答案: {question_data['answer']}
 
-請提供一個清晰、簡潔的解釋，告訴同學為什麼這個答案是正確的，或是其他選項為什麼不正確。
-解釋應該有教育意義，幫助學生理解相關知識點。
+請提供一個清晰、簡潔的解釋，告訴這位同學為什麼這個答案是正確的，或是其他選項為什麼不正確。
+解釋應該有教育意義，幫助學生理解相關知識點，且中文字要是繁體中文。
 """
 
         # 調用 o3-mini API
