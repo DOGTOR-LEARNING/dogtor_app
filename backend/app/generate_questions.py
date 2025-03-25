@@ -42,17 +42,32 @@ def validate_env_vars():
 # 獲取數據庫連接
 def get_db_connection():
     try:
-        connection = pymysql.connect(
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_NAME'),
-            unix_socket=f"/cloudsql/{os.getenv('INSTANCE_CONNECTION_NAME')}",
-            cursorclass=pymysql.cursors.DictCursor
-        )
+        # 檢查是否在 Google Cloud 環境中運行
+        if os.getenv('GAE_ENV', '').startswith('standard') or os.getenv('K_SERVICE'):
+            # 在 App Engine 或 Cloud Run 中運行
+            connection = pymysql.connect(
+                user=os.getenv('DB_USER'),
+                password=os.getenv('DB_PASSWORD'),
+                database=os.getenv('DB_NAME'),
+                unix_socket=f"/cloudsql/{os.getenv('INSTANCE_CONNECTION_NAME')}",
+                cursorclass=pymysql.cursors.DictCursor
+            )
+        else:
+            # 在本地環境中運行，使用 Cloud SQL Proxy
+            connection = pymysql.connect(
+                host=os.getenv('DB_HOST', '127.0.0.1'),
+                port=int(os.getenv('DB_PORT', 3306)),
+                user=os.getenv('DB_USER'),
+                password=os.getenv('DB_PASSWORD'),
+                database=os.getenv('DB_NAME'),
+                cursorclass=pymysql.cursors.DictCursor
+            )
+        
         print("成功連接到數據庫")
         return connection
     except Exception as e:
         print(f"數據庫連接錯誤: {str(e)}")
+        print(f"環境變量: DB_USER={os.getenv('DB_USER')}, DB_NAME={os.getenv('DB_NAME')}, INSTANCE_CONNECTION_NAME={os.getenv('INSTANCE_CONNECTION_NAME')}")
         raise
 
 def read_csv_data(csv_file_path: str) -> List[Dict[str, Any]]:
