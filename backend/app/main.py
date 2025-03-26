@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
@@ -454,4 +454,121 @@ async def import_knowledge_points(file: UploadFile = File(...)):
             print("數據庫連接已關閉")
     
     return {"message": f"成功導入 {imported_count} 個知識點"}
+
+@app.post("/get_questions_by_knowledge")
+async def get_questions_by_knowledge(request: Request):
+    try:
+        data = await request.json()
+        knowledge_points = data.get("knowledge_points", [])
+        limit = data.get("limit", 10)  # 每個知識點最多獲取的題目數量
+        
+        if not knowledge_points:
+            return {"success": False, "message": "知識點列表不能為空"}
+        
+        # 連接數據庫
+        connection = get_db_connection()
+        
+        try:
+            with connection.cursor() as cursor:
+                # 查詢知識點 ID
+                knowledge_ids = []
+                for point_name in knowledge_points:
+                    sql = """
+                    SELECT id FROM knowledge_points 
+                    WHERE point_name = %s
+                    """
+                    cursor.execute(sql, (point_name,))
+                    result = cursor.fetchone()
+                    if result:
+                        knowledge_ids.append(result["id"])
+                
+                if not knowledge_ids:
+                    return {"success": False, "message": "找不到對應的知識點"}
+                
+                # 查詢題目
+                questions = []
+                for knowledge_id in knowledge_ids:
+                    sql = """
+                    SELECT q.id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, 
+                           q.correct_answer, q.explanation, kp.point_name as knowledge_point
+                    FROM questions q
+                    JOIN knowledge_points kp ON q.knowledge_id = kp.id
+                    WHERE q.knowledge_id = %s
+                    ORDER BY RAND()
+                    LIMIT %s
+                    """
+                    cursor.execute(sql, (knowledge_id, limit))
+                    results = cursor.fetchall()
+                    questions.extend(results)
+                
+                # 隨機排序題目
+                import random
+                random.shuffle(questions)
+                
+                # 限制總題目數量
+                max_questions = min(len(questions), 10)  # 最多返回10題
+                questions = questions[:max_questions]
+                
+                return {"success": True, "questions": questions}
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {"success": False, "message": f"獲取題目時出錯: {str(e)}"}
+
+@app.post("/record_answer")
+async def record_answer(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        question_id = data.get("question_id")
+        is_correct = data.get("is_correct", False)
+        
+        if not user_id or not question_id:
+            return {"success": False, "message": "用戶ID和題目ID不能為空"}
+        
+        # 連接數據庫
+        connection = get_db_connection()
+        
+        try:
+            with connection.cursor() as cursor:
+                # 檢查記錄是否存在
+                sql = """
+                SELECT id, total_attempts, correct_attempts 
+                FROM user_question_stats 
+                WHERE user_id = %s AND question_id = %s
+                """
+                cursor.execute(sql, (user_id, question_id))
+                result = cursor.fetchone()
+                
+                if result:
+                    # 更新現有記錄
+                    sql = """
+                    UPDATE user_question_stats 
+                    SET total_attempts = total_attempts + 1,
+                        correct_attempts = correct_attempts + %s,
+                        last_attempted_at = NOW()
+                    WHERE id = %s
+                    """
+                    cursor.execute(sql, (1 if is_correct else 0, result["id"]))
+                else:
+                    # 創建新記錄
+                    sql = """
+                    INSERT INTO user_question_stats 
+                    (user_id, question_id, total_attempts, correct_attempts, last_attempted_at)
+                    VALUES (%s, %s, 1, %s, NOW())
+                    """
+                    cursor.execute(sql, (user_id, question_id, 1 if is_correct else 0))
+                
+                connection.commit()
+                return {"success": True}
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {"success": False, "message": f"記錄答題情況時出錯: {str(e)}"}
 

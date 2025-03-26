@@ -46,6 +46,7 @@ CREATE TABLE `knowledge_points` (
 
 -- dogtor.questions definition
 
+
 CREATE TABLE `questions` (
   `id` int NOT NULL AUTO_INCREMENT,
   `knowledge_id` int NOT NULL,
@@ -56,10 +57,11 @@ CREATE TABLE `questions` (
   `option_4` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `correct_answer` enum('1','2','3','4') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `explanation` text,
+  `Error_message` text,
   PRIMARY KEY (`id`),
   KEY `knowledge_id` (`knowledge_id`),
   CONSTRAINT `questions_ibfk_1` FOREIGN KEY (`knowledge_id`) REFERENCES `knowledge_points` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2884 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
 -- dogtor.user_question_stats definition

@@ -33,7 +33,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _fetchQuestions();
+    _fetchQuestionsFromDatabase();
     
     // 初始化動畫控制器
     _animationController = AnimationController(
@@ -55,52 +55,66 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     super.dispose();
   }
 
-  Future<void> _fetchQuestions() async {
+  Future<void> _fetchQuestionsFromDatabase() async {
     try {
+      // 獲取知識點 ID 列表
+      List<String> knowledgePointNames = [];
+      widget.knowledgePoints.forEach((key, value) {
+        if (value is List) {
+          knowledgePointNames.addAll(value.cast<String>());
+        } else if (value is String) {
+          knowledgePointNames.add(value);
+        }
+      });
+      
+      // 從數據庫獲取題目
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/generate_questions'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_questions_by_knowledge'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'section': widget.section,
-          'knowledge_points': widget.knowledgePoints,
-          'section_summary': widget.sectionSummary,
+          'knowledge_points': knowledgePointNames,
+          'limit': 10, // 每個知識點最多獲取10題
         }),
       );
 
       if (response.statusCode == 200) {
-        final cleanResponse = response.body
-            .replaceAll('"', '')
-            .replaceAll('\\n', '\n')
-            .trim();
+        final data = jsonDecode(response.body);
         
-        final rows = cleanResponse.split('\n');
-        
-        final List<Map<String, dynamic>> parsedQuestions = [];
-        for (var row in rows) {
-          if (row.trim().isEmpty) continue;
+        if (data['success']) {
+          final List<dynamic> questionsData = data['questions'];
           
-          final cols = row.split(',');
-          if (cols.length >= 7) {
-            try {
-              parsedQuestions.add({
-                'knowledge_point': utf8.decode(cols[0].codeUnits),
-                'question': utf8.decode(cols[1].codeUnits),
-                'correct_answer': utf8.decode(cols[2].codeUnits),
-                'options': [
-                  utf8.decode(cols[3].codeUnits),
-                  utf8.decode(cols[4].codeUnits),
-                  utf8.decode(cols[5].codeUnits),
-                  utf8.decode(cols[6].codeUnits),
-                ],
-              });
-            } catch (e) {
-              print('Error parsing row: $e');
-            }
-          }
+          final List<Map<String, dynamic>> parsedQuestions = questionsData.map((q) {
+            return {
+              'knowledge_point': q['knowledge_point'],
+              'question': q['question_text'],
+              'correct_answer': q['correct_answer'],
+              'options': [
+                q['option_1'],
+                q['option_2'],
+                q['option_3'],
+                q['option_4'],
+              ],
+              'explanation': q['explanation'] ?? '',
+              'question_id': q['id'],
+            };
+          }).toList();
+          
+          // 隨機排序題目
+          parsedQuestions.shuffle();
+          
+          setState(() {
+            questions = parsedQuestions;
+            isLoading = false;
+          });
+        } else {
+          print('Error: ${data['message']}');
+          setState(() {
+            isLoading = false;
+          });
         }
-
+      } else {
+        print('Error: ${response.statusCode}');
         setState(() {
-          questions = parsedQuestions;
           isLoading = false;
         });
       }
@@ -128,9 +142,41 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           correctAnswersCount++;
         }
       });
+      
+      // 記錄用戶答題情況
+      _recordUserAnswer(currentQuestion['question_id'], answerIsCorrect);
     } catch (e) {
       print('Error in _checkAnswer: $e');
     }
+  }
+
+  // 記錄用戶答題情況
+  Future<void> _recordUserAnswer(int questionId, bool isCorrect) async {
+    try {
+      // 如果用戶已登入，則記錄答題情況
+      // 這裡需要根據你的用戶系統進行調整
+      final userId = await _getUserId();
+      if (userId != null) {
+        await http.post(
+          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/record_answer'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_id': userId,
+            'question_id': questionId,
+            'is_correct': isCorrect,
+          }),
+        );
+      }
+    } catch (e) {
+      print('Error recording answer: $e');
+    }
+  }
+
+  // 獲取用戶 ID 的方法
+  Future<int?> _getUserId() async {
+    // 這裡需要根據你的用戶系統進行調整
+    // 如果用戶未登入，返回 null
+    return null;
   }
 
   void _nextQuestion() {
@@ -346,7 +392,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                   setState(() {
                     isLoading = true;
                   });
-                  _fetchQuestions();
+                  _fetchQuestionsFromDatabase();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFF38BDF8),
