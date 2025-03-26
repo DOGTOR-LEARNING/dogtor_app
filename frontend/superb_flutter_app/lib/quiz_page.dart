@@ -57,32 +57,17 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
   Future<void> _fetchQuestionsFromDatabase() async {
     try {
-      // 獲取關卡信息 - 根據 chapter_detail_page 的數據結構調整
-      final levelInfo = widget.knowledgePoints;
+      // 從 chapter_detail_page.dart 傳來的數據結構
+      // 知識點是以字符串形式傳入的，格式為 "知識點1、知識點2、知識點3"
+      final String knowledgePointsStr = widget.knowledgePoints.keys.join('、');
       
-      // 從 levelInfo 中提取章節、小節和知識點
-      final String chapter = levelInfo['chapter_name'] ?? '';
-      final String section = widget.section; // 使用從構造函數傳入的 section
+      print("知識點字符串: $knowledgePointsStr");
+      print("小節摘要: ${widget.sectionSummary}");
+      print("關卡名稱: ${widget.section}");
       
-      // 知識點可能是字符串或列表，需要處理兩種情況
-      String knowledgePointsStr = '';
-      if (levelInfo.containsKey('knowledge_points')) {
-        var kps = levelInfo['knowledge_points'];
-        if (kps is List) {
-          knowledgePointsStr = kps.join('、');
-        } else if (kps is String) {
-          knowledgePointsStr = kps;
-        }
-      }
-      
-      print("關卡信息: $levelInfo");
-      print("章節: $chapter");
-      print("小節: $section");
-      print("知識點: $knowledgePointsStr");
-      
-      // 檢查是否有有效的查詢條件
-      if (chapter.isEmpty && section.isEmpty && knowledgePointsStr.isEmpty) {
-        print("錯誤: 沒有提供任何查詢條件");
+      // 檢查是否有知識點
+      if (knowledgePointsStr.isEmpty) {
+        print("錯誤: 沒有提供知識點");
         setState(() {
           isLoading = false;
         });
@@ -97,16 +82,16 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           'Accept': 'application/json; charset=utf-8'
         },
         body: jsonEncode({
-          'chapter': chapter,
-          'section': section,
-          'knowledge_points': knowledgePointsStr,
+          'chapter': '',  // 不使用章節過濾
+          'section': widget.sectionSummary,  // 使用小節名稱
+          'knowledge_points': knowledgePointsStr,  // 使用知識點字符串
         }),
       );
 
       print('發送請求到: https://superb-backend-1041765261654.asia-east1.run.app/get_questions_by_level');
       print('請求數據: ${jsonEncode({
-        'chapter': chapter,
-        'section': section,
+        'chapter': '',
+        'section': widget.sectionSummary,
         'knowledge_points': knowledgePointsStr,
       })}');
 

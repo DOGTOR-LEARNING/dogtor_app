@@ -531,6 +531,14 @@ async def get_questions_by_level(request: Request):
                     """
                     cursor.execute(sql, (knowledge_id,))
                     results = cursor.fetchall()
+                    
+                    # 確保所有字段都是 UTF-8 編碼
+                    for result in results:
+                        for key, value in result.items():
+                            if isinstance(value, str):
+                                # 確保字符串是有效的 UTF-8
+                                result[key] = value.encode('latin1').decode('utf-8')
+                    
                     questions.extend(results)
                 
                 print(f"找到的題目數量: {len(questions)}")
