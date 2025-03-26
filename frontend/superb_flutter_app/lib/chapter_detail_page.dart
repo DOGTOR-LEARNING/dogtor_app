@@ -93,13 +93,20 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
         return;
       }
       
+      print("正在獲取用戶星星數，用戶 ID: $userId");
+      final apiUrl = 'https://superb-backend-1041765261654.asia-east1.run.app/get_user_level_stars';
+      print("API URL: $apiUrl");
+      
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_user_level_stars'),
+        Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'user_id': userId,
         }),
       );
+      
+      print("API 響應狀態碼: ${response.statusCode}");
+      print("API 響應內容: ${response.body}");
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -117,13 +124,14 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
           });
         }
       } else {
-        print("獲取星星數失敗，狀態碼: ${response.statusCode}");
+        print("獲取星星數失敗，狀態碼: ${response.statusCode}，響應內容: ${response.body}");
         setState(() {
           isLoadingStars = false;
         });
       }
     } catch (e) {
       print("加載星星數時出錯: $e");
+      print(e.toString());
       setState(() {
         isLoadingStars = false;
       });

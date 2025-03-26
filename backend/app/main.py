@@ -910,3 +910,14 @@ async def get_user_level_stars(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶關卡星星數時出錯: {str(e)}"}
 
+@app.get("/routes")
+async def list_routes():
+    routes = []
+    for route in app.routes:
+        routes.append({
+            "path": route.path,
+            "name": route.name,
+            "methods": route.methods
+        })
+    return {"routes": routes}
+
