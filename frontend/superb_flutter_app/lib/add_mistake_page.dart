@@ -7,8 +7,7 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-import 'dart:typed_data';
-import 'dart:html' as html; // Flutter Web only
+import 'dart:typed_data';// Flutter Web only
 
 class AddMistakePage extends StatefulWidget {
   @override
@@ -110,13 +109,14 @@ class _AddMistakePageState extends State<AddMistakePage> {
         _isLoading = false; // 停止加載
       }
       );
-      print(_response);
+      print("response:");
+      //print(_response[1]);
     } catch (e) {
       setState(() {
         _response = "Error: $e";
         _isLoading = false; // 停止加載
       });
-      print("Detailed error: $e");
+      //print("Detailed error: $e");
     }
   }
 
