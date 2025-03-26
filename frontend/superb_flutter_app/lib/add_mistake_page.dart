@@ -1,7 +1,6 @@
 // frontend/superb_flutter_app/lib/add_mistake_page.dart
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
@@ -23,7 +22,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
   final ImagePicker _picker = ImagePicker();
   XFile? _selectedImage; // 用於存儲選擇的圖片
   String _response = ""; // 存儲 AI 的回應
-  Uint8List? _imageBytes; // for web //late變數型態
+  Uint8List? _imageBytes; // for web and mobile
   bool _isLoading = false; // 加載狀態
   
   Future<void> _submitData() async {
@@ -66,24 +65,19 @@ class _AddMistakePageState extends State<AddMistakePage> {
   }
 
   Future<void> _generateAnswer() async {
-    /*
-    if (_selectedImage == null) {
+    if (_imageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('請選擇一張圖片')),
       );
       return;
     }
-    */
 
     setState(() {
       _isLoading = true; // 開始加載
     });
 
     try {
-      // 將選擇的圖片轉換為 Base64 編碼
-      //final bytes = await _selectedImage!.readAsBytes();
-      //final base64Image = base64Encode(bytes);
-      
+      // 使用已經讀取的圖片字節
       final base64Image = base64Encode(_imageBytes!);
 
       // 構建請求體
@@ -127,11 +121,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
         title: Text('新增錯題'),
         actions: [
           TextButton(
-            onPressed: () {
-              // TODO: Submit the data to the backend
-              // Call the /submit_question endpoint with the collected data
-              
-            },
+            onPressed: _submitData,
             child: Text('Submit', style: TextStyle(color: Colors.white)),
           ),
           TextButton(
@@ -142,145 +132,112 @@ class _AddMistakePageState extends State<AddMistakePage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // 題目部分
-            Text('題目', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            TextField(
-              controller: _questionController,
-              decoration: InputDecoration(labelText: '輸入題目'),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ElevatedButton(
-                  onPressed: () async {
-                    // 打開相機
-                    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-                    if (image != null) {
-                      setState(() {
-                        _selectedImage = image; // 存儲選擇的圖片
-                      });
-                    }
-                  },
-                  child: Text('打開相機'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-                    if (image != null) {
-                      final bytes = await image.readAsBytes();  // ✅ 可跨平台 Web/iOS/Android
-                      setState(() {
-                        _imageBytes = bytes;
-                      });
-                    }
-                  },
-                  child: Text("從相簿中選擇"),
-                ),
-                /*
-                ElevatedButton(
-                  onPressed: () async {
-                    // 從相簿中選擇
-                    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-                    if (image != null) {
-                      setState(() {
-                        _selectedImage = image; // 存儲選擇的圖片
-                      });
-                    }
-                  },
-                  child: Text('從相簿中選擇'),
-                ),
-                */
-                ElevatedButton(
-                  onPressed: _generateAnswer, // 生成回答
-                  child: Text('生成摘要'),
-                ),
-                // 顯示選擇的圖片 (web不支援)
-                /*
-                if (_selectedImage != null) ...[
-                  SizedBox(height: 20),
-                  Image.file(File(_selectedImage!.path), height: 100), // 顯示選擇的圖片
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 題目部分
+              Text('題目', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              TextField(
+                controller: _questionController,
+                decoration: InputDecoration(labelText: '輸入題目'),
+              ),
+              SizedBox(height: 10),
+              
+              // 圖片選擇按鈕
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    child: Text('打開相機'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    child: Text('從相簿中選擇'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _generateAnswer,
+                    child: Text('生成摘要'),
+                  ),
                 ],
-                */
-                _imageBytes != null
-                ? Image.memory(_imageBytes!)
-                : Text("尚未選擇圖片")
-              ],
-            ),
-
-            SizedBox(height: 20),
-
-            // 解答部分
-            Text('解答', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            Row(
-              children: [
-                DropdownButton<String>(
-                  value: _selectedTag,
-                  items: ['A', 'B', 'C', 'D'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (newValue) {
-                    setState(() {
-                      _selectedTag = newValue!;
-                    });
-                  },
+              ),
+              
+              // 顯示選擇的圖片
+              SizedBox(height: 20),
+              if (_imageBytes != null)
+                Center(
+                  child: Image.memory(
+                    _imageBytes!,
+                    height: 150,
+                    fit: BoxFit.contain,
+                  ),
+                )
+              else
+                Center(child: Text("尚未選擇圖片")),
+              
+              // AI 回應顯示
+              if (_response.isNotEmpty) ...[
+                SizedBox(height: 20),
+                Text('AI 回應:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(_response),
                 ),
-                Expanded(
-                  child: TextField(
-                    controller: _detailedAnswerController,
-                    decoration: InputDecoration(labelText: '輸入詳解'),
+              ],
+
+              SizedBox(height: 20),
+
+              // 解答部分
+              Text('解答', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  DropdownButton<String>(
+                    value: _selectedTag,
+                    items: ['A', 'B', 'C', 'D'].map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (newValue) {
+                      setState(() {
+                        _selectedTag = newValue!;
+                      });
+                    },
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _detailedAnswerController,
+                      decoration: InputDecoration(labelText: '輸入詳解'),
+                    ),
+                  ),
+                ],
+              ),
+              
+              SizedBox(height: 20),
+              TextField(
+                controller: _tagController,
+                decoration: InputDecoration(labelText: '備註/標籤'),
+              ),
+              
+              // 加載指示器
+              if (_isLoading)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(),
                   ),
                 ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ElevatedButton(
-                  onPressed: () async {
-                    // 打開相機
-                    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-                    if (image != null) {
-                      setState(() {
-                        _selectedImage = image; // 存儲選擇的圖片
-                      });
-                    }
-                  },
-                  child: Text('打開相機'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    // 從相簿中選擇
-                    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-                    if (image != null) {
-                      setState(() {
-                        _selectedImage = image; // 存儲選擇的圖片
-                      });
-                    }
-                  },
-                  child: Text('從相簿中選擇'),
-                ),
-                ElevatedButton(
-                  onPressed: _generateAnswer, // 生成回答
-                  child: Text('生成回答'),
-                ),
-                // 顯示選擇的圖片
-                if (_selectedImage != null) ...[
-                  SizedBox(height: 20),
-                  Image.file(File(_selectedImage!.path), height: 100), // 顯示選擇的圖片
-                ],
-              ],
-            ),
-            TextField(
-              controller: _tagController,
-              decoration: InputDecoration(labelText: '備註/標籤'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginPage extends StatelessWidget {
   // 使用您的 Google 客戶端 ID
@@ -206,77 +205,57 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
       body: Container(
         decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/login-sea.png'),
-            fit: BoxFit.cover,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.blue.shade300, Colors.blue.shade700],
           ),
         ),
-        child: Stack(
-          children: [
-            SafeArea(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // 應用程式標誌或名稱
-                    SvgPicture.asset(
-                      'assets/images/dogtor_logo.svg',
-                      width: 70,
-                      height: 100,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(height: 30),
-                    SvgPicture.asset(
-                      'assets/images/dogtor_eng_logo.svg',
-                      width: 150,
-                      height: 30,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(height: 25),
-                    // Google 登入按鈕
-                    ElevatedButton.icon(
-                      onPressed: () => _handleSignIn(context),
-                      icon: SvgPicture.asset(
-                        'assets/images/google_icon.svg',
-                        width: 24,
-                        height: 24,
-                      ),
-                      label: Text(
-                        '使用 Google 登入',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black87,
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        elevation: 5,
-                      ),
-                    ),
-                  ],
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // 應用程式標誌或名稱
+              Icon(
+                Icons.pets,  // 可以替換成你的應用圖標
+                size: 100,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Dogtor',  // 替換成你的應用名稱
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: -20,
-              child: Image.asset(
-                'assets/images/question-corgi.png',
-                height: 280,
-                alignment: Alignment.bottomCenter,
-                fit: BoxFit.fitHeight,
+              const SizedBox(height: 50),
+              // Google 登入按鈕
+              ElevatedButton.icon(
+                onPressed: () => _handleSignIn(context),
+                icon: Icon(Icons.g_mobiledata, size: 24),
+                label: Text(
+                  '使用 Google 登入',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  elevation: 5,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -5,8 +5,9 @@ import 'auth_page.dart';  // Import the AuthPage
 import 'mistake_book.dart';  // Import the MistakeBookPage
 import 'dart:math';
 import 'chapter_detail_page.dart';  // Import the ChapterDetailPage
-import 'chat_page.dart';
+import 'chat_page_s.dart';
 import 'user_profile_page.dart';  // 引入新的用戶中心頁面
+import 'package:flutter_svg/flutter_svg.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -134,12 +135,15 @@ void _onItemTapped(int index) {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'DOGTOR 逗課',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                          SvgPicture.asset(
+                            'assets/images/dogtor_eng_logo.svg',
+                            width: 120,
+                            height: 24,
+                            color: Color.fromRGBO(
+                              (0.06 * 255).round(),
+                              (0.13 * 255).round(),
+                              (0.19 * 255).round(),
+                              1,
                             ),
                           ),
                           GestureDetector(
