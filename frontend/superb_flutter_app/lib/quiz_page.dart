@@ -57,11 +57,37 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
   Future<void> _fetchQuestionsFromDatabase() async {
     try {
-      // 獲取關卡信息
+      // 獲取關卡信息 - 根據 chapter_detail_page 的數據結構調整
       final levelInfo = widget.knowledgePoints;
-      final chapter = levelInfo['chapter'] ?? '';
-      final section = levelInfo['section'] ?? '';
-      final knowledgePointsStr = levelInfo['knowledge_points'] ?? '';
+      
+      // 從 levelInfo 中提取章節、小節和知識點
+      final String chapter = levelInfo['chapter_name'] ?? '';
+      final String section = widget.section; // 使用從構造函數傳入的 section
+      
+      // 知識點可能是字符串或列表，需要處理兩種情況
+      String knowledgePointsStr = '';
+      if (levelInfo.containsKey('knowledge_points')) {
+        var kps = levelInfo['knowledge_points'];
+        if (kps is List) {
+          knowledgePointsStr = kps.join('、');
+        } else if (kps is String) {
+          knowledgePointsStr = kps;
+        }
+      }
+      
+      print("關卡信息: $levelInfo");
+      print("章節: $chapter");
+      print("小節: $section");
+      print("知識點: $knowledgePointsStr");
+      
+      // 檢查是否有有效的查詢條件
+      if (chapter.isEmpty && section.isEmpty && knowledgePointsStr.isEmpty) {
+        print("錯誤: 沒有提供任何查詢條件");
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
       
       // 從數據庫獲取題目
       final response = await http.post(
@@ -86,6 +112,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print('響應數據: $data');
         
         if (data['success']) {
           final List<dynamic> questionsData = data['questions'];
