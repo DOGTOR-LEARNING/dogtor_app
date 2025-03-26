@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'quiz_page.dart';
 
 class ChapterDetailPage extends StatefulWidget {
@@ -26,6 +29,10 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   String yearGrade = '';
   // 教材冊別
   String book = '';
+  // 用戶關卡星星數
+  Map<String, int> levelStars = {};
+  // 是否正在加載星星數
+  bool isLoadingStars = false;
   
   // 動畫控制器
   late AnimationController _animationController;
@@ -40,6 +47,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   void initState() {
     super.initState();
     _loadChapterData();
+    _loadUserLevelStars();
     
     // 初始化動畫控制器
     _animationController = AnimationController(
@@ -52,6 +60,74 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  // 獲取用戶 ID
+  Future<String?> _getUserId() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('user_id');
+      if (userId != null && userId.isNotEmpty) {
+        return userId;
+      }
+      return null;
+    } catch (e) {
+      print("獲取用戶 ID 時出錯: $e");
+      return null;
+    }
+  }
+
+  // 加載用戶關卡星星數
+  Future<void> _loadUserLevelStars() async {
+    try {
+      setState(() {
+        isLoadingStars = true;
+      });
+      
+      String? userId = await _getUserId();
+      if (userId == null) {
+        print("無法獲取用戶 ID");
+        setState(() {
+          isLoadingStars = false;
+        });
+        return;
+      }
+      
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_user_level_stars'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+          setState(() {
+            // 將字符串鍵轉換為整數鍵
+            Map<String, dynamic> stars = data['level_stars'];
+            levelStars = stars.map((key, value) => MapEntry(key, value as int));
+            isLoadingStars = false;
+          });
+        } else {
+          print("獲取星星數失敗: ${data['message']}");
+          setState(() {
+            isLoadingStars = false;
+          });
+        }
+      } else {
+        print("獲取星星數失敗，狀態碼: ${response.statusCode}");
+        setState(() {
+          isLoadingStars = false;
+        });
+      }
+    } catch (e) {
+      print("加載星星數時出錯: $e");
+      setState(() {
+        isLoadingStars = false;
+      });
+    }
   }
 
   Future<void> _loadChapterData() async {
@@ -413,11 +489,22 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                           Row(
                                             children: List.generate(
                                               3,
-                                              (i) => Icon(
-                                                i < section['stars'] ? Icons.star : Icons.star_border,
-                                                color: Colors.amber,
-                                                size: 20,
-                                              ),
+                                              (i) {
+                                                // 獲取該關卡的星星數
+                                                int stars = 0;
+                                                if (!isLoadingStars) {
+                                                  // 使用 level_id 查找星星數
+                                                  String levelId = section['level_id'];
+                                                  // 首先嘗試獲取關卡 ID
+                                                  stars = levelStars[levelId] ?? 0;
+                                                }
+                                                
+                                                return Icon(
+                                                  i < stars ? Icons.star : Icons.star_border,
+                                                  color: Colors.amber,
+                                                  size: 20,
+                                                );
+                                              },
                                             ),
                                           ),
                                         ],
@@ -441,7 +528,10 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                               levelNum: section['level_id'],
                                             ),
                                           ),
-                                        );
+                                        ).then((_) {
+                                          // 當用戶從 QuizPage 返回時，重新加載星星數
+                                          _loadUserLevelStars();
+                                        });
                                       },
                                     ),
                                   ),

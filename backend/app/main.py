@@ -865,3 +865,48 @@ async def get_level_id(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取關卡 ID 時出錯: {str(e)}"}
 
+@app.post("/get_user_level_stars")
+async def get_user_level_stars(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        
+        if not user_id:
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 查詢用戶在每個關卡中獲得的最大星星數
+                sql = """
+                SELECT level_id, MAX(stars) as max_stars
+                FROM user_level
+                WHERE user_id = %s
+                GROUP BY level_id
+                """
+                cursor.execute(sql, (user_id,))
+                results = cursor.fetchall()
+                
+                # 將結果轉換為字典格式
+                level_stars = {}
+                for row in results:
+                    level_stars[str(row['level_id'])] = row['max_stars']
+                
+                return {"success": True, "level_stars": level_stars}
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取用戶關卡星星數時出錯: {str(e)}"}
+
