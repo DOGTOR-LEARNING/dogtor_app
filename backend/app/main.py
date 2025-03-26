@@ -826,27 +826,17 @@ async def get_level_id(request: Request):
                 chapter_id = chapter_result['id']
                 print(f"找到章節 ID: {chapter_id}")
                 
-                # 查找關卡 ID - 修正 SQL 查詢
+                # 查找關卡 ID - 簡化查詢，只根據章節 ID 查詢
                 level_sql = """
-                SELECT li.id 
-                FROM level_info li
-                WHERE li.chapter_id = %s
+                SELECT id FROM level_info 
+                WHERE chapter_id = %s
                 """
-                
-                params = [chapter_id]
-                
-                # 如果需要根據小節名稱進一步過濾，可以添加以下代碼
-                # 但這需要確保 level_info 表中有相關的列
-                # if section:
-                #     level_sql += " AND li.section_name = %s"
-                #     params.append(section)
-                
-                cursor.execute(level_sql, params)
+                cursor.execute(level_sql, (chapter_id,))
                 level_result = cursor.fetchone()
                 
                 if not level_result:
                     print(f"找不到關卡: 章節ID={chapter_id}")
-                    return {"success": False, "message": f"找不到關卡: 章節={chapter}, 小節={section}"}
+                    return {"success": False, "message": f"找不到關卡: 章節={chapter}"}
                 
                 print(f"找到關卡 ID: {level_result['id']}")
                 return {"success": True, "level_id": level_result['id']}
