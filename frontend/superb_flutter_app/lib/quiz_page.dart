@@ -77,6 +77,13 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         }),
       );
 
+      print('發送請求到: https://superb-backend-1041765261654.asia-east1.run.app/get_questions_by_level');
+      print('請求數據: ${jsonEncode({
+        'chapter': chapter,
+        'section': section,
+        'knowledge_points': knowledgePointsStr,
+      })}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
