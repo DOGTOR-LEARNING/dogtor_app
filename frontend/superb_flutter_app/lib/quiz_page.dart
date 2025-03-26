@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:convert' show utf8;
+import 'dart:convert' show latin1;
 
 class QuizPage extends StatefulWidget {
   final String section;
@@ -96,24 +98,36 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       })}');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        // 嘗試使用 UTF-8 解碼
+        final String responseBody = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(responseBody);
         print('響應數據: $data');
         
         if (data['success']) {
           final List<dynamic> questionsData = data['questions'];
           
           final List<Map<String, dynamic>> parsedQuestions = questionsData.map((q) {
+            // 嘗試修復亂碼
+            String fixEncoding(String text) {
+              try {
+                // 嘗試多種編碼修復方法
+                return utf8.decode(latin1.encode(text));
+              } catch (e) {
+                return text;
+              }
+            }
+            
             return {
-              'knowledge_point': q['knowledge_point'],
-              'question': q['question_text'],
+              'knowledge_point': fixEncoding(q['knowledge_point'] ?? ''),
+              'question': fixEncoding(q['question_text'] ?? ''),
               'correct_answer': q['correct_answer'],
               'options': [
-                q['option_1'],
-                q['option_2'],
-                q['option_3'],
-                q['option_4'],
+                fixEncoding(q['option_1'] ?? ''),
+                fixEncoding(q['option_2'] ?? ''),
+                fixEncoding(q['option_3'] ?? ''),
+                fixEncoding(q['option_4'] ?? ''),
               ],
-              'explanation': q['explanation'] ?? '',
+              'explanation': fixEncoding(q['explanation'] ?? ''),
               'question_id': q['id'],
             };
           }).toList();

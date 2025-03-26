@@ -532,14 +532,16 @@ async def get_questions_by_level(request: Request):
                     cursor.execute(sql, (knowledge_id,))
                     results = cursor.fetchall()
                     
-                    # 確保所有字段都是 UTF-8 編碼
+                    # 將結果轉換為可序列化的字典
                     for result in results:
+                        # 創建一個新的字典，確保所有值都是 UTF-8 字符串
+                        clean_result = {}
                         for key, value in result.items():
-                            if isinstance(value, str):
-                                # 確保字符串是有效的 UTF-8
-                                result[key] = value.encode('latin1').decode('utf-8')
-                    
-                    questions.extend(results)
+                            if isinstance(value, bytes):
+                                clean_result[key] = value.decode('utf-8')
+                            else:
+                                clean_result[key] = value
+                        questions.append(clean_result)
                 
                 print(f"找到的題目數量: {len(questions)}")
                 
@@ -558,6 +560,8 @@ async def get_questions_by_level(request: Request):
     
     except Exception as e:
         print(f"Error: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         return {"success": False, "message": f"獲取題目時出錯: {str(e)}"}
 
 @app.post("/record_answer")
