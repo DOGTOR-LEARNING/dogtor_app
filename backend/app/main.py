@@ -503,15 +503,14 @@ async def get_questions_by_level(request: Request):
         data = await request.json()
         chapter = data.get("chapter", "")
         section = data.get("section", "")
-        knowledge_points_str = data.get("knowledge_points", "")
+        knowledge_points = data.get("knowledge_points", "")
         
-        # 將知識點字符串分割成列表
-        knowledge_points = [kp.strip() for kp in knowledge_points_str.split('、') if kp.strip()]
+        print(f"接收到的請求參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points}")
         
-        if not knowledge_points and not chapter and not section:
-            return {"success": False, "message": "需要提供章節、小節或知識點信息"}
+        # 檢查參數
+        if not section and not knowledge_points:
+            return {"success": False, "message": "必須提供 section 或 knowledge_points"}
         
-        # 連接數據庫 - 確保使用 utf8mb4 字符集
         connection = get_db_connection()
         connection.charset = 'utf8mb4'
         
@@ -522,92 +521,65 @@ async def get_questions_by_level(request: Request):
                 cursor.execute("SET CHARACTER SET utf8mb4")
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
-                # 查詢知識點 ID
-                knowledge_ids = []
+                # 構建查詢條件
+                conditions = []
+                params = []
+                
+                if chapter:
+                    conditions.append("cl.chapter_name = %s")
+                    params.append(chapter)
+                
+                if section:
+                    conditions.append("kp.section_name = %s")
+                    params.append(section)
                 
                 if knowledge_points:
-                    # 如果提供了知識點，直接查詢知識點
-                    for point_name in knowledge_points:
-                        sql = """
-                        SELECT id FROM knowledge_points 
-                        WHERE point_name LIKE %s
-                        """
-                        cursor.execute(sql, (f"%{point_name}%",))
-                        results = cursor.fetchall()
-                        for result in results:
-                            knowledge_ids.append(result["id"])
-                else:
-                    # 如果沒有提供知識點，根據章節和小節查詢
-                    sql = """
-                    SELECT kp.id 
-                    FROM knowledge_points kp
-                    JOIN chapter_list cl ON kp.chapter_id = cl.id
-                    WHERE 1=1
-                    """
-                    params = []
+                    # 將知識點字符串拆分為列表
+                    knowledge_point_list = [kp.strip() for kp in knowledge_points.split('、')]
                     
-                    if chapter:
-                        sql += " AND cl.chapter_name LIKE %s"
-                        params.append(f"%{chapter}%")
-                    
-                    if section:
-                        sql += " AND kp.section_name LIKE %s"
-                        params.append(f"%{section}%")
-                    
-                    cursor.execute(sql, tuple(params))
-                    results = cursor.fetchall()
-                    for result in results:
-                        knowledge_ids.append(result["id"])
+                    # 構建 IN 查詢
+                    if knowledge_point_list:
+                        placeholders = ', '.join(['%s'] * len(knowledge_point_list))
+                        conditions.append(f"kp.point_name IN ({placeholders})")
+                        params.extend(knowledge_point_list)
                 
-                print(f"接收到的章節: {chapter}")
-                print(f"接收到的小節: {section}")
-                print(f"接收到的知識點: {knowledge_points}")
-                print(f"找到的知識點 ID: {knowledge_ids}")
+                # 組合 WHERE 子句
+                where_clause = " AND ".join(conditions) if conditions else "1=1"
                 
-                if not knowledge_ids:
-                    return {"success": False, "message": "找不到對應的知識點"}
+                # 查詢題目，排除有錯誤訊息的題目
+                sql = f"""
+                SELECT q.id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
+                FROM questions q
+                JOIN knowledge_points kp ON q.knowledge_id = kp.id
+                JOIN chapter_list cl ON kp.chapter_id = cl.id
+                WHERE {where_clause} AND (q.Error_message IS NULL OR q.Error_message = '')
+                ORDER BY RAND()
+                LIMIT 5
+                """
                 
-                # 查詢題目 - 排除有錯誤訊息的題目
-                questions = []
-                for knowledge_id in knowledge_ids:
-                    sql = """
-                    SELECT q.id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, 
-                           q.correct_answer, q.explanation, kp.point_name as knowledge_point
-                    FROM questions q
-                    JOIN knowledge_points kp ON q.knowledge_id = kp.id
-                    WHERE q.knowledge_id = %s
-                    AND (q.Error_message IS NULL OR q.Error_message = '')
-                    """
-                    cursor.execute(sql, (knowledge_id,))
-                    results = cursor.fetchall()
-                    
-                    # 將結果轉換為可序列化的字典
-                    for result in results:
-                        # 創建一個新的字典，確保所有值都是 UTF-8 字符串
-                        clean_result = {}
-                        for key, value in result.items():
-                            if isinstance(value, bytes):
-                                clean_result[key] = value.decode('utf-8')
-                            else:
-                                clean_result[key] = value
-                        questions.append(clean_result)
+                print(f"執行的 SQL: {sql}")
+                print(f"SQL 參數: {params}")
                 
-                print(f"找到的題目數量: {len(questions)}")
+                cursor.execute(sql, params)
+                questions = cursor.fetchall()
                 
-                # 隨機排序題目
-                import random
-                random.shuffle(questions)
+                # 將結果轉換為 JSON 格式
+                result = []
+                for q in questions:
+                    result.append({
+                        "id": q["id"],
+                        "question_text": q["question_text"],
+                        "options": [
+                            q["option_1"],
+                            q["option_2"],
+                            q["option_3"],
+                            q["option_4"]
+                        ],
+                        "correct_answer": int(q["correct_answer"]) - 1,  # 轉換為 0-based 索引
+                        "explanation": q["explanation"] or ""
+                    })
                 
-                # 限制總題目數量
-                max_questions = min(len(questions), 10)  # 最多返回10題
-                questions = questions[:max_questions]
-                
-                # 確保返回的 JSON 是 UTF-8 編碼
-                from fastapi.responses import JSONResponse
-                return JSONResponse(
-                    content={"success": True, "questions": questions},
-                    media_type="application/json; charset=utf-8"
-                )
+                return {"success": True, "questions": result}
         
         finally:
             connection.close()
@@ -680,9 +652,8 @@ async def report_question_error(request: Request):
         error_message = data.get("error_message")
         
         if not question_id or not error_message:
-            return {"success": False, "message": "題目ID和錯誤訊息不能為空"}
+            return {"success": False, "message": "缺少必要參數"}
         
-        # 連接數據庫
         connection = get_db_connection()
         connection.charset = 'utf8mb4'
         
@@ -696,13 +667,13 @@ async def report_question_error(request: Request):
                 # 更新題目的錯誤訊息
                 sql = """
                 UPDATE questions 
-                SET Error_message = CONCAT(IFNULL(Error_message, ''), %s, '\n---\n')
+                SET Error_message = %s 
                 WHERE id = %s
                 """
                 cursor.execute(sql, (error_message, question_id))
                 connection.commit()
                 
-                return {"success": True, "message": "錯誤訊息已記錄"}
+                return {"success": True, "message": "回報成功"}
         
         finally:
             connection.close()
@@ -711,7 +682,7 @@ async def report_question_error(request: Request):
         print(f"Error: {str(e)}")
         import traceback
         print(traceback.format_exc())
-        return {"success": False, "message": f"記錄錯誤訊息時出錯: {str(e)}"}
+        return {"success": False, "message": f"回報題目錯誤時出錯: {str(e)}"}
 
 @app.post("/complete_level")
 async def complete_level(request: Request):
