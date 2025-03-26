@@ -884,21 +884,20 @@ async def get_user_level_stars(request: Request):
                 cursor.execute("SET CHARACTER SET utf8mb4")
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
-                # 查詢用戶在每個關卡中獲得的最大星星數，同時獲取關卡編號
+                # 查詢用戶在每個關卡中獲得的最大星星數，使用 level_id 作為鍵
                 sql = """
-                SELECT ul.level_id, li.level_num, MAX(ul.stars) as max_stars
+                SELECT ul.level_id, MAX(ul.stars) as max_stars
                 FROM user_level ul
-                JOIN level_info li ON ul.level_id = li.id
                 WHERE ul.user_id = %s
-                GROUP BY ul.level_id, li.level_num
+                GROUP BY ul.level_id
                 """
                 cursor.execute(sql, (user_id,))
                 results = cursor.fetchall()
                 
-                # 將結果轉換為字典格式，使用關卡編號作為鍵
+                # 將結果轉換為字典格式，使用 level_id 作為鍵
                 level_stars = {}
                 for row in results:
-                    level_stars[str(row['level_num'])] = row['max_stars']
+                    level_stars[str(row['level_id'])] = row['max_stars']
                 
                 return {"success": True, "level_stars": level_stars}
         

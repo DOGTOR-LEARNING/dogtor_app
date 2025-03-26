@@ -43,7 +43,8 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _fetchLevelId();
+    // 不再需要從 API 獲取 level_id，直接使用傳入的值
+    _initializeLevelId();
     _fetchQuestionsFromDatabase();
     
     // 初始化動畫控制器
@@ -66,43 +67,16 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     super.dispose();
   }
 
-  Future<void> _fetchLevelId() async {
+  // 初始化 level_id
+  void _initializeLevelId() {
     try {
-      print("正在獲取關卡 ID...");
-      print("章節名稱: ${widget.chapter}");
-      print("小節名稱: ${widget.section}");
-      print("知識點: ${widget.knowledgePoints}");
-      print("關卡編號: ${widget.levelNum}");
-      
-      final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_level_id'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'chapter': widget.chapter,
-          'section': widget.section,
-          'knowledge_points': widget.knowledgePoints,
-          'level_num': widget.levelNum,
-        }),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print("API 響應: $data");
-        
-        if (data['success']) {
-          setState(() {
-            levelId = data['level_id'];
-          });
-          print('獲取關卡 ID 成功: $levelId');
-        } else {
-          print('獲取關卡 ID 失敗: ${data['message']}');
-        }
-      } else {
-        print('獲取關卡 ID 失敗，狀態碼: ${response.statusCode}');
+      // 嘗試將傳入的 level_id 轉換為整數
+      if (widget.levelNum.isNotEmpty) {
+        levelId = int.tryParse(widget.levelNum);
+        print('使用 CSV 中的 level_id: $levelId');
       }
     } catch (e) {
-      print('獲取關卡 ID 時出錯: $e');
-      print(e.toString());
+      print('初始化 level_id 時出錯: $e');
     }
   }
 

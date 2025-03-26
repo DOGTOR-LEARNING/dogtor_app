@@ -115,6 +115,10 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
             // 將字符串鍵轉換為整數鍵
             Map<String, dynamic> stars = data['level_stars'];
             levelStars = stars.map((key, value) => MapEntry(key, value as int));
+            
+            // 輸出所有獲取到的星星數據
+            print("獲取到的所有星星數據: $levelStars");
+            
             isLoadingStars = false;
           });
         } else {
@@ -150,6 +154,9 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
           .map((row) {
             final cols = row.split(',');
             if (cols.length < 9) return null; // 確保有足夠的列
+            
+            // 輸出每個關卡的 ID，以便調試
+            print("CSV 中的關卡 ID: ${cols[0]}");
             
             return {
               'level_id': cols[0],       // 關卡編號
@@ -502,8 +509,9 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                                 int stars = 0;
                                                 if (!isLoadingStars) {
                                                   // 使用 level_id 查找星星數
-                                                  String levelId = section['level_id'];
-                                                  // 首先嘗試獲取關卡 ID
+                                                  String levelId = section['level_id'].toString();
+                                                  
+                                                  // 直接使用 level_id 查找星星數
                                                   stars = levelStars[levelId] ?? 0;
                                                 }
                                                 
@@ -533,7 +541,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                               chapter: chapterName,
                                               section: section['level_name'],
                                               knowledgePoints: section['knowledge_spots'],
-                                              levelNum: section['level_id'],
+                                              levelNum: section['level_id'].toString(),
                                             ),
                                           ),
                                         ).then((_) {
