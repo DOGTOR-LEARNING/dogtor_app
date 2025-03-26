@@ -10,12 +10,14 @@ class QuizPage extends StatefulWidget {
   final String chapter;
   final String section;
   final String knowledgePoints;
+  final String levelNum;
   
   const QuizPage({
     Key? key,
     required this.chapter,
     required this.section,
     required this.knowledgePoints,
+    required this.levelNum,
   }) : super(key: key);
 
   @override
@@ -70,6 +72,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       print("章節名稱: ${widget.chapter}");
       print("小節名稱: ${widget.section}");
       print("知識點: ${widget.knowledgePoints}");
+      print("關卡編號: ${widget.levelNum}");
       
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_level_id'),
@@ -78,6 +81,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           'chapter': widget.chapter,
           'section': widget.section,
           'knowledge_points': widget.knowledgePoints,
+          'level_num': widget.levelNum,
         }),
       );
       

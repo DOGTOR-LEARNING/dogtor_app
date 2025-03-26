@@ -796,10 +796,11 @@ async def get_level_id(request: Request):
     try:
         data = await request.json()
         chapter = data.get("chapter", "")
-        section = data.get("section", "")
+        section = data.get("section", "")  # 這可能包含關卡名稱
         knowledge_points_str = data.get("knowledge_points", "")
+        level_num = data.get("level_num", "")  # 從請求中獲取關卡編號
         
-        print(f"接收到的參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points_str}")
+        print(f"接收到的參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points_str}, level_num={level_num}")
         
         connection = get_db_connection()
         connection.charset = 'utf8mb4'
@@ -826,17 +827,25 @@ async def get_level_id(request: Request):
                 chapter_id = chapter_result['id']
                 print(f"找到章節 ID: {chapter_id}")
                 
-                # 查找關卡 ID - 簡化查詢，只根據章節 ID 查詢
+                # 查找關卡 ID - 使用 chapter_id 和 level_num 查詢
                 level_sql = """
                 SELECT id FROM level_info 
                 WHERE chapter_id = %s
                 """
-                cursor.execute(level_sql, (chapter_id,))
+                
+                params = [chapter_id]
+                
+                # 如果提供了關卡編號，則加入查詢條件
+                if level_num:
+                    level_sql += " AND level_num = %s"
+                    params.append(level_num)
+                
+                cursor.execute(level_sql, tuple(params))
                 level_result = cursor.fetchone()
                 
                 if not level_result:
-                    print(f"找不到關卡: 章節ID={chapter_id}")
-                    return {"success": False, "message": f"找不到關卡: 章節={chapter}"}
+                    print(f"找不到關卡: 章節ID={chapter_id}, 關卡編號={level_num}")
+                    return {"success": False, "message": f"找不到關卡: 章節={chapter}, 關卡編號={level_num}"}
                 
                 print(f"找到關卡 ID: {level_result['id']}")
                 return {"success": True, "level_id": level_result['id']}

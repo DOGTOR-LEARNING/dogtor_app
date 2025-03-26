@@ -11,9 +11,9 @@ CREATE TABLE `users` (
   `introduction` text,
   `user_id` varchar(100) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=12705061 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `unique_user_id` (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=12705063 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- dogtor.chapter_list definition
 
@@ -113,14 +113,14 @@ CREATE TABLE `level_info` (
 
 CREATE TABLE `user_level` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` int NOT NULL,
+  `user_id` varchar(100) NOT NULL,
   `level_id` int NOT NULL,
   `stars` int NOT NULL,
   `answered_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
   KEY `level_id` (`level_id`),
-  CONSTRAINT `user_level_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  KEY `fk_user_level_userid` (`user_id`),
+  CONSTRAINT `fk_user_level_userid` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `user_level_ibfk_2` FOREIGN KEY (`level_id`) REFERENCES `level_info` (`id`) ON DELETE CASCADE,
   CONSTRAINT `user_level_chk_1` CHECK ((`stars` between 0 and 3))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
