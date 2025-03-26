@@ -837,8 +837,14 @@ async def get_level_id(request: Request):
                 
                 # 如果提供了關卡編號，則加入查詢條件
                 if level_num:
-                    level_sql += " AND level_num = %s"
-                    params.append(level_num)
+                    try:
+                        # 嘗試將 level_num 轉換為整數
+                        level_num_int = int(level_num)
+                        level_sql += " AND level_num = %s"
+                        params.append(level_num_int)
+                    except ValueError:
+                        print(f"關卡編號格式錯誤: {level_num}")
+                        return {"success": False, "message": f"關卡編號格式錯誤: {level_num}"}
                 
                 cursor.execute(level_sql, tuple(params))
                 level_result = cursor.fetchone()
