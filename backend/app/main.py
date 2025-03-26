@@ -884,20 +884,21 @@ async def get_user_level_stars(request: Request):
                 cursor.execute("SET CHARACTER SET utf8mb4")
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
-                # 查詢用戶在每個關卡中獲得的最大星星數
+                # 查詢用戶在每個關卡中獲得的最大星星數，同時獲取關卡編號
                 sql = """
-                SELECT level_id, MAX(stars) as max_stars
-                FROM user_level
-                WHERE user_id = %s
-                GROUP BY level_id
+                SELECT ul.level_id, li.level_num, MAX(ul.stars) as max_stars
+                FROM user_level ul
+                JOIN level_info li ON ul.level_id = li.id
+                WHERE ul.user_id = %s
+                GROUP BY ul.level_id, li.level_num
                 """
                 cursor.execute(sql, (user_id,))
                 results = cursor.fetchall()
                 
-                # 將結果轉換為字典格式
+                # 將結果轉換為字典格式，使用關卡編號作為鍵
                 level_stars = {}
                 for row in results:
-                    level_stars[str(row['level_id'])] = row['max_stars']
+                    level_stars[str(row['level_num'])] = row['max_stars']
                 
                 return {"success": True, "level_stars": level_stars}
         
@@ -910,14 +911,40 @@ async def get_user_level_stars(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶關卡星星數時出錯: {str(e)}"}
 
-@app.get("/routes")
-async def list_routes():
-    routes = []
-    for route in app.routes:
-        routes.append({
-            "path": route.path,
-            "name": route.name,
-            "methods": route.methods
-        })
-    return {"routes": routes}
+@app.post("/get_level_mapping")
+async def get_level_mapping(request: Request):
+    try:
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 查詢所有關卡的 ID 和編號
+                sql = """
+                SELECT id, chapter_id, level_num 
+                FROM level_info
+                """
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                
+                # 將結果轉換為字典格式
+                level_mapping = {}
+                for row in results:
+                    level_mapping[str(row['level_num'])] = row['id']
+                
+                return {"success": True, "level_mapping": level_mapping}
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取關卡映射時出錯: {str(e)}"}
 
