@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
@@ -81,57 +81,57 @@ async def chat_with_openai(request: ChatRequest):
     
     return {"response": response.choices[0].message.content}
 
-@app.post("/generate_questions")
-async def generate_questions(request: dict):
-    section = request.get("section", "")
-    knowledge_points = request.get("knowledge_points", {})
-    section_summary = request.get("section_summary", "")
+# @app.post("/generate_questions")
+# async def generate_questions(request: dict):
+#     section = request.get("section", "")
+#     knowledge_points = request.get("knowledge_points", {})
+#     section_summary = request.get("section_summary", "")
     
-    prompt = f"""請根據國中「{section}」章節的範圍出 10 題認知性選擇題，格式請嚴格遵守下列 CSV 格式：
+#     prompt = f"""請根據國中「{section}」章節的範圍出 10 題認知性選擇題，格式請嚴格遵守下列 CSV 格式：
 
-知識點,問題,解答,選項一,選項二,選項三,選項四
+# 知識點,問題,解答,選項一,選項二,選項三,選項四
 
-**課程大綱**：
-{section_summary}
+# **課程大綱**：
+# {section_summary}
 
-**請限制範圍在國中程度，不要涉及高中及以上知識。**
-此回合涵蓋的知識點及該學生對各知識點的認知程度：
-"""
+# **請限制範圍在國中程度，不要涉及高中及以上知識。**
+# 此回合涵蓋的知識點及該學生對各知識點的認知程度：
+# """
 
-    # 添加知識點和分數
-    for point, score in knowledge_points.items():
-        prompt += f"{point},{score}\n"
+#     # 添加知識點和分數
+#     for point, score in knowledge_points.items():
+#         prompt += f"{point},{score}\n"
 
-    # 添加其他提示內容...
-    # prompt += f"**嚴禁以下內容**：{negative_prompt}"
+#     # 添加其他提示內容...
+#     # prompt += f"**嚴禁以下內容**：{negative_prompt}"
 
-    prompt += f"""
+#     prompt += f"""
 
-請根據學生對這些知識點的掌握程度（1~10 分）來調整題數及難度：
-掌握分數越高(8分以上)的題數少一點、難度高一點。
-掌握分數越高(3分以上)的題數多一點、簡單一點。
+# 請根據學生對這些知識點的掌握程度（1~10 分）來調整題數及難度：
+# 掌握分數越高(8分以上)的題數少一點、難度高一點。
+# 掌握分數越高(3分以上)的題數多一點、簡單一點。
 
-範例：
-知識點,問題,解答,選項一,選項二,選項三,選項四
-常見化學反應,下列那一項不是化學反應常伴隨的現象？,3,氣體產生,沉澱物產生,固體融化,顏色改變
-示性式,醋酸的示性式是？,4,HCOOH,H₂CO₃,H₂O,CH₃COOH
+# 範例：
+# 知識點,問題,解答,選項一,選項二,選項三,選項四
+# 常見化學反應,下列那一項不是化學反應常伴隨的現象？,3,氣體產生,沉澱物產生,固體融化,顏色改變
+# 示性式,醋酸的示性式是？,4,HCOOH,H₂CO₃,H₂O,CH₃COOH
 
-請針對該學生產生 10 題相關題目，不要有多餘的解釋或格式錯誤，僅回傳純 CSV 格式數據，開頭 **不要重複標題行**，並重複檢查格式是否符合要求，並重複確認題目與答案正確。
-"""
+# 請針對該學生產生 10 題相關題目，不要有多餘的解釋或格式錯誤，僅回傳純 CSV 格式數據，開頭 **不要重複標題行**，並重複檢查格式是否符合要求，並重複確認題目與答案正確。
+# """
     
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "你是一個專業的題目生成器，請使用繁體中文。"},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.7,
-    )
+#     response = client.chat.completions.create(
+#         model="gpt-4o",
+#         messages=[
+#             {"role": "system", "content": "你是一個專業的題目生成器，請使用繁體中文。"},
+#             {"role": "user", "content": prompt}
+#         ],
+#         temperature=0.7,
+#     )
     
-    content = response.choices[0].message.content
-    print(f"Generated content: {content}")
+#     content = response.choices[0].message.content
+#     print(f"Generated content: {content}")
     
-    return content
+#     return content
 
 # Ensure the Qpics directory exists
 os.makedirs('Qpics', exist_ok=True)
@@ -454,4 +454,163 @@ async def import_knowledge_points(file: UploadFile = File(...)):
             print("數據庫連接已關閉")
     
     return {"message": f"成功導入 {imported_count} 個知識點"}
+
+@app.post("/get_questions_by_level")
+async def get_questions_by_level(request: Request):
+    try:
+        data = await request.json()
+        chapter = data.get("chapter", "")
+        section = data.get("section", "")
+        knowledge_points_str = data.get("knowledge_points", "")
+        
+        # 將知識點字符串分割成列表
+        knowledge_points = [kp.strip() for kp in knowledge_points_str.split('、') if kp.strip()]
+        
+        if not knowledge_points and not chapter and not section:
+            return {"success": False, "message": "需要提供章節、小節或知識點信息"}
+        
+        # 連接數據庫
+        connection = get_db_connection()
+        
+        try:
+            with connection.cursor() as cursor:
+                # 查詢知識點 ID
+                knowledge_ids = []
+                
+                if knowledge_points:
+                    # 如果提供了知識點，直接查詢知識點
+                    for point_name in knowledge_points:
+                        sql = """
+                        SELECT id FROM knowledge_points 
+                        WHERE point_name LIKE %s
+                        """
+                        cursor.execute(sql, (f"%{point_name}%",))
+                        results = cursor.fetchall()
+                        for result in results:
+                            knowledge_ids.append(result["id"])
+                else:
+                    # 如果沒有提供知識點，根據章節和小節查詢
+                    sql = """
+                    SELECT kp.id 
+                    FROM knowledge_points kp
+                    JOIN chapter_list cl ON kp.chapter_id = cl.id
+                    WHERE 1=1
+                    """
+                    params = []
+                    
+                    if chapter:
+                        sql += " AND cl.chapter_name LIKE %s"
+                        params.append(f"%{chapter}%")
+                    
+                    if section:
+                        sql += " AND kp.section_name LIKE %s"
+                        params.append(f"%{section}%")
+                    
+                    cursor.execute(sql, tuple(params))
+                    results = cursor.fetchall()
+                    for result in results:
+                        knowledge_ids.append(result["id"])
+                
+                print(f"接收到的章節: {chapter}")
+                print(f"接收到的小節: {section}")
+                print(f"接收到的知識點: {knowledge_points}")
+                print(f"找到的知識點 ID: {knowledge_ids}")
+                
+                if not knowledge_ids:
+                    return {"success": False, "message": "找不到對應的知識點"}
+                
+                # 查詢題目
+                questions = []
+                for knowledge_id in knowledge_ids:
+                    sql = """
+                    SELECT q.id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, 
+                           q.correct_answer, q.explanation, kp.point_name as knowledge_point
+                    FROM questions q
+                    JOIN knowledge_points kp ON q.knowledge_id = kp.id
+                    WHERE q.knowledge_id = %s
+                    """
+                    cursor.execute(sql, (knowledge_id,))
+                    results = cursor.fetchall()
+                    
+                    # 確保所有字段都是 UTF-8 編碼
+                    for result in results:
+                        for key, value in result.items():
+                            if isinstance(value, str):
+                                # 確保字符串是有效的 UTF-8
+                                result[key] = value.encode('latin1').decode('utf-8')
+                    
+                    questions.extend(results)
+                
+                print(f"找到的題目數量: {len(questions)}")
+                
+                # 隨機排序題目
+                import random
+                random.shuffle(questions)
+                
+                # 限制總題目數量
+                max_questions = min(len(questions), 10)  # 最多返回10題
+                questions = questions[:max_questions]
+                
+                return {"success": True, "questions": questions}
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {"success": False, "message": f"獲取題目時出錯: {str(e)}"}
+
+@app.post("/record_answer")
+async def record_answer(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        question_id = data.get("question_id")
+        is_correct = data.get("is_correct", False)
+        
+        if not user_id or not question_id:
+            return {"success": False, "message": "用戶ID和題目ID不能為空"}
+        
+        # 連接數據庫
+        connection = get_db_connection()
+        
+        try:
+            with connection.cursor() as cursor:
+                # 檢查記錄是否存在
+                sql = """
+                SELECT id, total_attempts, correct_attempts 
+                FROM user_question_stats 
+                WHERE user_id = %s AND question_id = %s
+                """
+                cursor.execute(sql, (user_id, question_id))
+                result = cursor.fetchone()
+                
+                if result:
+                    # 更新現有記錄
+                    sql = """
+                    UPDATE user_question_stats 
+                    SET total_attempts = total_attempts + 1,
+                        correct_attempts = correct_attempts + %s,
+                        last_attempted_at = NOW()
+                    WHERE id = %s
+                    """
+                    cursor.execute(sql, (1 if is_correct else 0, result["id"]))
+                else:
+                    # 創建新記錄
+                    sql = """
+                    INSERT INTO user_question_stats 
+                    (user_id, question_id, total_attempts, correct_attempts, last_attempted_at)
+                    VALUES (%s, %s, 1, %s, NOW())
+                    """
+                    cursor.execute(sql, (user_id, question_id, 1 if is_correct else 0))
+                
+                connection.commit()
+                return {"success": True}
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {"success": False, "message": f"記錄答題情況時出錯: {str(e)}"}
 
