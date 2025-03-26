@@ -95,3 +95,32 @@ CREATE TABLE `user_knowledge_score` (
   CONSTRAINT `user_knowledge_score_ibfk_2` FOREIGN KEY (`knowledge_id`) REFERENCES `knowledge_points` (`id`) ON DELETE CASCADE,
   CONSTRAINT `user_knowledge_score_chk_1` CHECK ((`score` between 0 and 10))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- dogtor.level_info definition
+
+CREATE TABLE `level_info` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `section_id` int NOT NULL,
+  `level_num` int NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `section_level_unique` (`section_id`,`level_num`),
+  CONSTRAINT `level_info_ibfk_1` FOREIGN KEY (`section_id`) REFERENCES `knowledge_points` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- dogtor.user_level definition
+
+CREATE TABLE `user_level` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `level_id` int NOT NULL,
+  `stars` int NOT NULL,
+  `answered_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `level_id` (`level_id`),
+  CONSTRAINT `user_level_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `user_level_ibfk_2` FOREIGN KEY (`level_id`) REFERENCES `level_info` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `user_level_chk_1` CHECK ((`stars` between 0 and 3))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
