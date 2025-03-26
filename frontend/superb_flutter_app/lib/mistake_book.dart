@@ -143,7 +143,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                       // Search Bar
                       Expanded(
                         child: Container(
-                          height: 50,
+                          height: 45,
                           decoration: BoxDecoration(
                             color: Colors.white10,
                             borderRadius: BorderRadius.circular(16),
@@ -209,44 +209,6 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                           ),
                         ),
                       ),
-                      SizedBox(width: 12),
-                      Container(
-                        height: 45,
-                        padding: EdgeInsets.symmetric(horizontal: 4),
-                        decoration: BoxDecoration(
-                          color:Color.fromARGB(255, 255, 169, 30) ,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedSubject,
-                            borderRadius: BorderRadius.circular(12),
-                            dropdownColor:  Color.fromARGB(255, 255, 169, 30) ,
-                            icon: Icon(Icons.arrow_drop_down, color: Color(0xFF102031)),
-                            padding: EdgeInsets.symmetric(horizontal: 4),
-                            style: TextStyle(color:Color(0xFF102031), fontSize: 15),
-                            items: ["全部", "數學", "國文", "理化", "歷史"]
-                                .map((subject) => DropdownMenuItem<String>(
-                                      value: subject,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(subject, style: TextStyle(color: Color(0xFF102031))),
-                                        ],
-                                      ),
-                                    ))
-                                .toList(),
-                            onChanged: (newValue) {
-                            if (newValue != _selectedSubject) {
-                              setState(() {
-                                _selectedSubject = newValue!;
-                                _filterMistakes();
-                              });
-                            }
-                          },
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -268,7 +230,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                         children: [
                           if (index == 0 || currentDate != previousDate)
                             Padding(
-                              padding: const EdgeInsets.only(top: 16.0, bottom: 8.0, left: 4.0),
+                              padding: const EdgeInsets.only(top: 0.0, bottom: 4.0, left: 4.0),
                               child: Text(
                                 currentDate,
                                 style: TextStyle(
@@ -281,7 +243,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                             ),
                           
                           Container(
-                            margin: EdgeInsets.only(bottom: 12),
+                            margin: EdgeInsets.only(bottom: 8, top:4),
                             decoration: BoxDecoration(
                               color: const Color.fromARGB(255, 244, 243, 243),
                               borderRadius: BorderRadius.circular(16),
@@ -334,13 +296,21 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                       Wrap(
                                         spacing: 8,
                                         runSpacing: 8,
-                                        children: [
+                                         children: [
+                                          if(mistake['subject'] != '')...[
                                           _buildChipTag(mistake['subject']),
+                                          ],
+                                          if(mistake['chapter'] != '')...[
                                           _buildChipTag(mistake['chapter']),
+                                          ],
+                                          if(mistake['difficulty'] != '')...[
                                           _buildChipTag('${'★' * _getDifficultyStars(mistake['difficulty'])}'),
+                                          ],
+                                          if(mistake['tags'] != null)...[
+                                              _buildChipTag(mistake['tags']),
+                                          ],
                                         ],
                                       ),
-                                      SizedBox(height: 12),
                                       // Preview with rounded corners
                                       FutureBuilder(
                                         future: http.head(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg')),
@@ -350,13 +320,16 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                           } else if (snapshot.hasError || snapshot.data?.statusCode != 200) {
                                             return SizedBox.shrink();
                                           } else {
-                                            return ClipRRect(
-                                              borderRadius: BorderRadius.circular(12),
-                                              child: Image.network(
-                                                'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg',
-                                                height: 120,
-                                                width: double.infinity,
-                                                fit: BoxFit.cover,
+                                            return Padding(
+                                              padding: const EdgeInsets.only(top: 16.0), // 👈 Adds space before the image
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: Image.network(
+                                                  'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg',
+                                                  height: 60,
+                                                  width: double.infinity,
+                                                  fit: BoxFit.cover,
+                                                ),
                                               ),
                                             );
                                           }
@@ -485,6 +458,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
             // Main scrollable content
             SingleChildScrollView(
               padding: EdgeInsets.all(20.0),
+              physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -501,27 +475,39 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '題目編號: ${widget.mistake['q_id']}',
+                          widget.mistake['summary'],
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         SizedBox(height: 8),
                         Row(
                           children: [
+                            if(widget.mistake['subject'] != '')...[
                             _buildChipTag(widget.mistake['subject']),
                             SizedBox(width: 8),
+                            ],
+                            if(widget.mistake['chapter'] != '')...[
                             _buildChipTag(widget.mistake['chapter']),
                             SizedBox(width: 8),
+                            ],
+                            if(widget.mistake['difficulty'] != '')...[
                             _buildChipTag('${'★' * _getDifficultyStars(widget.mistake['difficulty'])}'),
+                            SizedBox(width: 8),
+                            ],
+                            if(widget.mistake['tags'] != null)...[
+                                _buildChipTag(widget.mistake['tags']),
+                                SizedBox(width: 8),
+                            ],
                           ],
                         ),
                       ],
                     ),
                   ),
 
+                  // Image section
                   FutureBuilder<bool>(
                     future: _checkImageExistence(widget.mistake),
                     builder: (context, snapshot) {
@@ -550,7 +536,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                             ],
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(0),
                             child: Image.network(
                               'https://superb-backend-1041765261654.asia-east1.run.app/static/${widget.mistake['q_id']}.jpg',
                               width: double.infinity,
@@ -563,6 +549,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                     },
                   ),
 
+                  // Description section
                   if (widget.mistake['description'] != null) ...[
                     Container(
                       width: double.infinity,
@@ -597,68 +584,10 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                     ),
                   ],
 
+                  // Detailed answer section with local state management
                   if (widget.mistake['detailed_answer'] != null) ...[
-                    Container(
-                      width: double.infinity,
-                      margin: EdgeInsets.only(bottom: 20),
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _showDetailedAnswer = !_showDetailedAnswer;
-                              });
-                            },
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '詳細解答',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                AnimatedRotation(
-                                  duration: Duration(milliseconds: 300),
-                                  turns: _showDetailedAnswer ? 0.5 : 0,
-                                  child: Icon(
-                                    Icons.expand_more,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ClipRect(
-                            child: AnimatedSize(
-                              duration: Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                              child: Container(
-                                height: _showDetailedAnswer ? null : 0,
-                                child: Padding(
-                                  padding: EdgeInsets.only(top: 16),
-                                  child: Text(
-                                    widget.mistake['detailed_answer'],
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _DetailedAnswerSection(
+                      detailedAnswer: widget.mistake['detailed_answer'],
                     ),
                   ],
                   
@@ -700,7 +629,114 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
   }
 
   // Modern chip-style tag for detail page
+  Widget _buildChipTag(String text) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Color(0xFF8BB7E0),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            style: TextStyle(
+              color: Color(0xFF102031),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
+// Create a separate stateful widget for the detailed answer section
+class _DetailedAnswerSection extends StatefulWidget {
+  final String detailedAnswer;
+
+  _DetailedAnswerSection({required this.detailedAnswer});
+
+  @override
+  _DetailedAnswerSectionState createState() => _DetailedAnswerSectionState();
+}
+
+class _DetailedAnswerSectionState extends State<_DetailedAnswerSection> {
+  bool _showDetailedAnswer = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(bottom: 20),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with tap gesture
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _showDetailedAnswer = !_showDetailedAnswer;
+              });
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '詳細解答',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                AnimatedRotation(
+                  duration: Duration(milliseconds: 300),
+                  turns: _showDetailedAnswer ? 0.5 : 0,
+                  child: Icon(
+                    Icons.expand_more,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Content container with animations
+          Container(
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(),
+            height: _showDetailedAnswer ? null : 0,
+            child: AnimatedOpacity(
+              opacity: _showDetailedAnswer ? 1.0 : 0.0,
+              duration: Duration(milliseconds: 300),
+              child: AnimatedPadding(
+                duration: Duration(milliseconds: 300),
+                padding: EdgeInsets.only(
+                  top: _showDetailedAnswer ? 16 : 0,
+                ),
+                child: Text(
+                  widget.detailedAnswer,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 int _getDifficultyStars(String difficulty) {
