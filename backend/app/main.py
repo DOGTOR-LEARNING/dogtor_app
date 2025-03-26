@@ -455,15 +455,19 @@ async def import_knowledge_points(file: UploadFile = File(...)):
     
     return {"message": f"成功導入 {imported_count} 個知識點"}
 
-@app.post("/get_questions_by_knowledge")
-async def get_questions_by_knowledge(request: Request):
+@app.post("/get_questions_by_level")
+async def get_questions_by_level(request: Request):
     try:
         data = await request.json()
-        knowledge_points = data.get("knowledge_points", [])
-        limit = data.get("limit", 10)  # 每個知識點最多獲取的題目數量
+        chapter = data.get("chapter", "")
+        section = data.get("section", "")
+        knowledge_points_str = data.get("knowledge_points", "")
         
-        if not knowledge_points:
-            return {"success": False, "message": "知識點列表不能為空"}
+        # 將知識點字符串分割成列表
+        knowledge_points = [kp.strip() for kp in knowledge_points_str.split('、') if kp.strip()]
+        
+        if not knowledge_points and not chapter and not section:
+            return {"success": False, "message": "需要提供章節、小節或知識點信息"}
         
         # 連接數據庫
         connection = get_db_connection()
@@ -472,15 +476,45 @@ async def get_questions_by_knowledge(request: Request):
             with connection.cursor() as cursor:
                 # 查詢知識點 ID
                 knowledge_ids = []
-                for point_name in knowledge_points:
+                
+                if knowledge_points:
+                    # 如果提供了知識點，直接查詢知識點
+                    for point_name in knowledge_points:
+                        sql = """
+                        SELECT id FROM knowledge_points 
+                        WHERE point_name LIKE %s
+                        """
+                        cursor.execute(sql, (f"%{point_name}%",))
+                        results = cursor.fetchall()
+                        for result in results:
+                            knowledge_ids.append(result["id"])
+                else:
+                    # 如果沒有提供知識點，根據章節和小節查詢
                     sql = """
-                    SELECT id FROM knowledge_points 
-                    WHERE point_name = %s
+                    SELECT kp.id 
+                    FROM knowledge_points kp
+                    JOIN chapter_list cl ON kp.chapter_id = cl.id
+                    WHERE 1=1
                     """
-                    cursor.execute(sql, (point_name,))
-                    result = cursor.fetchone()
-                    if result:
+                    params = []
+                    
+                    if chapter:
+                        sql += " AND cl.chapter_name LIKE %s"
+                        params.append(f"%{chapter}%")
+                    
+                    if section:
+                        sql += " AND kp.section_name LIKE %s"
+                        params.append(f"%{section}%")
+                    
+                    cursor.execute(sql, tuple(params))
+                    results = cursor.fetchall()
+                    for result in results:
                         knowledge_ids.append(result["id"])
+                
+                print(f"接收到的章節: {chapter}")
+                print(f"接收到的小節: {section}")
+                print(f"接收到的知識點: {knowledge_points}")
+                print(f"找到的知識點 ID: {knowledge_ids}")
                 
                 if not knowledge_ids:
                     return {"success": False, "message": "找不到對應的知識點"}
@@ -494,12 +528,12 @@ async def get_questions_by_knowledge(request: Request):
                     FROM questions q
                     JOIN knowledge_points kp ON q.knowledge_id = kp.id
                     WHERE q.knowledge_id = %s
-                    ORDER BY RAND()
-                    LIMIT %s
                     """
-                    cursor.execute(sql, (knowledge_id, limit))
+                    cursor.execute(sql, (knowledge_id,))
                     results = cursor.fetchall()
                     questions.extend(results)
+                
+                print(f"找到的題目數量: {len(questions)}")
                 
                 # 隨機排序題目
                 import random

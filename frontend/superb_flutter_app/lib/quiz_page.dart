@@ -57,23 +57,23 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
   Future<void> _fetchQuestionsFromDatabase() async {
     try {
-      // 獲取知識點 ID 列表
-      List<String> knowledgePointNames = [];
-      widget.knowledgePoints.forEach((key, value) {
-        if (value is List) {
-          knowledgePointNames.addAll(value.cast<String>());
-        } else if (value is String) {
-          knowledgePointNames.add(value);
-        }
-      });
+      // 獲取關卡信息
+      final levelInfo = widget.knowledgePoints;
+      final chapter = levelInfo['chapter'] ?? '';
+      final section = levelInfo['section'] ?? '';
+      final knowledgePointsStr = levelInfo['knowledge_points'] ?? '';
       
       // 從數據庫獲取題目
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_questions_by_knowledge'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_questions_by_level'),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json; charset=utf-8'
+        },
         body: jsonEncode({
-          'knowledge_points': knowledgePointNames,
-          'limit': 10, // 每個知識點最多獲取10題
+          'chapter': chapter,
+          'section': section,
+          'knowledge_points': knowledgePointsStr,
         }),
       );
 
@@ -98,9 +98,6 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               'question_id': q['id'],
             };
           }).toList();
-          
-          // 隨機排序題目
-          parsedQuestions.shuffle();
           
           setState(() {
             questions = parsedQuestions;
