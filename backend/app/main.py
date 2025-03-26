@@ -469,11 +469,17 @@ async def get_questions_by_level(request: Request):
         if not knowledge_points and not chapter and not section:
             return {"success": False, "message": "需要提供章節、小節或知識點信息"}
         
-        # 連接數據庫
+        # 連接數據庫 - 確保使用 utf8mb4 字符集
         connection = get_db_connection()
+        connection.charset = 'utf8mb4'
         
         try:
             with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
                 # 查詢知識點 ID
                 knowledge_ids = []
                 
@@ -553,7 +559,12 @@ async def get_questions_by_level(request: Request):
                 max_questions = min(len(questions), 10)  # 最多返回10題
                 questions = questions[:max_questions]
                 
-                return {"success": True, "questions": questions}
+                # 確保返回的 JSON 是 UTF-8 編碼
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    content={"success": True, "questions": questions},
+                    media_type="application/json; charset=utf-8"
+                )
         
         finally:
             connection.close()
