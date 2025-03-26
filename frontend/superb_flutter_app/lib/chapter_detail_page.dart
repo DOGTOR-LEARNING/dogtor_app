@@ -431,23 +431,13 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                         child: Icon(Icons.play_arrow, color: Colors.white),
                                       ),
                                       onTap: () {
-                                        // 從 knowledge_spots 欄位獲取知識點列表
-                                        final knowledgeSpots = section['knowledge_spots'].toString().split('、');
-                                        
-                                        // 為每個知識點設定預設分數（5分）
-                                        final Map<String, dynamic> knowledgePoints = Map.fromIterable(
-                                          knowledgeSpots,
-                                          key: (spot) => spot,
-                                          value: (_) => 5
-                                        );
-
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
                                             builder: (context) => QuizPage(
-                                              section: section['level_name'], // 使用關卡名稱
-                                              knowledgePoints: knowledgePoints,
-                                              sectionSummary: section['section_name'], // 使用小節名稱作為摘要
+                                              chapter: section['chapter_name'],  // 添加章節名稱
+                                              section: section['level_name'],    // 使用關卡名稱
+                                              knowledgePoints: section['knowledge_spots'], // 直接使用 CSV 中的知識點字符串
                                             ),
                                           ),
                                         );

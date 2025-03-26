@@ -4,17 +4,19 @@ import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert' show utf8;
 import 'dart:convert' show latin1;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class QuizPage extends StatefulWidget {
+  final String chapter;
   final String section;
-  final Map<String, dynamic> knowledgePoints;
-  final String sectionSummary;
-
-  QuizPage({
+  final String knowledgePoints;
+  
+  const QuizPage({
+    Key? key,
+    required this.chapter,
     required this.section,
     required this.knowledgePoints,
-    required this.sectionSummary,
-  });
+  }) : super(key: key);
 
   @override
   _QuizPageState createState() => _QuizPageState();
@@ -27,14 +29,19 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   String? selectedAnswer;
   bool? isCorrect;
   int correctAnswersCount = 0;
+  int? levelId; // 添加關卡 ID 變數
   
   // 添加動畫控制器
   late AnimationController _animationController;
   late Animation<double> _animation;
 
+  // 添加一個控制器來獲取用戶輸入的錯誤訊息
+  final TextEditingController _errorController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _fetchLevelId();
     _fetchQuestionsFromDatabase();
     
     // 初始化動畫控制器
@@ -57,14 +64,43 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     super.dispose();
   }
 
+  Future<void> _fetchLevelId() async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_level_id'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'chapter': widget.chapter,
+          'section': widget.section,
+          'knowledge_points': widget.knowledgePoints,  // 直接使用字符串
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+          setState(() {
+            levelId = data['level_id'];
+          });
+          print('獲取關卡 ID 成功: $levelId');
+        } else {
+          print('獲取關卡 ID 失敗: ${data['message']}');
+        }
+      } else {
+        print('獲取關卡 ID 失敗，狀態碼: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('獲取關卡 ID 時出錯: $e');
+    }
+  }
+
   Future<void> _fetchQuestionsFromDatabase() async {
     try {
-      // 從 chapter_detail_page.dart 傳來的數據結構
-      // 知識點是以字符串形式傳入的，格式為 "知識點1、知識點2、知識點3"
-      final String knowledgePointsStr = widget.knowledgePoints.keys.join('、');
+      // 知識點已經是字符串形式，格式為 "知識點1、知識點2、知識點3"
+      final String knowledgePointsStr = widget.knowledgePoints;
       
       print("知識點字符串: $knowledgePointsStr");
-      print("小節摘要: ${widget.sectionSummary}");
+      print("小節摘要: ${widget.section}");
       print("關卡名稱: ${widget.section}");
       
       // 檢查是否有知識點
@@ -85,7 +121,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         },
         body: jsonEncode({
           'chapter': '',  // 不使用章節過濾
-          'section': widget.sectionSummary,  // 使用小節名稱
+          'section': widget.section,  // 使用小節名稱
           'knowledge_points': knowledgePointsStr,  // 使用知識點字符串
         }),
       );
@@ -93,7 +129,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       print('發送請求到: https://superb-backend-1041765261654.asia-east1.run.app/get_questions_by_level');
       print('請求數據: ${jsonEncode({
         'chapter': '',
-        'section': widget.sectionSummary,
+        'section': widget.section,
         'knowledge_points': knowledgePointsStr,
       })}');
 
@@ -204,9 +240,18 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
   // 獲取用戶 ID 的方法
   Future<int?> _getUserId() async {
-    // 這裡需要根據你的用戶系統進行調整
-    // 如果用戶未登入，返回 null
-    return null;
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('user_id');
+      if (userId != null && userId.isNotEmpty) {
+        // 嘗試將字符串轉換為整數
+        return int.tryParse(userId);
+      }
+      return null;
+    } catch (e) {
+      print("獲取用戶 ID 時出錯: $e");
+      return null;
+    }
   }
 
   void _nextQuestion() {
@@ -249,127 +294,384 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       resultIcon = Icons.replay;
     }
     
+    // 先寫入答題記錄
+    _completeLevel().then((_) {
+      // 然後顯示結果對話框
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  resultIcon,
+                  size: 60,
+                  color: resultColor,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  "測驗結果",
+                  style: GoogleFonts.notoSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: resultColor.withOpacity(0.2),
+                    border: Border.all(
+                      color: resultColor,
+                      width: 3,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "$percentage%",
+                      style: GoogleFonts.notoSans(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: resultColor,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  "答對 $correctAnswersCount/${questions.length} 題",
+                  style: GoogleFonts.notoSans(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  resultMessage,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        "返回課程",
+                        style: GoogleFonts.notoSans(),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        // 重置測驗
+                        setState(() {
+                          currentQuestionIndex = 0;
+                          selectedAnswer = null;
+                          isCorrect = null;
+                          correctAnswersCount = 0;
+                          _animationController.reset();
+                          _animationController.forward();
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: resultColor,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        "重新測驗",
+                        style: GoogleFonts.notoSans(),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }).catchError((error) {
+      print('Error saving level completion: $error');
+      // 即使保存失敗，仍然顯示結果對話框
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  resultIcon,
+                  size: 60,
+                  color: resultColor,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  "測驗結果",
+                  style: GoogleFonts.notoSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: resultColor.withOpacity(0.2),
+                    border: Border.all(
+                      color: resultColor,
+                      width: 3,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "$percentage%",
+                      style: GoogleFonts.notoSans(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: resultColor,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  "答對 $correctAnswersCount/${questions.length} 題",
+                  style: GoogleFonts.notoSans(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  resultMessage,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        "返回課程",
+                        style: GoogleFonts.notoSans(),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        // 重置測驗
+                        setState(() {
+                          currentQuestionIndex = 0;
+                          selectedAnswer = null;
+                          isCorrect = null;
+                          correctAnswersCount = 0;
+                          _animationController.reset();
+                          _animationController.forward();
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: resultColor,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        "重新測驗",
+                        style: GoogleFonts.notoSans(),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  // 顯示報告錯誤的對話框
+  void _showReportErrorDialog() {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
+      builder: (context) {
+        return AlertDialog(
+          title: Text('回報題目問題'),
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                resultIcon,
-                size: 60,
-                color: resultColor,
-              ),
-              SizedBox(height: 16),
-              Text(
-                "測驗結果",
-                style: GoogleFonts.notoSans(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              Text('請描述題目的問題：'),
+              SizedBox(height: 10),
+              TextField(
+                controller: _errorController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: '例如：選項不清楚、題目有錯字等',
+                  border: OutlineInputBorder(),
                 ),
-              ),
-              SizedBox(height: 8),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: resultColor.withOpacity(0.2),
-                  border: Border.all(
-                    color: resultColor,
-                    width: 3,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    "$percentage%",
-                    style: GoogleFonts.notoSans(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: resultColor,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                "答對 $correctAnswersCount/${questions.length} 題",
-                style: GoogleFonts.notoSans(
-                  fontSize: 16,
-                  color: Colors.white70,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                resultMessage,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.notoSans(
-                  fontSize: 16,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).pop();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      "返回課程",
-                      style: GoogleFonts.notoSans(),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      // 重置測驗
-                      setState(() {
-                        currentQuestionIndex = 0;
-                        selectedAnswer = null;
-                        isCorrect = null;
-                        correctAnswersCount = 0;
-                        _animationController.reset();
-                        _animationController.forward();
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: resultColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      "重新測驗",
-                      style: GoogleFonts.notoSans(),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
-        ),
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _errorController.clear();
+              },
+              child: Text('取消'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (_errorController.text.trim().isNotEmpty) {
+                  _reportQuestionError();
+                  Navigator.pop(context);
+                }
+              },
+              child: Text('送出'),
+            ),
+          ],
+        );
+      },
     );
+  }
+  
+  // 發送錯誤報告到後端
+  Future<void> _reportQuestionError() async {
+    try {
+      final currentQuestion = questions[currentQuestionIndex];
+      final questionId = currentQuestion['question_id'];
+      final errorMessage = _errorController.text.trim();
+      
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/report_question_error'),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+        body: jsonEncode({
+          'question_id': questionId,
+          'error_message': errorMessage,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('感謝您的回報！我們會盡快處理。')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('回報失敗：${data['message']}')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('回報失敗，請稍後再試。')),
+        );
+      }
+      
+      _errorController.clear();
+    } catch (e) {
+      print('Error reporting question: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('回報時發生錯誤，請稍後再試。')),
+      );
+    }
+  }
+
+  // 在用戶完成所有題目後調用
+  Future<void> _completeLevel() async {
+    try {
+      // 獲取用戶 ID
+      int? userId = await _getUserId();
+      if (userId == null) {
+        print('無法保存關卡記錄: 用戶未登入');
+        return;
+      }
+      
+      if (levelId == null) {
+        print('無法保存關卡記錄: 關卡 ID 未知');
+        return;
+      }
+      
+      // 準備請求數據
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/complete_level'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,  // 使用獲取到的用戶 ID
+          'level_id': levelId,  // 使用獲取到的關卡 ID
+          'correct_count': correctAnswersCount,
+          'total_questions': questions.length
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (!data['success']) {
+          print('保存關卡記錄失敗：${data['message']}');
+        }
+      } else {
+        print('保存關卡記錄失敗，狀態碼：${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error completing level: $e');
+    }
   }
 
   @override
