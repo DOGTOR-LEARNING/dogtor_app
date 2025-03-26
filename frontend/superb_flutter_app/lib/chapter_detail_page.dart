@@ -435,9 +435,9 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                           context,
                                           MaterialPageRoute(
                                             builder: (context) => QuizPage(
-                                              chapter: section['chapter_name'],  // 添加章節名稱
-                                              section: section['level_name'],    // 使用關卡名稱
-                                              knowledgePoints: section['knowledge_spots'], // 直接使用 CSV 中的知識點字符串
+                                              chapter: chapterName,  // 使用 chapterName 而不是 section['chapter_name']
+                                              section: section['level_name'],
+                                              knowledgePoints: section['knowledge_spots'],
                                             ),
                                           ),
                                         );

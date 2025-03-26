@@ -101,12 +101,12 @@ CREATE TABLE `user_knowledge_score` (
 
 CREATE TABLE `level_info` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `section_id` int NOT NULL,
+  `chapter_id` int NOT NULL,
   `level_num` int NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `section_level_unique` (`section_id`,`level_num`),
-  CONSTRAINT `level_info_ibfk_1` FOREIGN KEY (`section_id`) REFERENCES `knowledge_points` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  UNIQUE KEY `section_level_unique` (`chapter_id`,`level_num`),
+  CONSTRAINT `fk_levelinfo_chapter` FOREIGN KEY (`chapter_id`) REFERENCES `chapter_list` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=142 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
 -- dogtor.user_level definition

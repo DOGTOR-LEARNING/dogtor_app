@@ -66,18 +66,25 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
   Future<void> _fetchLevelId() async {
     try {
+      print("正在獲取關卡 ID...");
+      print("章節名稱: ${widget.chapter}");
+      print("小節名稱: ${widget.section}");
+      print("知識點: ${widget.knowledgePoints}");
+      
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_level_id'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'chapter': widget.chapter,
           'section': widget.section,
-          'knowledge_points': widget.knowledgePoints,  // 直接使用字符串
+          'knowledge_points': widget.knowledgePoints,
         }),
       );
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print("API 響應: $data");
+        
         if (data['success']) {
           setState(() {
             levelId = data['level_id'];
@@ -91,6 +98,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       }
     } catch (e) {
       print('獲取關卡 ID 時出錯: $e');
+      print(e.toString());
     }
   }
 
@@ -239,13 +247,12 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   }
 
   // 獲取用戶 ID 的方法
-  Future<int?> _getUserId() async {
+  Future<String?> _getUserId() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString('user_id');
       if (userId != null && userId.isNotEmpty) {
-        // 嘗試將字符串轉換為整數
-        return int.tryParse(userId);
+        return userId; // 直接返回字串
       }
       return null;
     } catch (e) {
@@ -638,7 +645,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   Future<void> _completeLevel() async {
     try {
       // 獲取用戶 ID
-      int? userId = await _getUserId();
+      String? userId = await _getUserId();
       if (userId == null) {
         print('無法保存關卡記錄: 用戶未登入');
         return;
@@ -654,8 +661,8 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/complete_level'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'user_id': userId,  // 使用獲取到的用戶 ID
-          'level_id': levelId,  // 使用獲取到的關卡 ID
+          'user_id': userId,  // 使用字串形式的用戶 ID
+          'level_id': levelId,
           'correct_count': correctAnswersCount,
           'total_questions': questions.length
         }),

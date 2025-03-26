@@ -799,8 +799,7 @@ async def get_level_id(request: Request):
         section = data.get("section", "")
         knowledge_points_str = data.get("knowledge_points", "")
         
-        if not chapter:
-            return {"success": False, "message": "缺少章節名稱"}
+        print(f"接收到的參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points_str}")
         
         connection = get_db_connection()
         connection.charset = 'utf8mb4'
@@ -821,37 +820,35 @@ async def get_level_id(request: Request):
                 chapter_result = cursor.fetchone()
                 
                 if not chapter_result:
+                    print(f"找不到章節: {chapter}")
                     return {"success": False, "message": f"找不到章節: {chapter}"}
                 
                 chapter_id = chapter_result['id']
+                print(f"找到章節 ID: {chapter_id}")
                 
-                # 查找關卡 ID
+                # 查找關卡 ID - 修正 SQL 查詢
                 level_sql = """
                 SELECT li.id 
                 FROM level_info li
-                JOIN knowledge_points kp ON li.chapter_id = kp.id
-                WHERE kp.chapter_id = %s
+                WHERE li.chapter_id = %s
                 """
                 
                 params = [chapter_id]
                 
-                if section:
-                    level_sql += " AND kp.section_name = %s"
-                    params.append(section)
-                
-                if knowledge_points_str:
-                    knowledge_points = [kp.strip() for kp in knowledge_points_str.split('、') if kp.strip()]
-                    if knowledge_points:
-                        placeholders = ', '.join(['%s'] * len(knowledge_points))
-                        level_sql += f" AND kp.knowledge_point IN ({placeholders})"
-                        params.extend(knowledge_points)
+                # 如果需要根據小節名稱進一步過濾，可以添加以下代碼
+                # 但這需要確保 level_info 表中有相關的列
+                # if section:
+                #     level_sql += " AND li.section_name = %s"
+                #     params.append(section)
                 
                 cursor.execute(level_sql, params)
                 level_result = cursor.fetchone()
                 
                 if not level_result:
-                    return {"success": False, "message": f"找不到關卡: 章節={chapter}, 小節={section}, 知識點={knowledge_points_str}"}
+                    print(f"找不到關卡: 章節ID={chapter_id}")
+                    return {"success": False, "message": f"找不到關卡: 章節={chapter}, 小節={section}"}
                 
+                print(f"找到關卡 ID: {level_result['id']}")
                 return {"success": True, "level_id": level_result['id']}
         
         finally:
