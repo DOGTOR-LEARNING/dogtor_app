@@ -77,8 +77,20 @@ class _AddMistakePageState extends State<AddMistakePage> {
     });
 
     try {
+
+      
+      if (_selectedImage == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('請選擇一張圖片')),
+        );
+        return;
+      }
+      
+      final bytes = await _selectedImage!.readAsBytes();
+      final base64Image = base64Encode(bytes);
+
       // 使用已經讀取的圖片字節
-      final base64Image = base64Encode(_imageBytes!);
+      //final base64Image = base64Encode(_imageBytes!);
 
       // 構建請求體
       final Map<String, dynamic> requestBody = {
@@ -151,13 +163,31 @@ class _AddMistakePageState extends State<AddMistakePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   ElevatedButton(
-                    onPressed: () => _pickImage(ImageSource.camera),
+                    onPressed: () async {
+                      // 打開相機
+                      final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+                      if (image != null) {
+                        setState(() {
+                          _selectedImage = image; // 存儲選擇的圖片
+                        });
+                      }
+                    },
                     child: Text('打開相機'),
                   ),
+                  
                   ElevatedButton(
-                    onPressed: () => _pickImage(ImageSource.gallery),
+                    onPressed: () async {
+                      // 從相簿中選擇
+                      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+                      if (image != null) {
+                        setState(() {
+                          _selectedImage = image; // 存儲選擇的圖片
+                        });
+                      }
+                    },
                     child: Text('從相簿中選擇'),
                   ),
+                
                   ElevatedButton(
                     onPressed: _generateAnswer,
                     child: Text('生成摘要'),
