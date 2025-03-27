@@ -963,7 +963,7 @@ async def complete_level(request: Request):
                 
                 # 更新知識點分數
                 print(f"開始更新用戶 {user_id} 的知識點分數")
-                await _update_user_knowledge_scores(user_id, connection)
+                await _update_level_knowledge_scores(user_id, level_id, connection)
                 print(f"知識點分數更新完成")
                 
                 return {"success": True, "message": "關卡完成記錄已新增"}
@@ -1305,3 +1305,109 @@ async def get_user_level_stars(request: Request):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶星星數時出錯: {str(e)}"}
+
+# 新增輔助函數：更新特定關卡相關的知識點分數
+async def _update_level_knowledge_scores(user_id: str, level_id: str, connection):
+    try:
+        print(f"正在更新用戶 {user_id} 的關卡 {level_id} 相關知識點分數...")
+        
+        with connection.cursor() as cursor:
+            # 從 level_knowledge_mapping 表獲取關卡相關的知識點
+            cursor.execute("""
+            SELECT knowledge_id
+            FROM level_knowledge_mapping
+            WHERE level_id = %s
+            """, (level_id,))
+            
+            knowledge_points = cursor.fetchall()
+            knowledge_ids = [point['knowledge_id'] for point in knowledge_points if point['knowledge_id']]
+            
+            # 如果沒有找到知識點映射，嘗試從題目中獲取
+            if not knowledge_ids:
+                print(f"在 level_knowledge_mapping 中找不到關卡 {level_id} 的知識點，嘗試從題目中獲取...")
+                
+                # 獲取該關卡的所有題目
+                cursor.execute("""
+                SELECT DISTINCT q.knowledge_id
+                FROM questions q
+                JOIN level_questions lq ON q.id = lq.question_id
+                WHERE lq.level_id = %s
+                """, (level_id,))
+                
+                question_knowledge_points = cursor.fetchall()
+                knowledge_ids = [point['knowledge_id'] for point in question_knowledge_points if point['knowledge_id']]
+            
+            if not knowledge_ids:
+                print(f"警告: 找不到關卡 {level_id} 相關的知識點，無法更新分數")
+                return
+            
+            print(f"找到 {len(knowledge_ids)} 個關卡相關知識點: {knowledge_ids}")
+            updated_count = 0
+            
+            # 對每個知識點計算分數
+            for knowledge_id in knowledge_ids:
+                # 獲取與該知識點相關的所有題目
+                cursor.execute("""
+                SELECT id 
+                FROM questions 
+                WHERE knowledge_id = %s
+                """, (knowledge_id,))
+                
+                questions = cursor.fetchall()
+                question_ids = [q['id'] for q in questions]
+                
+                if not question_ids:
+                    print(f"知識點 {knowledge_id} 沒有相關題目，跳過")
+                    continue
+                
+                # 獲取用戶對這些題目的答題記錄
+                placeholders = ', '.join(['%s'] * len(question_ids))
+                query = f"""
+                SELECT 
+                    SUM(total_attempts) as total_attempts,
+                    SUM(correct_attempts) as correct_attempts
+                FROM user_question_stats 
+                WHERE user_id = %s AND question_id IN ({placeholders})
+                """
+                
+                params = [user_id] + question_ids
+                cursor.execute(query, params)
+                stats = cursor.fetchone()
+                
+                # 計算分數
+                total_attempts = stats['total_attempts'] if stats and stats['total_attempts'] else 0
+                correct_attempts = stats['correct_attempts'] if stats and stats['correct_attempts'] else 0
+                
+                # 分數計算公式
+                if total_attempts == 0:
+                    score = 0  # 沒有嘗試過，分數為 0
+                else:
+                    # 使用正確率作為基礎分數
+                    accuracy = correct_attempts / total_attempts
+                    
+                    # 根據嘗試次數給予額外加權（熟練度）
+                    experience_factor = min(1, total_attempts / 10)  # 最多嘗試 10 次達到滿分加權
+                    
+                    # 最終分數 = 正確率 * 10 * 經驗係數
+                    score = accuracy * 10 * experience_factor
+                
+                # 限制分數在 0-10 範圍內
+                score = min(max(score, 0), 10)
+                
+                # 更新知識點分數
+                cursor.execute("""
+                INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE score = %s
+                """, (user_id, knowledge_id, score, score))
+                
+                updated_count += 1
+                print(f"已更新知識點 {knowledge_id} 的分數: {score}")
+            
+            connection.commit()
+            print(f"已更新 {updated_count} 個知識點的分數")
+        
+    except Exception as e:
+        print(f"更新關卡知識點分數時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
