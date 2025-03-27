@@ -913,7 +913,10 @@ async def complete_level(request: Request):
         level_id = data.get('level_id')
         stars = data.get('stars', 0)
         
+        print(f"收到關卡完成請求: user_id={user_id}, level_id={level_id}, stars={stars}")
+        
         if not user_id or not level_id:
+            print(f"錯誤: 缺少必要參數")
             return {"success": False, "message": "缺少必要參數"}
         
         connection = get_db_connection()
@@ -929,20 +932,43 @@ async def complete_level(request: Request):
                 current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 
                 # 每次都創建新記錄，不檢查是否已存在
-                cursor.execute(
-                    "INSERT INTO user_level (user_id, level_id, stars, answered_at) VALUES (%s, %s, %s, %s)",
-                    (user_id, level_id, stars, current_time)
-                )
+                insert_sql = """
+                INSERT INTO user_level (user_id, level_id, stars, answered_at) 
+                VALUES (%s, %s, %s, %s)
+                """
+                print(f"執行 SQL: {insert_sql} 參數: {user_id}, {level_id}, {stars}, {current_time}")
                 
+                cursor.execute(insert_sql, (user_id, level_id, stars, current_time))
+                affected_rows = cursor.rowcount
+                print(f"插入結果: 影響 {affected_rows} 行")
+                
+                print(f"提交事務")
                 connection.commit()
+                print(f"事務提交成功")
+                
+                # 驗證記錄是否成功保存
+                with connection.cursor() as verify_cursor:
+                    verify_sql = """
+                    SELECT * FROM user_level 
+                    WHERE user_id = %s AND level_id = %s AND stars = %s AND answered_at = %s
+                    """
+                    verify_cursor.execute(verify_sql, (user_id, level_id, stars, current_time))
+                    verification = verify_cursor.fetchone()
+                    if verification:
+                        print(f"驗證成功: 找到記錄 ID={verification['id']}")
+                    else:
+                        print(f"警告: 無法驗證記錄是否保存成功")
                 
                 # 更新用戶的知識點分數
+                print(f"開始更新用戶知識點分數")
                 await _update_user_knowledge_scores(user_id, connection)
+                print(f"用戶知識點分數更新完成")
                 
                 return {"success": True, "message": "關卡完成記錄已新增"}
         
         finally:
             connection.close()
+            print(f"資料庫連接已關閉")
     
     except Exception as e:
         print(f"記錄關卡完成時出錯: {str(e)}")
@@ -1082,7 +1108,10 @@ async def update_knowledge_score(request: Request):
         data = await request.json()
         user_id = data.get('user_id')
         
+        print(f"收到更新知識點分數請求: user_id={user_id}")
+        
         if not user_id:
+            print(f"錯誤: 缺少用戶 ID")
             return {"success": False, "message": "缺少用戶 ID"}
         
         connection = get_db_connection()
@@ -1098,6 +1127,7 @@ async def update_knowledge_score(request: Request):
                 # 獲取所有知識點
                 cursor.execute("SELECT id FROM knowledge_points")
                 all_knowledge_points = cursor.fetchall()
+                print(f"找到 {len(all_knowledge_points)} 個知識點")
                 
                 updated_scores = []
                 
@@ -1154,20 +1184,28 @@ async def update_knowledge_score(request: Request):
                     score = min(max(score, 0), 10)
                     
                     # 更新知識點分數
-                    cursor.execute("""
+                    update_sql = """
                     INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
                     VALUES (%s, %s, %s)
                     ON DUPLICATE KEY UPDATE score = %s
-                    """, (user_id, knowledge_id, score, score))
+                    """
+                    print(f"執行 SQL: {update_sql} 參數: {user_id}, {knowledge_id}, {score}, {score}")
+                    
+                    cursor.execute(update_sql, (user_id, knowledge_id, score, score))
+                    affected_rows = cursor.rowcount
+                    print(f"知識點 {knowledge_id} 更新結果: 影響 {affected_rows} 行")
                     
                     updated_scores.append({
                         "knowledge_id": knowledge_id,
                         "score": score,
                         "total_attempts": total_attempts,
-                        "correct_attempts": correct_attempts
+                        "correct_attempts": correct_attempts,
+                        "affected_rows": affected_rows
                     })
                 
+                print(f"提交事務，更新了 {len(updated_scores)} 個知識點")
                 connection.commit()
+                print(f"事務提交成功")
                 
                 return {
                     "success": True, 
@@ -1177,6 +1215,7 @@ async def update_knowledge_score(request: Request):
         
         finally:
             connection.close()
+            print(f"資料庫連接已關閉")
     
     except Exception as e:
         print(f"更新知識點分數時出錯: {str(e)}")
