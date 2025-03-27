@@ -702,6 +702,8 @@ async def record_answer(request: Request):
         question_id = data.get('question_id')
         is_correct = data.get('is_correct')
         
+        print(f"收到記錄答題請求: user_id={user_id}, question_id={question_id}, is_correct={is_correct}")
+        
         if not user_id or not question_id:
             return {"success": False, "message": "缺少必要參數"}
         
@@ -731,19 +733,24 @@ async def record_answer(request: Request):
                     total_attempts = record['total_attempts'] + 1
                     correct_attempts = record['correct_attempts'] + (1 if is_correct else 0)
                     
+                    print(f"更新現有記錄: id={record_id}, total_attempts={total_attempts}, correct_attempts={correct_attempts}")
+                    
                     cursor.execute(
                         "UPDATE user_question_stats SET total_attempts = %s, correct_attempts = %s, last_attempted_at = %s WHERE id = %s",
                         (total_attempts, correct_attempts, current_time, record_id)
                     )
                 else:
                     # 創建新記錄
+                    print(f"創建新記錄: user_id={user_id}, question_id={question_id}, is_correct={is_correct}")
+                    
                     cursor.execute(
                         "INSERT INTO user_question_stats (user_id, question_id, total_attempts, correct_attempts, last_attempted_at) VALUES (%s, %s, %s, %s, %s)",
                         (user_id, question_id, 1, 1 if is_correct else 0, current_time)
                     )
                 
                 connection.commit()
-                return {"success": True}
+                print(f"成功記錄答題情況")
+                return {"success": True, "message": "答題記錄已保存"}
                 
         except Exception as e:
             connection.rollback()
@@ -754,6 +761,8 @@ async def record_answer(request: Request):
             
     except Exception as e:
         print(f"處理答題記錄時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         return {"success": False, "message": f"處理錯誤: {str(e)}"}
 
 @app.post("/report_question_error")

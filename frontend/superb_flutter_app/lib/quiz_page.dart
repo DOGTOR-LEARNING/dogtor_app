@@ -209,19 +209,25 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
   // 在用戶回答問題後調用
   void _handleAnswer(String selectedOption) {
-    if (selectedAnswer != null) return;
+    if (isCorrect != null) return; // 如果已經提交過答案，則不再處理
 
     setState(() {
       selectedAnswer = selectedOption;
+      
+      // 檢查答案是否正確
+      final correctAnswer = questions[currentQuestionIndex]['correct_answer'];
+      isCorrect = selectedOption == correctAnswer;
+      
+      // 如果答對了，增加正確答案計數
+      if (isCorrect!) {
+        correctAnswersCount++;
+      }
     });
-
-    // 檢查答案是否正確
-    bool isCorrect = selectedOption == questions[currentQuestionIndex]['correct_answer'];
     
     // 記錄答題情況
-    _recordUserAnswer(questions[currentQuestionIndex]['id'], isCorrect);
+    _recordUserAnswer(questions[currentQuestionIndex]['id'], isCorrect!);
     
-    // 其他處理邏輯...
+    // 可以在這裡添加其他處理邏輯，例如顯示解釋、播放音效等
   }
 
   // 記錄用戶答題情況
