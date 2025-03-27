@@ -347,7 +347,7 @@ async def create_user(user: User):
 # 初始化用戶知識點分數
 async def initialize_user_knowledge_scores(user_id: str, connection):
     try:
-        print(f"開始初始化用戶 {user_id} 的知識點分數...")
+        print(f"===== 開始初始化用戶 {user_id} 的知識點分數 =====")
         
         with connection.cursor() as cursor:
             # 檢查用戶是否存在
@@ -356,7 +356,17 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             if not user_result:
                 print(f"錯誤: 找不到用戶 ID: {user_id}")
                 return
-            print(f"找到用戶: {user_result}")
+            print(f"找到用戶: {user_result['name']} (ID: {user_result['user_id']})")
+            
+            # 檢查 user_knowledge_score 表結構
+            try:
+                cursor.execute("DESCRIBE user_knowledge_score")
+                table_structure = cursor.fetchall()
+                print(f"user_knowledge_score 表結構:")
+                for column in table_structure:
+                    print(f"  - {column['Field']}: {column['Type']} (Null: {column['Null']}, Key: {column['Key']})")
+            except Exception as e:
+                print(f"無法獲取表結構: {str(e)}")
             
             # 獲取所有知識點
             cursor.execute("SELECT COUNT(*) as count FROM knowledge_points")
@@ -367,6 +377,13 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             if total_knowledge_points == 0:
                 print("警告: 知識點表為空，無法初始化用戶知識點分數")
                 return
+            
+            sql = "SELECT id, section_name, point_name FROM knowledge_points LIMIT 5"
+            cursor.execute(sql)
+            sample_points = cursor.fetchall()
+            print(f"知識點示例:")
+            for point in sample_points:
+                print(f"  - ID: {point['id']}, 小節: {point['section_name']}, 知識點: {point['point_name']}")
             
             sql = "SELECT id FROM knowledge_points"
             cursor.execute(sql)
@@ -380,6 +397,15 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             existing_count = count_result['count']
             print(f"用戶已有 {existing_count} 個知識點分數記錄")
             
+            if existing_count > 0:
+                # 顯示一些現有記錄作為示例
+                sql = "SELECT * FROM user_knowledge_score WHERE user_id = %s LIMIT 3"
+                cursor.execute(sql, (user_id,))
+                sample_scores = cursor.fetchall()
+                print(f"用戶現有知識點分數示例:")
+                for score in sample_scores:
+                    print(f"  - ID: {score['id']}, 知識點ID: {score['knowledge_id']}, 分數: {score['score']}")
+            
             sql = "SELECT knowledge_id FROM user_knowledge_score WHERE user_id = %s"
             cursor.execute(sql, (user_id,))
             existing_scores = cursor.fetchall()
@@ -387,6 +413,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             
             # 為缺少的知識點創建分數記錄
             inserted_count = 0
+            error_count = 0
             for point in all_knowledge_points:
                 knowledge_id = point['id']
                 if knowledge_id not in existing_knowledge_ids:
@@ -397,10 +424,41 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
                         """
                         cursor.execute(sql, (user_id, knowledge_id))
                         inserted_count += 1
+                        
+                        # 每插入10條記錄輸出一次進度
+                        if inserted_count % 10 == 0:
+                            print(f"已插入 {inserted_count} 條記錄...")
                     except Exception as insert_error:
-                        print(f"插入知識點 {knowledge_id} 時出錯: {str(insert_error)}")
+                        error_count += 1
+                        if error_count <= 5:  # 只顯示前5個錯誤
+                            print(f"插入知識點 {knowledge_id} 時出錯: {str(insert_error)}")
+                        elif error_count == 6:
+                            print("更多錯誤被省略...")
             
-            print(f"為用戶 {user_id} 新增了 {inserted_count} 個知識點分數記錄")
+            print(f"為用戶 {user_id} 新增了 {inserted_count} 個知識點分數記錄，失敗 {error_count} 個")
+            
+            if error_count > 0:
+                # 嘗試插入一條測試記錄，以診斷問題
+                try:
+                    print("嘗試插入測試記錄...")
+                    # 獲取一個不在現有記錄中的知識點ID
+                    test_knowledge_id = None
+                    for point in all_knowledge_points:
+                        if point['id'] not in existing_knowledge_ids:
+                            test_knowledge_id = point['id']
+                            break
+                    
+                    if test_knowledge_id:
+                        print(f"測試知識點ID: {test_knowledge_id}")
+                        sql = """
+                        INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                        VALUES (%s, %s, 0)
+                        """
+                        cursor.execute(sql, (user_id, test_knowledge_id))
+                        print("測試記錄插入成功!")
+                except Exception as test_error:
+                    print(f"測試記錄插入失敗: {str(test_error)}")
+                    print(f"SQL: INSERT INTO user_knowledge_score (user_id, knowledge_id, score) VALUES ('{user_id}', {test_knowledge_id}, 0)")
             
             # 再次檢查用戶知識點分數記錄數量
             sql = "SELECT COUNT(*) as count FROM user_knowledge_score WHERE user_id = %s"
@@ -410,7 +468,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             print(f"初始化後，用戶共有 {final_count} 個知識點分數記錄")
             
             connection.commit()
-            print(f"已成功初始化用戶 {user_id} 的知識點分數")
+            print(f"===== 已成功初始化用戶 {user_id} 的知識點分數 =====")
     except Exception as e:
         print(f"初始化知識點分數時出錯: {str(e)}")
         import traceback
@@ -998,6 +1056,21 @@ async def debug_knowledge_points():
             }
     except Exception as e:
         print(f"獲取知識點數據時出錯: {str(e)}")
+        return {"error": str(e)}
+    finally:
+        if connection:
+            connection.close()
+
+@app.get("/debug/initialize_user_knowledge/{user_id}")
+async def debug_initialize_user_knowledge(user_id: str):
+    connection = None
+    try:
+        connection = get_db_connection()
+        print(f"手動觸發用戶 {user_id} 的知識點分數初始化")
+        await initialize_user_knowledge_scores(user_id, connection)
+        return {"message": "初始化過程已完成，請檢查日誌"}
+    except Exception as e:
+        print(f"手動初始化時出錯: {str(e)}")
         return {"error": str(e)}
     finally:
         if connection:
