@@ -972,7 +972,7 @@ async def complete_level(request: Request):
                 
                 # 獲取該章節的所有知識點
                 cursor.execute("""
-                SELECT id FROM knowledge_points WHERE chapter_id = %s
+                SELECT id, point_name FROM knowledge_points WHERE chapter_id = %s
                 """, (chapter_id,))
                 knowledge_points = cursor.fetchall()
                 
@@ -982,6 +982,23 @@ async def complete_level(request: Request):
                 
                 knowledge_ids = [kp['id'] for kp in knowledge_points]
                 print(f"找到章節 {chapter_id} 的 {len(knowledge_ids)} 個知識點: {knowledge_ids}")
+                
+                # 檢查 level_knowledge_mapping 表是否存在
+                try:
+                    cursor.execute("SHOW TABLES LIKE 'level_knowledge_mapping'")
+                    has_mapping_table = cursor.fetchone() is not None
+                    if has_mapping_table:
+                        print("找到 level_knowledge_mapping 表，嘗試使用映射關係")
+                        cursor.execute("""
+                        SELECT knowledge_id FROM level_knowledge_mapping WHERE level_id = %s
+                        """, (level_id,))
+                        mapping_results = cursor.fetchall()
+                        if mapping_results:
+                            mapped_knowledge_ids = [r['knowledge_id'] for r in mapping_results]
+                            print(f"從映射表找到 {len(mapped_knowledge_ids)} 個知識點: {mapped_knowledge_ids}")
+                            knowledge_ids = mapped_knowledge_ids
+                except Exception as e:
+                    print(f"檢查映射表時出錯: {e}")
                 
                 # 更新這些知識點的分數
                 updated_count = 0
@@ -999,6 +1016,8 @@ async def complete_level(request: Request):
                     if not question_ids:
                         print(f"知識點 {knowledge_id} 沒有相關題目，跳過")
                         continue
+                    
+                    print(f"知識點 {knowledge_id} 有 {len(question_ids)} 個相關題目")
                     
                     # 獲取用戶對這些題目的答題記錄
                     placeholders = ', '.join(['%s'] * len(question_ids))
@@ -1018,6 +1037,8 @@ async def complete_level(request: Request):
                     total_attempts = stats['total_attempts'] if stats and stats['total_attempts'] else 0
                     correct_attempts = stats['correct_attempts'] if stats and stats['correct_attempts'] else 0
                     
+                    print(f"知識點 {knowledge_id} 的答題統計: 總嘗試={total_attempts}, 正確={correct_attempts}")
+                    
                     # 分數計算公式
                     if total_attempts == 0:
                         score = 0  # 沒有嘗試過，分數為 0
@@ -1034,16 +1055,40 @@ async def complete_level(request: Request):
                     # 限制分數在 0-10 範圍內
                     score = min(max(score, 0), 10)
                     
-                    # 更新知識點分數
+                    print(f"計算得到知識點 {knowledge_id} 的分數: {score}")
+                    
+                    # 檢查用戶知識點分數表中是否已有記錄
                     cursor.execute("""
-                    INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
-                    VALUES (%s, %s, %s)
-                    ON DUPLICATE KEY UPDATE score = %s
-                    """, (user_id, knowledge_id, score, score))
+                    SELECT id, score FROM user_knowledge_score 
+                    WHERE user_id = %s AND knowledge_id = %s
+                    """, (user_id, knowledge_id))
+                    existing_score = cursor.fetchone()
+                    
+                    if existing_score:
+                        print(f"用戶已有知識點 {knowledge_id} 的分數記錄: ID={existing_score['id']}, 分數={existing_score['score']}")
+                        
+                        # 更新現有記錄
+                        update_sql = """
+                        UPDATE user_knowledge_score 
+                        SET score = %s 
+                        WHERE id = %s
+                        """
+                        cursor.execute(update_sql, (score, existing_score['id']))
+                        print(f"更新知識點分數記錄: ID={existing_score['id']}, 新分數={score}")
+                    else:
+                        print(f"用戶沒有知識點 {knowledge_id} 的分數記錄，創建新記錄")
+                        
+                        # 創建新記錄
+                        insert_sql = """
+                        INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                        VALUES (%s, %s, %s)
+                        """
+                        cursor.execute(insert_sql, (user_id, knowledge_id, score))
+                        print(f"創建知識點分數記錄: user_id={user_id}, knowledge_id={knowledge_id}, score={score}")
                     
                     updated_count += 1
-                    print(f"已更新知識點 {knowledge_id} 的分數: {score}")
                 
+                print(f"提交知識點分數更新")
                 connection.commit()
                 print(f"已更新 {updated_count} 個知識點的分數")
                 

@@ -707,19 +707,29 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         return;
       }
       
-      // 準備請求數據 - 移除了 knowledge_points 參數
+      print('開始提交關卡完成記錄: user_id=$userId, level_id=$levelId');
+      
+      // 準備請求數據
+      final requestData = {
+        'user_id': userId,
+        'level_id': levelId,
+        'stars': _calculateStars(correctAnswersCount, questions.length),  // 根據正確率計算星星數
+      };
+      
+      print('請求數據: $requestData');
+      
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/complete_level'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'user_id': userId,
-          'level_id': levelId,
-          'stars': _calculateStars(correctAnswersCount, questions.length),  // 根據正確率計算星星數
-        }),
+        body: jsonEncode(requestData),
       );
+      
+      print('收到響應: 狀態碼=${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
+        print('響應數據: $data');
+        
         if (data['success']) {
           print('關卡完成記錄已保存');
         } else {
@@ -727,6 +737,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         }
       } else {
         print('保存關卡記錄失敗: HTTP ${response.statusCode}');
+        print('響應內容: ${response.body}');
       }
     } catch (e) {
       print('Error completing level: $e');
