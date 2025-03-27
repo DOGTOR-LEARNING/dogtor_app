@@ -281,4 +281,18 @@ class LoginPage extends StatelessWidget {
       ),
     );
   }
+
+  // 在顯示用戶頭像的地方
+  Widget buildUserAvatar(String? avatarUrl) {
+    return avatarUrl != null
+        ? CircleAvatar(
+            backgroundImage: NetworkImage(avatarUrl),
+            radius: 30,
+          )
+        : CircleAvatar(
+            // 使用默認頭像
+            child: Icon(Icons.person),
+            radius: 30,
+          );
+  }
 }

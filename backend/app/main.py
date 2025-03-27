@@ -1013,9 +1013,18 @@ async def _update_user_knowledge_scores(user_id: str, connection):
                 total_attempts = stats['total_attempts'] if stats['total_attempts'] else 0
                 correct_attempts = stats['correct_attempts'] if stats['correct_attempts'] else 0
                 
-                # 使用公式計算分數：總嘗試次數 / max(總答對次數, 10)
-                denominator = max(correct_attempts, 10)
-                score = total_attempts / denominator if denominator > 0 else 0
+                # 修正的分數計算公式
+                if total_attempts == 0:
+                    score = 0  # 沒有嘗試過，分數為 0
+                else:
+                    # 使用正確率作為基礎分數
+                    accuracy = correct_attempts / total_attempts if total_attempts > 0 else 0
+                    
+                    # 根據嘗試次數給予額外加權（熟練度）
+                    experience_factor = min(1, total_attempts / 10)  # 最多嘗試 10 次達到滿分加權
+                    
+                    # 最終分數 = 正確率 * 10 * 經驗係數
+                    score = accuracy * 10 * experience_factor
                 
                 # 限制分數在 0-10 範圍內
                 score = min(max(score, 0), 10)
@@ -1036,80 +1045,6 @@ async def _update_user_knowledge_scores(user_id: str, connection):
         print(f"更新知識點分數時出錯: {str(e)}")
         import traceback
         print(traceback.format_exc())
-
-@app.post("/get_level_id")
-async def get_level_id(request: Request):
-    try:
-        data = await request.json()
-        chapter = data.get("chapter", "")
-        section = data.get("section", "")  # 這可能包含關卡名稱
-        knowledge_points = data.get("knowledge_points", "")
-        level_num = data.get("level_num", "")  # 從請求中獲取關卡編號
-        
-        print(f"接收到的參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points}, level_num={level_num}")
-        
-        connection = get_db_connection()
-        connection.charset = 'utf8mb4'
-        
-        try:
-            with connection.cursor() as cursor:
-                # 設置連接的字符集
-                cursor.execute("SET NAMES utf8mb4")
-                cursor.execute("SET CHARACTER SET utf8mb4")
-                cursor.execute("SET character_set_connection=utf8mb4")
-                
-                # 查找章節 ID
-                chapter_sql = """
-                SELECT id FROM chapter_list 
-                WHERE chapter_name = %s
-                """
-                cursor.execute(chapter_sql, (chapter,))
-                chapter_result = cursor.fetchone()
-                
-                if not chapter_result:
-                    print(f"找不到章節: {chapter}")
-                    return {"success": False, "message": f"找不到章節: {chapter}"}
-                
-                chapter_id = chapter_result['id']
-                print(f"找到章節 ID: {chapter_id}")
-                
-                # 查找關卡 ID - 使用 chapter_id 和 level_num 查詢
-                level_sql = """
-                SELECT id FROM level_info 
-                WHERE chapter_id = %s
-                """
-                
-                params = [chapter_id]
-                
-                # 如果提供了關卡編號，則加入查詢條件
-                if level_num:
-                    try:
-                        # 嘗試將 level_num 轉換為整數
-                        level_num_int = int(level_num)
-                        level_sql += " AND level_num = %s"
-                        params.append(level_num_int)
-                    except ValueError:
-                        print(f"關卡編號格式錯誤: {level_num}")
-                        return {"success": False, "message": f"關卡編號格式錯誤: {level_num}"}
-                
-                cursor.execute(level_sql, tuple(params))
-                level_result = cursor.fetchone()
-                
-                if not level_result:
-                    print(f"找不到關卡: 章節ID={chapter_id}, 關卡編號={level_num}")
-                    return {"success": False, "message": f"找不到關卡: 章節={chapter}, 關卡編號={level_num}"}
-                
-                print(f"找到關卡 ID: {level_result['id']}")
-                return {"success": True, "level_id": level_result['id']}
-        
-        finally:
-            connection.close()
-    
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return {"success": False, "message": f"獲取關卡 ID 時出錯: {str(e)}"}
 
 @app.post("/get_user_level_stars")
 async def get_user_level_stars(request: Request):
@@ -1155,44 +1090,6 @@ async def get_user_level_stars(request: Request):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶關卡星星數時出錯: {str(e)}"}
-
-@app.post("/get_level_mapping")
-async def get_level_mapping(request: Request):
-    try:
-        connection = get_db_connection()
-        connection.charset = 'utf8mb4'
-        
-        try:
-            with connection.cursor() as cursor:
-                # 設置連接的字符集
-                cursor.execute("SET NAMES utf8mb4")
-                cursor.execute("SET CHARACTER SET utf8mb4")
-                cursor.execute("SET character_set_connection=utf8mb4")
-                
-                # 查詢所有關卡的 ID 和編號
-                sql = """
-                SELECT id, chapter_id, level_num 
-                FROM level_info
-                """
-                cursor.execute(sql)
-                results = cursor.fetchall()
-                
-                # 將結果轉換為字典格式
-                level_mapping = {}
-                for row in results:
-                    level_mapping[str(row['level_num'])] = row['id']
-                
-                return {"success": True, "level_mapping": level_mapping}
-        
-        finally:
-            connection.close()
-    
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return {"success": False, "message": f"獲取關卡映射時出錯: {str(e)}"}
-
 
 @app.post("/update_knowledge_score")
 async def update_knowledge_score(request: Request):
@@ -1255,9 +1152,18 @@ async def update_knowledge_score(request: Request):
                     total_attempts = stats['total_attempts'] if stats['total_attempts'] else 0
                     correct_attempts = stats['correct_attempts'] if stats['correct_attempts'] else 0
                     
-                    # 使用公式計算分數：總嘗試次數 / max(總答對次數, 10)
-                    denominator = max(correct_attempts, 10)
-                    score = (total_attempts / denominator) * 10 if denominator > 0 else 0
+                    # 修正的分數計算公式
+                    if total_attempts == 0:
+                        score = 0  # 沒有嘗試過，分數為 0
+                    else:
+                        # 使用正確率作為基礎分數
+                        accuracy = correct_attempts / total_attempts if total_attempts > 0 else 0
+                        
+                        # 根據嘗試次數給予額外加權（熟練度）
+                        experience_factor = min(1, total_attempts / 10)  # 最多嘗試 10 次達到滿分加權
+                        
+                        # 最終分數 = 正確率 * 10 * 經驗係數
+                        score = accuracy * 10 * experience_factor
                     
                     # 限制分數在 0-10 範圍內
                     score = min(max(score, 0), 10)
