@@ -366,9 +366,6 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     
     // 先記錄關卡完成情況
     _completeLevel().then((_) {
-      // 然後更新知識點分數
-      return _updateKnowledgeScore();
-    }).then((_) {
       // 計算完成後，重置狀態
       setState(() {
         isCalculatingResult = false;
@@ -473,42 +470,6 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         ),
       );
     });
-  }
-
-  // 修改更新知識點分數的方法，添加關卡ID參數
-  Future<void> _updateKnowledgeScore() async {
-    try {
-      final userId = await _getUserId();
-      if (userId == null || userId.isEmpty) {
-        print('無法更新知識點分數：用戶 ID 為空');
-        return;
-      }
-      
-      final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/update_knowledge_score'),
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Accept': 'application/json; charset=utf-8'
-        },
-        body: jsonEncode({
-          'user_id': userId,
-          'level_id': levelId,  // 添加關卡ID參數
-        }),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        if (data['success']) {
-          print('知識點分數更新成功: ${data['message']}');
-        } else {
-          print('知識點分數更新失敗: ${data['message']}');
-        }
-      } else {
-        print('知識點分數更新請求失敗: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('更新知識點分數時出錯: $e');
-    }
   }
 
   // 顯示報告錯誤的對話框

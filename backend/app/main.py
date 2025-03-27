@@ -1254,3 +1254,57 @@ async def get_knowledge_scores(user_id: str):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取知識點分數時出錯: {str(e)}"}
+
+@app.post("/get_user_level_stars")
+async def get_user_level_stars(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        
+        print(f"收到獲取用戶星星數請求: user_id={user_id}")
+        
+        if not user_id:
+            print(f"錯誤: 缺少用戶 ID")
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取用戶在每個關卡的最高星星數
+                cursor.execute("""
+                SELECT level_id, MAX(stars) as stars
+                FROM user_level
+                WHERE user_id = %s
+                GROUP BY level_id
+                """, (user_id,))
+                
+                results = cursor.fetchall()
+                
+                # 將結果轉換為字典格式
+                level_stars = {}
+                for row in results:
+                    level_stars[row['level_id']] = row['stars']
+                
+                print(f"找到用戶 {user_id} 的星星數記錄: {len(level_stars)} 個關卡")
+                
+                return {
+                    "success": True,
+                    "level_stars": level_stars
+                }
+        
+        finally:
+            connection.close()
+            print(f"資料庫連接已關閉")
+    
+    except Exception as e:
+        print(f"獲取用戶星星數時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取用戶星星數時出錯: {str(e)}"}
