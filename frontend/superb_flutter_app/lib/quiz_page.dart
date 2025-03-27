@@ -117,6 +117,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           'chapter': '',  // 不使用章節過濾
           'section': widget.section,  // 使用小節名稱
           'knowledge_points': knowledgePointsStr,  // 使用知識點字符串
+          'user_id': await _getUserId(),  // 添加用戶ID
         }),
       );
 

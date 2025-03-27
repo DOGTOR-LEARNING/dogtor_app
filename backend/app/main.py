@@ -551,8 +551,9 @@ async def get_questions_by_level(request: Request):
         chapter = data.get("chapter", "")
         section = data.get("section", "")
         knowledge_points = data.get("knowledge_points", "")
+        user_id = data.get("user_id", "")  # 新增：獲取用戶ID
         
-        print(f"接收到的請求參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points}")
+        print(f"接收到的請求參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points}, user_id={user_id}")
         
         # 檢查參數
         if not section and not knowledge_points:
@@ -568,6 +569,73 @@ async def get_questions_by_level(request: Request):
                 cursor.execute("SET CHARACTER SET utf8mb4")
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
+                # 將知識點字符串拆分為列表
+                knowledge_point_list = [kp.strip() for kp in knowledge_points.split('、')]
+                
+                # 獲取知識點的ID
+                knowledge_ids = []
+                for kp in knowledge_point_list:
+                    cursor.execute("SELECT id FROM knowledge_points WHERE point_name = %s", (kp,))
+                    result = cursor.fetchone()
+                    if result:
+                        knowledge_ids.append(result['id'])
+                
+                # 如果有用戶ID，獲取用戶對這些知識點的掌握程度
+                knowledge_scores = {}
+                total_score = 0
+                if user_id:
+                    for knowledge_id in knowledge_ids:
+                        cursor.execute("""
+                        SELECT score FROM user_knowledge_score 
+                        WHERE user_id = %s AND knowledge_id = %s
+                        """, (user_id, knowledge_id))
+                        result = cursor.fetchone()
+                        # 如果沒有分數記錄，默認為5分（中等掌握程度）
+                        score = result['score'] if result else 5
+                        knowledge_scores[knowledge_id] = score
+                        total_score += score
+                
+                # 計算每個知識點應該分配的題目數量
+                total_questions = 10  # 總共要獲取10題
+                questions_per_knowledge = {}
+                
+                if user_id and knowledge_scores:
+                    # 計算每個知識點的反向權重（分數越低，權重越高）
+                    inverse_weights = {}
+                    total_inverse_weight = 0
+                    
+                    for knowledge_id, score in knowledge_scores.items():
+                        # 使用反向分數作為權重（10-score），確保最小為1
+                        inverse_weight = max(10 - score, 1)
+                        inverse_weights[knowledge_id] = inverse_weight
+                        total_inverse_weight += inverse_weight
+                    
+                    # 根據反向權重分配題目數量
+                    remaining_questions = total_questions
+                    for knowledge_id, inverse_weight in inverse_weights.items():
+                        # 計算應分配的題目數量（至少1題）
+                        question_count = max(1, int(round((inverse_weight / total_inverse_weight) * total_questions)))
+                        # 確保不超過剩餘題目數
+                        question_count = min(question_count, remaining_questions)
+                        questions_per_knowledge[knowledge_id] = question_count
+                        remaining_questions -= question_count
+                    
+                    # 如果還有剩餘題目，分配給分數最低的知識點
+                    if remaining_questions > 0:
+                        lowest_score_id = min(knowledge_scores.items(), key=lambda x: x[1])[0]
+                        questions_per_knowledge[lowest_score_id] += remaining_questions
+                else:
+                    # 如果沒有用戶ID或分數記錄，平均分配題目
+                    base_count = total_questions // len(knowledge_ids) if knowledge_ids else 0
+                    remainder = total_questions % len(knowledge_ids) if knowledge_ids else 0
+                    
+                    for i, knowledge_id in enumerate(knowledge_ids):
+                        questions_per_knowledge[knowledge_id] = base_count + (1 if i < remainder else 0)
+                
+                # 打印分配結果
+                print(f"知識點分數: {knowledge_scores}")
+                print(f"題目分配: {questions_per_knowledge}")
+                
                 # 構建查詢條件
                 conditions = []
                 params = []
@@ -580,39 +648,78 @@ async def get_questions_by_level(request: Request):
                     conditions.append("kp.section_name = %s")
                     params.append(section)
                 
-                if knowledge_points:
-                    # 將知識點字符串拆分為列表
-                    knowledge_point_list = [kp.strip() for kp in knowledge_points.split('、')]
+                # 獲取所有題目
+                all_questions = []
+                
+                # 為每個知識點獲取指定數量的題目
+                for knowledge_id, question_count in questions_per_knowledge.items():
+                    if question_count <= 0:
+                        continue
+                        
+                    # 構建查詢
+                    knowledge_conditions = conditions.copy()
+                    knowledge_params = params.copy()
                     
-                    # 構建 IN 查詢
-                    if knowledge_point_list:
-                        placeholders = ', '.join(['%s'] * len(knowledge_point_list))
-                        conditions.append(f"kp.point_name IN ({placeholders})")
-                        params.extend(knowledge_point_list)
+                    knowledge_conditions.append("q.knowledge_id = %s")
+                    knowledge_params.append(knowledge_id)
+                    
+                    # 組合 WHERE 子句
+                    where_clause = " AND ".join(knowledge_conditions) if knowledge_conditions else "1=1"
+                    
+                    # 查詢題目，排除有錯誤訊息的題目
+                    sql = f"""
+                    SELECT q.id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
+                    FROM questions q
+                    JOIN knowledge_points kp ON q.knowledge_id = kp.id
+                    JOIN chapter_list cl ON kp.chapter_id = cl.id
+                    WHERE {where_clause} AND (q.Error_message IS NULL OR q.Error_message = '')
+                    ORDER BY RAND()
+                    LIMIT {question_count}
+                    """
+                    
+                    print(f"執行的 SQL: {sql}")
+                    print(f"SQL 參數: {knowledge_params}")
+                    
+                    cursor.execute(sql, knowledge_params)
+                    knowledge_questions = cursor.fetchall()
+                    all_questions.extend(knowledge_questions)
                 
-                # 組合 WHERE 子句
-                where_clause = " AND ".join(conditions) if conditions else "1=1"
-                
-                # 查詢題目，排除有錯誤訊息的題目
-                sql = f"""
-                SELECT q.id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
-                FROM questions q
-                JOIN knowledge_points kp ON q.knowledge_id = kp.id
-                JOIN chapter_list cl ON kp.chapter_id = cl.id
-                WHERE {where_clause} AND (q.Error_message IS NULL OR q.Error_message = '')
-                ORDER BY RAND()
-                LIMIT 10
-                """
-                
-                print(f"執行的 SQL: {sql}")
-                print(f"SQL 參數: {params}")
-                
-                cursor.execute(sql, params)
-                questions = cursor.fetchall()
+                # 如果獲取的題目不足10題，從所有相關知識點中隨機補充
+                if len(all_questions) < total_questions:
+                    remaining_count = total_questions - len(all_questions)
+                    
+                    # 已獲取的題目ID列表
+                    existing_ids = [q['id'] for q in all_questions]
+                    id_placeholders = ', '.join(['%s'] * len(existing_ids)) if existing_ids else '0'
+                    
+                    # 構建知識點條件
+                    kp_placeholders = ', '.join(['%s'] * len(knowledge_ids)) if knowledge_ids else '0'
+                    
+                    # 查詢補充題目
+                    supplement_sql = f"""
+                    SELECT q.id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
+                    FROM questions q
+                    JOIN knowledge_points kp ON q.knowledge_id = kp.id
+                    JOIN chapter_list cl ON kp.chapter_id = cl.id
+                    WHERE q.knowledge_id IN ({kp_placeholders})
+                    AND q.id NOT IN ({id_placeholders})
+                    AND (q.Error_message IS NULL OR q.Error_message = '')
+                    ORDER BY RAND()
+                    LIMIT {remaining_count}
+                    """
+                    
+                    supplement_params = knowledge_ids + existing_ids
+                    
+                    print(f"執行補充 SQL: {supplement_sql}")
+                    print(f"補充 SQL 參數: {supplement_params}")
+                    
+                    cursor.execute(supplement_sql, supplement_params)
+                    supplement_questions = cursor.fetchall()
+                    all_questions.extend(supplement_questions)
                 
                 # 將結果轉換為 JSON 格式
                 result = []
-                for q in questions:
+                for q in all_questions:
                     result.append({
                         "id": q["id"],
                         "question_text": q["question_text"],
@@ -1100,7 +1207,7 @@ async def update_knowledge_score(request: Request):
                     
                     # 使用公式計算分數：總嘗試次數 / max(總答對次數, 10)
                     denominator = max(correct_attempts, 10)
-                    score = total_attempts / denominator if denominator > 0 else 0
+                    score = (total_attempts / denominator) * 10 if denominator > 0 else 0
                     
                     # 限制分數在 0-10 範圍內
                     score = min(max(score, 0), 10)
