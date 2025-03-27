@@ -68,7 +68,7 @@ CREATE TABLE `questions` (
 
 CREATE TABLE `user_question_stats` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` int NOT NULL,
+  `user_id` varchar(100) NOT NULL,
   `question_id` int NOT NULL,
   `total_attempts` int DEFAULT '0',
   `correct_attempts` int DEFAULT '0',
@@ -76,7 +76,7 @@ CREATE TABLE `user_question_stats` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_id` (`user_id`,`question_id`),
   KEY `question_id` (`question_id`),
-  CONSTRAINT `user_question_stats_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_user_question_userid` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `user_question_stats_ibfk_2` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

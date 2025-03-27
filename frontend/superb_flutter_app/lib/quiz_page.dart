@@ -207,38 +207,21 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     }
   }
 
-  void _checkAnswer() {
-    final currentQuestion = questions[currentQuestionIndex];
-    try {
-      final correctAnswerString = currentQuestion['correct_answer'].toString().trim();
-      final correctAnswerIndex = int.parse(correctAnswerString) - 1;
-      
-      // 確保選項列表存在且有效
-      List<dynamic> options = currentQuestion['options'];
-      if (options == null || options.isEmpty || correctAnswerIndex >= options.length) {
-        print('錯誤: 選項列表無效或正確答案索引超出範圍');
-        // print('當前題目: $currentQuestion');
-        return;
-      }
-      
-      final correctAnswer = options[correctAnswerIndex];
-      
-      final bool answerIsCorrect = selectedAnswer == correctAnswer;
-      
-      setState(() {
-        isCorrect = answerIsCorrect;
-        
-        if (answerIsCorrect) {
-          correctAnswersCount++;
-        }
-      });
-      
-      // 記錄用戶答題情況
-      _recordUserAnswer(currentQuestion['id'], answerIsCorrect);
-    } catch (e) {
-      print('Error in _checkAnswer: $e');
-      print('當前題目: $currentQuestion');
-    }
+  // 在用戶回答問題後調用
+  void _handleAnswer(String selectedOption) {
+    if (selectedAnswer != null) return;
+
+    setState(() {
+      selectedAnswer = selectedOption;
+    });
+
+    // 檢查答案是否正確
+    bool isCorrect = selectedOption == questions[currentQuestionIndex]['correct_answer'];
+    
+    // 記錄答題情況
+    _recordUserAnswer(questions[currentQuestionIndex]['id'], isCorrect);
+    
+    // 其他處理邏輯...
   }
 
   // 記錄用戶答題情況
@@ -1108,9 +1091,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                             color: Colors.transparent,
                             child: InkWell(
                               onTap: isCorrect != null ? null : () {
-                                setState(() {
-                                  selectedAnswer = option;
-                                });
+                                _handleAnswer(option);
                               },
                               borderRadius: BorderRadius.circular(12),
                               child: Container(
@@ -1174,7 +1155,9 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                         Container(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _checkAnswer,
+                            onPressed: () {
+                              _handleAnswer(selectedAnswer!);
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: accentColor,
                               foregroundColor: Colors.white,

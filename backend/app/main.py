@@ -706,56 +706,51 @@ async def record_answer(request: Request):
             return {"success": False, "message": "缺少必要參數"}
         
         # 連接到資料庫
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
         
         try:
-            # 首先獲取數值型的 user_id
-            cursor.execute("SELECT id FROM users WHERE user_id = %s", (user_id,))
-            user_result = cursor.fetchone()
-            
-            if not user_result:
-                return {"success": False, "message": "找不到該用戶"}
-            
-            numeric_user_id = user_result[0]
-            
-            # 檢查是否已有該用戶對該題目的記錄
-            cursor.execute(
-                "SELECT id, total_attempts, correct_attempts FROM user_question_stats WHERE user_id = %s AND question_id = %s",
-                (numeric_user_id, question_id)
-            )
-            record = cursor.fetchone()
-            
-            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            
-            if record:
-                # 更新現有記錄
-                record_id, total_attempts, correct_attempts = record
-                total_attempts += 1
-                if is_correct:
-                    correct_attempts += 1
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
                 
+                # 檢查記錄是否存在
                 cursor.execute(
-                    "UPDATE user_question_stats SET total_attempts = %s, correct_attempts = %s, last_attempted_at = %s WHERE id = %s",
-                    (total_attempts, correct_attempts, current_time, record_id)
+                    "SELECT id, total_attempts, correct_attempts FROM user_question_stats WHERE user_id = %s AND question_id = %s",
+                    (user_id, question_id)
                 )
-            else:
-                # 創建新記錄
-                cursor.execute(
-                    "INSERT INTO user_question_stats (user_id, question_id, total_attempts, correct_attempts, last_attempted_at) VALUES (%s, %s, %s, %s, %s)",
-                    (numeric_user_id, question_id, 1, 1 if is_correct else 0, current_time)
-                )
-            
-            conn.commit()
-            return {"success": True}
-            
+                record = cursor.fetchone()
+                
+                current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                
+                if record:
+                    # 更新現有記錄
+                    record_id = record['id']
+                    total_attempts = record['total_attempts'] + 1
+                    correct_attempts = record['correct_attempts'] + (1 if is_correct else 0)
+                    
+                    cursor.execute(
+                        "UPDATE user_question_stats SET total_attempts = %s, correct_attempts = %s, last_attempted_at = %s WHERE id = %s",
+                        (total_attempts, correct_attempts, current_time, record_id)
+                    )
+                else:
+                    # 創建新記錄
+                    cursor.execute(
+                        "INSERT INTO user_question_stats (user_id, question_id, total_attempts, correct_attempts, last_attempted_at) VALUES (%s, %s, %s, %s, %s)",
+                        (user_id, question_id, 1, 1 if is_correct else 0, current_time)
+                    )
+                
+                connection.commit()
+                return {"success": True}
+                
         except Exception as e:
-            conn.rollback()
+            connection.rollback()
             print(f"資料庫錯誤: {str(e)}")
             return {"success": False, "message": f"資料庫錯誤: {str(e)}"}
         finally:
-            cursor.close()
-            conn.close()
+            connection.close()
             
     except Exception as e:
         print(f"處理答題記錄時出錯: {str(e)}")
@@ -805,30 +800,13 @@ async def report_question_error(request: Request):
 async def complete_level(request: Request):
     try:
         data = await request.json()
-        user_id = data.get("user_id")
-        level_id = data.get("level_id")
-        correct_count = data.get("correct_count")
-        total_questions = data.get("total_questions")
+        user_id = data.get('user_id')
+        level_id = data.get('level_id')
+        stars = data.get('stars', 0)
         
-        if not user_id or not level_id or correct_count is None or total_questions is None:
+        if not user_id or not level_id:
             return {"success": False, "message": "缺少必要參數"}
         
-        if total_questions == 0:
-            return {"success": False, "message": "總題數不能為零"}
-        
-        # 計算正確率
-        correct_rate = correct_count / total_questions
-        
-        # 根據正確率計算星星數量
-        stars = 0
-        if correct_rate == 1.0:  # 全部答對
-            stars = 3
-        elif correct_rate >= 0.6:  # 答對 60% 以上
-            stars = 2
-        elif correct_rate >= 0.3:  # 答對 30% 以上
-            stars = 1
-        
-        # 連接數據庫
         connection = get_db_connection()
         connection.charset = 'utf8mb4'
         
@@ -839,45 +817,116 @@ async def complete_level(request: Request):
                 cursor.execute("SET CHARACTER SET utf8mb4")
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
-                # 檢查用戶 ID 是否存在
-                sql = "SELECT id FROM users WHERE id = %s"
-                cursor.execute(sql, (user_id,))
-                user_result = cursor.fetchone()
+                # 檢查記錄是否存在
+                cursor.execute(
+                    "SELECT id, stars FROM user_level WHERE user_id = %s AND level_id = %s",
+                    (user_id, level_id)
+                )
+                record = cursor.fetchone()
                 
-                if not user_result:
-                    return {"success": False, "message": "用戶不存在"}
+                current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 
-                # 檢查關卡 ID 是否存在
-                sql = "SELECT id FROM level_info WHERE id = %s"
-                cursor.execute(sql, (level_id,))
-                level_result = cursor.fetchone()
+                if record:
+                    # 只有當新的星星數量更高時才更新
+                    if stars > record['stars']:
+                        cursor.execute(
+                            "UPDATE user_level SET stars = %s, answered_at = %s WHERE id = %s",
+                            (stars, current_time, record['id'])
+                        )
+                else:
+                    # 創建新記錄
+                    cursor.execute(
+                        "INSERT INTO user_level (user_id, level_id, stars, answered_at) VALUES (%s, %s, %s, %s)",
+                        (user_id, level_id, stars, current_time)
+                    )
                 
-                if not level_result:
-                    return {"success": False, "message": "關卡不存在"}
-                
-                # 寫入或更新用戶關卡記錄
-                sql = """
-                INSERT INTO user_level (user_id, level_id, stars, answered_at)
-                VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
-                """
-                cursor.execute(sql, (user_id, level_id, stars))
                 connection.commit()
                 
-                return {
-                    "success": True, 
-                    "message": "關卡完成記錄已保存", 
-                    "stars": stars,
-                    "correct_rate": correct_rate
-                }
+                # 更新用戶的知識點分數
+                await _update_user_knowledge_scores(user_id, connection)
+                
+                return {"success": True, "message": "關卡完成記錄已更新"}
         
         finally:
             connection.close()
     
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"記錄關卡完成時出錯: {str(e)}")
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"記錄關卡完成時出錯: {str(e)}"}
+
+# 輔助函數：更新用戶知識點分數
+async def _update_user_knowledge_scores(user_id: str, connection):
+    try:
+        print(f"正在更新用戶 {user_id} 的知識點分數...")
+        
+        with connection.cursor() as cursor:
+            # 獲取所有知識點
+            cursor.execute("SELECT id FROM knowledge_points")
+            all_knowledge_points = cursor.fetchall()
+            
+            updated_count = 0
+            
+            # 對每個知識點計算分數
+            for point in all_knowledge_points:
+                knowledge_id = point['id']
+                
+                # 獲取與該知識點相關的所有題目
+                cursor.execute("""
+                SELECT q.id 
+                FROM questions q 
+                WHERE q.knowledge_id = %s
+                """, (knowledge_id,))
+                
+                questions = cursor.fetchall()
+                question_ids = [q['id'] for q in questions]
+                
+                if not question_ids:
+                    # 如果沒有相關題目，跳過此知識點
+                    continue
+                
+                # 獲取用戶對這些題目的答題記錄
+                placeholders = ', '.join(['%s'] * len(question_ids))
+                query = f"""
+                SELECT 
+                    SUM(total_attempts) as total_attempts,
+                    SUM(correct_attempts) as correct_attempts
+                FROM user_question_stats 
+                WHERE user_id = %s AND question_id IN ({placeholders})
+                """
+                
+                params = [user_id] + question_ids
+                cursor.execute(query, params)
+                stats = cursor.fetchone()
+                
+                # 計算分數
+                total_attempts = stats['total_attempts'] if stats['total_attempts'] else 0
+                correct_attempts = stats['correct_attempts'] if stats['correct_attempts'] else 0
+                
+                # 使用公式計算分數：總嘗試次數 / max(總答對次數, 10)
+                denominator = max(correct_attempts, 10)
+                score = total_attempts / denominator if denominator > 0 else 0
+                
+                # 限制分數在 0-10 範圍內
+                score = min(max(score, 0), 10)
+                
+                # 更新知識點分數
+                cursor.execute("""
+                INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE score = %s
+                """, (user_id, knowledge_id, score, score))
+                
+                updated_count += 1
+            
+            connection.commit()
+            print(f"已更新 {updated_count} 個知識點的分數")
+    
+    except Exception as e:
+        print(f"更新知識點分數時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
 
 @app.post("/get_level_id")
 async def get_level_id(request: Request):
@@ -1035,44 +1084,144 @@ async def get_level_mapping(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取關卡映射時出錯: {str(e)}"}
 
-@app.get("/debug/knowledge_points")
-async def debug_knowledge_points():
-    connection = None
-    try:
-        connection = get_db_connection()
-        with connection.cursor() as cursor:
-            # 檢查知識點表中的數據
-            cursor.execute("SELECT COUNT(*) as count FROM knowledge_points")
-            count_result = cursor.fetchone()
-            total_count = count_result['count']
-            
-            # 獲取前10個知識點作為示例
-            cursor.execute("SELECT * FROM knowledge_points LIMIT 10")
-            sample_points = cursor.fetchall()
-            
-            return {
-                "total_count": total_count,
-                "sample_points": sample_points
-            }
-    except Exception as e:
-        print(f"獲取知識點數據時出錯: {str(e)}")
-        return {"error": str(e)}
-    finally:
-        if connection:
-            connection.close()
 
-@app.get("/debug/initialize_user_knowledge/{user_id}")
-async def debug_initialize_user_knowledge(user_id: str):
-    connection = None
+@app.post("/update_knowledge_score")
+async def update_knowledge_score(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取所有知識點
+                cursor.execute("SELECT id FROM knowledge_points")
+                all_knowledge_points = cursor.fetchall()
+                
+                updated_scores = []
+                
+                # 對每個知識點計算分數
+                for point in all_knowledge_points:
+                    knowledge_id = point['id']
+                    
+                    # 獲取與該知識點相關的所有題目
+                    cursor.execute("""
+                    SELECT q.id 
+                    FROM questions q 
+                    WHERE q.knowledge_id = %s
+                    """, (knowledge_id,))
+                    
+                    questions = cursor.fetchall()
+                    question_ids = [q['id'] for q in questions]
+                    
+                    if not question_ids:
+                        # 如果沒有相關題目，跳過此知識點
+                        continue
+                    
+                    # 獲取用戶對這些題目的答題記錄
+                    placeholders = ', '.join(['%s'] * len(question_ids))
+                    query = f"""
+                    SELECT 
+                        SUM(total_attempts) as total_attempts,
+                        SUM(correct_attempts) as correct_attempts
+                    FROM user_question_stats 
+                    WHERE user_id = %s AND question_id IN ({placeholders})
+                    """
+                    
+                    params = [user_id] + question_ids
+                    cursor.execute(query, params)
+                    stats = cursor.fetchone()
+                    
+                    # 計算分數
+                    total_attempts = stats['total_attempts'] if stats['total_attempts'] else 0
+                    correct_attempts = stats['correct_attempts'] if stats['correct_attempts'] else 0
+                    
+                    # 使用公式計算分數：總嘗試次數 / max(總答對次數, 10)
+                    denominator = max(correct_attempts, 10)
+                    score = total_attempts / denominator if denominator > 0 else 0
+                    
+                    # 限制分數在 0-10 範圍內
+                    score = min(max(score, 0), 10)
+                    
+                    # 更新知識點分數
+                    cursor.execute("""
+                    INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE score = %s
+                    """, (user_id, knowledge_id, score, score))
+                    
+                    updated_scores.append({
+                        "knowledge_id": knowledge_id,
+                        "score": score,
+                        "total_attempts": total_attempts,
+                        "correct_attempts": correct_attempts
+                    })
+                
+                connection.commit()
+                
+                return {
+                    "success": True, 
+                    "message": f"已更新 {len(updated_scores)} 個知識點的分數",
+                    "updated_scores": updated_scores
+                }
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"更新知識點分數時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"更新知識點分數時出錯: {str(e)}"}
+
+@app.get("/get_knowledge_scores/{user_id}")
+async def get_knowledge_scores(user_id: str):
     try:
         connection = get_db_connection()
-        print(f"手動觸發用戶 {user_id} 的知識點分數初始化")
-        await initialize_user_knowledge_scores(user_id, connection)
-        return {"message": "初始化過程已完成，請檢查日誌"}
-    except Exception as e:
-        print(f"手動初始化時出錯: {str(e)}")
-        return {"error": str(e)}
-    finally:
-        if connection:
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取用戶的所有知識點分數
+                cursor.execute("""
+                SELECT 
+                    uks.knowledge_id,
+                    uks.score,
+                    kp.section_name,
+                    kp.point_name
+                FROM user_knowledge_score uks
+                JOIN knowledge_points kp ON uks.knowledge_id = kp.id
+                WHERE uks.user_id = %s
+                """, (user_id,))
+                
+                scores = cursor.fetchall()
+                
+                return {
+                    "success": True,
+                    "scores": scores
+                }
+        
+        finally:
             connection.close()
+    
+    except Exception as e:
+        print(f"獲取知識點分數時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取知識點分數時出錯: {str(e)}"}
 
