@@ -112,6 +112,7 @@ async def get_next_q_id():
 async def get_mistakes():
     mistakes = []
     if os.path.exists('questions.csv'):
+        print("hi from mistake book")
         with open('questions.csv', mode='r', newline='', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
