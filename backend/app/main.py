@@ -365,6 +365,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
                         sql = """
                         INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
                         VALUES (%s, %s, 0)
+                        ON DUPLICATE KEY UPDATE score = VALUES(score)
                         """
                         cursor.execute(sql, (user_id, knowledge_id))
                         inserted_count += 1
@@ -397,6 +398,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
                         sql = """
                         INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
                         VALUES (%s, %s, 0)
+                        ON DUPLICATE KEY UPDATE score = VALUES(score)
                         """
                         cursor.execute(sql, (user_id, test_knowledge_id))
                         print("測試記錄插入成功!")
@@ -1057,34 +1059,12 @@ async def complete_level(request: Request):
                     
                     print(f"計算得到知識點 {knowledge_id} 的分數: {score}")
                     
-                    # 檢查用戶知識點分數表中是否已有記錄
+                    # 更新知識點分數
                     cursor.execute("""
-                    SELECT id, score FROM user_knowledge_score 
-                    WHERE user_id = %s AND knowledge_id = %s
-                    """, (user_id, knowledge_id))
-                    existing_score = cursor.fetchone()
-                    
-                    if existing_score:
-                        print(f"用戶已有知識點 {knowledge_id} 的分數記錄: ID={existing_score['id']}, 分數={existing_score['score']}")
-                        
-                        # 更新現有記錄
-                        update_sql = """
-                        UPDATE user_knowledge_score 
-                        SET score = %s 
-                        WHERE id = %s
-                        """
-                        cursor.execute(update_sql, (score, existing_score['id']))
-                        print(f"更新知識點分數記錄: ID={existing_score['id']}, 新分數={score}")
-                    else:
-                        print(f"用戶沒有知識點 {knowledge_id} 的分數記錄，創建新記錄")
-                        
-                        # 創建新記錄
-                        insert_sql = """
-                        INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
-                        VALUES (%s, %s, %s)
-                        """
-                        cursor.execute(insert_sql, (user_id, knowledge_id, score))
-                        print(f"創建知識點分數記錄: user_id={user_id}, knowledge_id={knowledge_id}, score={score}")
+                    INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE score = VALUES(score)
+                    """, (user_id, knowledge_id, score))
                     
                     updated_count += 1
                 
@@ -1104,7 +1084,7 @@ async def complete_level(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"記錄關卡完成時出錯: {str(e)}"}
 
-@app.post("/update_knowledge_score") # 沒有用到
+@app.post("/update_knowledge_score")
 async def update_knowledge_score(request: Request):
     try:
         data = await request.json()
@@ -1201,11 +1181,11 @@ async def update_knowledge_score(request: Request):
                     update_sql = """
                     INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
                     VALUES (%s, %s, %s)
-                    ON DUPLICATE KEY UPDATE score = %s
+                    ON DUPLICATE KEY UPDATE score = VALUES(score)
                     """
-                    print(f"執行 SQL: {update_sql} 參數: {user_id}, {knowledge_id}, {score}, {score}")
+                    print(f"執行 SQL: {update_sql} 參數: {user_id}, {knowledge_id}, {score}")
                     
-                    cursor.execute(update_sql, (user_id, knowledge_id, score, score))
+                    cursor.execute(update_sql, (user_id, knowledge_id, score))
                     affected_rows = cursor.rowcount
                     print(f"知識點 {knowledge_id} 更新結果: 影響 {affected_rows} 行")
                     
@@ -1424,8 +1404,8 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
                 cursor.execute("""
                 INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
                 VALUES (%s, %s, %s)
-                ON DUPLICATE KEY UPDATE score = %s
-                """, (user_id, knowledge_id, score, score))
+                ON DUPLICATE KEY UPDATE score = VALUES(score)
+                """, (user_id, knowledge_id, score))
                 
                 updated_count += 1
                 print(f"已更新知識點 {knowledge_id} 的分數: {score}")
