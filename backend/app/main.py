@@ -300,7 +300,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             if not user_result:
                 print(f"錯誤: 找不到用戶 ID: {user_id}")
                 return
-            print(f"找到用戶: {user_result['name']} (ID: {user_result['user_id']})")
+            # print(f"找到用戶: {user_result['name']} (ID: {user_result['user_id']})")
             
             # 檢查 user_knowledge_score 表結構
             try:
@@ -308,7 +308,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
                 table_structure = cursor.fetchall()
                 print(f"user_knowledge_score 表結構:")
                 for column in table_structure:
-                    print(f"  - {column['Field']}: {column['Type']} (Null: {column['Null']}, Key: {column['Key']})")
+                    # print(f"  - {column['Field']}: {column['Type']} (Null: {column['Null']}, Key: {column['Key']})")
             except Exception as e:
                 print(f"無法獲取表結構: {str(e)}")
             
@@ -325,30 +325,30 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             sql = "SELECT id, section_name, point_name FROM knowledge_points LIMIT 5"
             cursor.execute(sql)
             sample_points = cursor.fetchall()
-            print(f"知識點示例:")
-            for point in sample_points:
-                print(f"  - ID: {point['id']}, 小節: {point['section_name']}, 知識點: {point['point_name']}")
+            # print(f"知識點示例:")
+            # for point in sample_points:
+            #     print(f"  - ID: {point['id']}, 小節: {point['section_name']}, 知識點: {point['point_name']}")
             
             sql = "SELECT id FROM knowledge_points"
             cursor.execute(sql)
             all_knowledge_points = cursor.fetchall()
-            print(f"獲取到 {len(all_knowledge_points)} 個知識點")
+            # print(f"獲取到 {len(all_knowledge_points)} 個知識點")
             
             # 獲取用戶已有的知識點分數
             sql = "SELECT COUNT(*) as count FROM user_knowledge_score WHERE user_id = %s"
             cursor.execute(sql, (user_id,))
             count_result = cursor.fetchone()
             existing_count = count_result['count']
-            print(f"用戶已有 {existing_count} 個知識點分數記錄")
+            # print(f"用戶已有 {existing_count} 個知識點分數記錄")
             
             if existing_count > 0:
                 # 顯示一些現有記錄作為示例
                 sql = "SELECT * FROM user_knowledge_score WHERE user_id = %s LIMIT 3"
                 cursor.execute(sql, (user_id,))
                 sample_scores = cursor.fetchall()
-                print(f"用戶現有知識點分數示例:")
-                for score in sample_scores:
-                    print(f"  - ID: {score['id']}, 知識點ID: {score['knowledge_id']}, 分數: {score['score']}")
+                # print(f"用戶現有知識點分數示例:")
+                # for score in sample_scores:
+                #     print(f"  - ID: {score['id']}, 知識點ID: {score['knowledge_id']}, 分數: {score['score']}")
             
             sql = "SELECT knowledge_id FROM user_knowledge_score WHERE user_id = %s"
             cursor.execute(sql, (user_id,))
@@ -394,7 +394,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
                             break
                     
                     if test_knowledge_id:
-                        print(f"測試知識點ID: {test_knowledge_id}")
+                        # print(f"測試知識點ID: {test_knowledge_id}")
                         sql = """
                         INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
                         VALUES (%s, %s, 0)
