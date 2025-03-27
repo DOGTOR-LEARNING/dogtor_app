@@ -121,6 +121,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           'section': widget.section,  // 使用小節名稱
           'knowledge_points': knowledgePointsStr,  // 使用知識點字符串
           'user_id': await _getUserId(),  // 添加用戶ID
+          'level_id': widget.levelNum,  // 添加關卡ID
         }),
       );
 

@@ -551,9 +551,10 @@ async def get_questions_by_level(request: Request):
         chapter = data.get("chapter", "")
         section = data.get("section", "")
         knowledge_points = data.get("knowledge_points", "")
-        user_id = data.get("user_id", "")  # 新增：獲取用戶ID
+        user_id = data.get("user_id", "")
+        level_id = data.get("level_id", "")  # 獲取關卡ID
         
-        print(f"接收到的請求參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points}, user_id={user_id}")
+        print(f"接收到的請求參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points}, user_id={user_id}, level_id={level_id}")
         
         # 檢查參數
         if not section and not knowledge_points:
