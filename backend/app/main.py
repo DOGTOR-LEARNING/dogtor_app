@@ -271,8 +271,9 @@ class User(BaseModel):
 # 檢查用戶是否存在
 @app.get("/users/check")
 async def check_user(user_id: str):
-    connection = None  # 初始化為 None
+    connection = None
     try:
+        print(f"檢查用戶 {user_id} 是否存在...")
         connection = get_db_connection()
         with connection.cursor() as cursor:
             # 檢查用戶是否存在
@@ -281,15 +282,20 @@ async def check_user(user_id: str):
             result = cursor.fetchone()
             
             if result:
+                print(f"用戶 {user_id} 存在，開始初始化知識點分數...")
                 # 用戶存在，檢查並初始化知識點分數
                 await initialize_user_knowledge_scores(user_id, connection)
                 return {"exists": True, "user": result}
             else:
+                print(f"用戶 {user_id} 不存在")
                 return {"exists": False}
     except Exception as e:
+        print(f"檢查用戶時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     finally:
-        if connection:  # 只有在 connection 存在時才關閉
+        if connection:
             connection.close()
 
 # 創建新用戶
@@ -341,30 +347,70 @@ async def create_user(user: User):
 # 初始化用戶知識點分數
 async def initialize_user_knowledge_scores(user_id: str, connection):
     try:
+        print(f"開始初始化用戶 {user_id} 的知識點分數...")
+        
         with connection.cursor() as cursor:
+            # 檢查用戶是否存在
+            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+            user_result = cursor.fetchone()
+            if not user_result:
+                print(f"錯誤: 找不到用戶 ID: {user_id}")
+                return
+            print(f"找到用戶: {user_result}")
+            
             # 獲取所有知識點
+            cursor.execute("SELECT COUNT(*) as count FROM knowledge_points")
+            count_result = cursor.fetchone()
+            total_knowledge_points = count_result['count']
+            print(f"數據庫中共有 {total_knowledge_points} 個知識點")
+            
+            if total_knowledge_points == 0:
+                print("警告: 知識點表為空，無法初始化用戶知識點分數")
+                return
+            
             sql = "SELECT id FROM knowledge_points"
             cursor.execute(sql)
             all_knowledge_points = cursor.fetchall()
+            print(f"獲取到 {len(all_knowledge_points)} 個知識點")
             
             # 獲取用戶已有的知識點分數
+            sql = "SELECT COUNT(*) as count FROM user_knowledge_score WHERE user_id = %s"
+            cursor.execute(sql, (user_id,))
+            count_result = cursor.fetchone()
+            existing_count = count_result['count']
+            print(f"用戶已有 {existing_count} 個知識點分數記錄")
+            
             sql = "SELECT knowledge_id FROM user_knowledge_score WHERE user_id = %s"
-            cursor.execute(sql, (user_id,))  # 直接使用 user_id 字符串
+            cursor.execute(sql, (user_id,))
             existing_scores = cursor.fetchall()
             existing_knowledge_ids = [score['knowledge_id'] for score in existing_scores]
             
             # 為缺少的知識點創建分數記錄
+            inserted_count = 0
             for point in all_knowledge_points:
                 knowledge_id = point['id']
                 if knowledge_id not in existing_knowledge_ids:
-                    sql = """
-                    INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
-                    VALUES (%s, %s, 0)
-                    """
-                    cursor.execute(sql, (user_id, knowledge_id))  # 直接使用 user_id 字符串
+                    try:
+                        sql = """
+                        INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                        VALUES (%s, %s, 0)
+                        """
+                        cursor.execute(sql, (user_id, knowledge_id))
+                        inserted_count += 1
+                    except Exception as insert_error:
+                        print(f"插入知識點 {knowledge_id} 時出錯: {str(insert_error)}")
+            
+            print(f"為用戶 {user_id} 新增了 {inserted_count} 個知識點分數記錄")
+            
+            # 再次檢查用戶知識點分數記錄數量
+            sql = "SELECT COUNT(*) as count FROM user_knowledge_score WHERE user_id = %s"
+            cursor.execute(sql, (user_id,))
+            count_result = cursor.fetchone()
+            final_count = count_result['count']
+            print(f"初始化後，用戶共有 {final_count} 個知識點分數記錄")
             
             connection.commit()
-            print(f"已初始化用戶 {user_id} 的知識點分數")
+            print(f"已成功初始化用戶 {user_id} 的知識點分數")
     except Exception as e:
         print(f"初始化知識點分數時出錯: {str(e)}")
         import traceback
@@ -930,4 +976,30 @@ async def get_level_mapping(request: Request):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取關卡映射時出錯: {str(e)}"}
+
+@app.get("/debug/knowledge_points")
+async def debug_knowledge_points():
+    connection = None
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # 檢查知識點表中的數據
+            cursor.execute("SELECT COUNT(*) as count FROM knowledge_points")
+            count_result = cursor.fetchone()
+            total_count = count_result['count']
+            
+            # 獲取前10個知識點作為示例
+            cursor.execute("SELECT * FROM knowledge_points LIMIT 10")
+            sample_points = cursor.fetchall()
+            
+            return {
+                "total_count": total_count,
+                "sample_points": sample_points
+            }
+    except Exception as e:
+        print(f"獲取知識點數據時出錯: {str(e)}")
+        return {"error": str(e)}
+    finally:
+        if connection:
+            connection.close()
 
