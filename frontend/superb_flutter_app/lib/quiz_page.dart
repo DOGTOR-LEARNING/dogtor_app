@@ -141,6 +141,23 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           for (var q in questionsData) {
             // 確保每個題目都有 id 字段
             if (q['id'] != null) {
+              // 確保 correct_answer 是字符串類型
+              var correctAnswer = q['correct_answer'];
+              if (correctAnswer != null) {
+                // 如果是數字，轉換為字符串
+                if (correctAnswer is int) {
+                  q['correct_answer'] = correctAnswer.toString();
+                } else if (correctAnswer is String) {
+                  // 如果是字符串，確保是數字格式（1-4）
+                  if (!RegExp(r'^[1-4]$').hasMatch(correctAnswer)) {
+                    print("警告: 題目 ${q['id']} 的正確答案格式不正確: $correctAnswer");
+                  }
+                }
+              } else {
+                print("警告: 題目 ${q['id']} 沒有正確答案");
+                continue; // 跳過沒有正確答案的題目
+              }
+              
               // 構建選項列表
               List<dynamic> options = [];
               
@@ -171,7 +188,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                 'id': q['id'],
                 'question': q['question_text'] ?? '',
                 'options': options,
-                'correct_answer': q['correct_answer'] ?? '1',
+                'correct_answer': q['correct_answer'].toString(), // 確保是字符串
                 'explanation': q['explanation'] ?? '',
                 'knowledge_point': widget.knowledgePoints.split('、')[0], // 使用第一個知識點作為顯示
               });
@@ -214,20 +231,34 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     setState(() {
       selectedAnswer = selectedOption;
       
-      // 檢查答案是否正確
-      final correctAnswer = questions[currentQuestionIndex]['correct_answer'];
-      isCorrect = selectedOption == correctAnswer;
+      // 獲取當前題目
+      final currentQuestion = questions[currentQuestionIndex];
+      
+      // 獲取選中選項在列表中的位置（從0開始）
+      final selectedIndex = currentQuestion['options'].indexOf(selectedOption);
+      
+      // 獲取資料庫中的正確答案（已經是0-based索引）
+      final correctAnswerStr = currentQuestion['correct_answer'];
+      final correctAnswerIndex = int.tryParse(correctAnswerStr) ?? 0;
+      
+      // 直接比較索引，因為API已經將答案轉換為0-based索引
+      isCorrect = selectedIndex == correctAnswerIndex;
       
       // 如果答對了，增加正確答案計數
       if (isCorrect!) {
         correctAnswersCount++;
       }
+      
+      // 調試信息
+      print('題目: ${currentQuestion['question']}');
+      print('選項列表: ${currentQuestion['options']}');
+      print('選中選項: $selectedOption (索引: $selectedIndex)');
+      print('資料庫中的正確答案: $correctAnswerStr (已是0-based索引)');
+      print('判斷結果: $isCorrect');
     });
     
     // 記錄答題情況
     _recordUserAnswer(questions[currentQuestionIndex]['id'], isCorrect!);
-    
-    // 可以在這裡添加其他處理邏輯，例如顯示解釋、播放音效等
   }
 
   // 記錄用戶答題情況
@@ -1063,96 +1094,85 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                       SizedBox(height: 24),
                       
                       // 選項 - 使用更現代的卡片風格
-                      ...options.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final option = entry.value;
-                        final isSelected = selectedAnswer == option;
-                        final correctAnswerIndex = isCorrect != null 
-                            ? int.parse(currentQuestion['correct_answer']) - 1 
-                            : -1;
-                        final isCorrectAnswer = isCorrect != null && index == correctAnswerIndex;
-                        
-                        // 確定選項顏色和圖標
-                        Color optionColor = cardColor;
-                        IconData? trailingIcon;
-                        Color? iconColor;
-                        
-                        if (isCorrect != null) {
-                          if (index == correctAnswerIndex) {
-                            optionColor = Color(0xFF4ADE80).withOpacity(0.2);
-                            trailingIcon = Icons.check_circle;
-                            iconColor = Color(0xFF4ADE80);
+                      Column(
+                        children: currentQuestion['options'].asMap().entries.map<Widget>((entry) {
+                          final index = entry.key;
+                          final option = entry.value;
+                          final isSelected = selectedAnswer == option;
+                          
+                          // 獲取正確答案索引（已經是0-based）
+                          final correctAnswerIndex = int.tryParse(currentQuestion['correct_answer']) ?? 0;
+                          
+                          // 判斷這個選項是否是正確答案
+                          final isCorrectOption = index == correctAnswerIndex;
+                          
+                          Color optionColor = cardColor;
+                          IconData? trailingIcon;
+                          Color iconColor = Colors.white;
+                          
+                          if (isCorrect != null) {
+                            // 答案已提交
+                            if (isCorrectOption) {
+                              // 這是正確答案
+                              optionColor = Color(0xFF4ADE80).withOpacity(0.2);
+                              trailingIcon = Icons.check_circle;
+                              iconColor = Color(0xFF4ADE80);
+                            } else if (isSelected) {
+                              // 這是用戶選擇的錯誤答案
+                              optionColor = Color(0xFFF87171).withOpacity(0.2);
+                              trailingIcon = Icons.cancel;
+                              iconColor = Color(0xFFF87171);
+                            }
                           } else if (isSelected) {
-                            optionColor = Color(0xFFF87171).withOpacity(0.2);
-                            trailingIcon = Icons.cancel;
-                            iconColor = Color(0xFFF87171);
+                            // 答案未提交，但已選擇
+                            optionColor = accentColor.withOpacity(0.2);
                           }
-                        } else if (isSelected) {
-                          optionColor = accentColor.withOpacity(0.2);
-                        }
-                        
-                        return Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: isCorrect != null ? null : () {
-                                _handleAnswer(option);
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: optionColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isSelected ? accentColor : Colors.transparent,
-                                    width: 2,
+                          
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: isCorrect != null ? null : () {
+                                  _handleAnswer(option);
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: optionColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected ? accentColor : Colors.transparent,
+                                      width: 2,
+                                    ),
                                   ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        color: isSelected ? accentColor : primaryColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Center(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
                                         child: Text(
-                                          String.fromCharCode(65 + index),
+                                          option,
                                           style: GoogleFonts.notoSans(
                                             color: Colors.white,
-                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        option,
-                                        style: GoogleFonts.notoSans(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                      if (trailingIcon != null)
+                                        Icon(
+                                          trailingIcon,
+                                          color: iconColor,
+                                          size: 24,
                                         ),
-                                      ),
-                                    ),
-                                    if (trailingIcon != null)
-                                      Icon(
-                                        trailingIcon,
-                                        color: iconColor,
-                                        size: 24,
-                                      ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
+                          );
+                        }).toList(),
+                      ),
                       
                       SizedBox(height: 24),
                       

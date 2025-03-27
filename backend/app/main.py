@@ -658,7 +658,7 @@ async def get_questions_by_level(request: Request):
                 JOIN chapter_list cl ON kp.chapter_id = cl.id
                 WHERE {where_clause} AND (q.Error_message IS NULL OR q.Error_message = '')
                 ORDER BY RAND()
-                LIMIT 5
+                LIMIT 10
                 """
                 
                 print(f"執行的 SQL: {sql}")
