@@ -315,6 +315,29 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                           ],
                                         ],
                                       ),
+                                      SizedBox(height: 12),
+                                      // Image preview
+                                      FutureBuilder(
+                                        future: http.head(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg')),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.connectionState == ConnectionState.waiting) {
+                                            return SizedBox.shrink();
+                                          } else if (snapshot.hasError || snapshot.data?.statusCode != 200) {
+                                            // Return nothing when no image is available
+                                            return SizedBox.shrink();
+                                          } else {
+                                            return ClipRRect(
+                                              borderRadius: BorderRadius.circular(12),
+                                              child: Image.network(
+                                                'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg',
+                                                height: 60,
+                                                width: double.infinity,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      ),
                                     ],
                                   ),
                                 ),
