@@ -976,7 +976,7 @@ async def complete_level(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"記錄關卡完成時出錯: {str(e)}"}
 
-# 新增輔助函數：只更新與特定關卡相關的知識點分數
+# 修改輔助函數：只更新與特定關卡相關的知識點分數
 async def _update_level_knowledge_scores(user_id: str, level_id: str, connection):
     try:
         print(f"正在更新用戶 {user_id} 的關卡 {level_id} 相關知識點分數...")
@@ -1044,8 +1044,8 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
                 stats = cursor.fetchone()
                 
                 # 計算分數
-                total_attempts = stats['total_attempts'] if stats['total_attempts'] else 0
-                correct_attempts = stats['correct_attempts'] if stats['correct_attempts'] else 0
+                total_attempts = stats['total_attempts'] if stats and stats['total_attempts'] else 0
+                correct_attempts = stats['correct_attempts'] if stats and stats['correct_attempts'] else 0
                 
                 # 修正的分數計算公式
                 if total_attempts == 0:
@@ -1064,14 +1064,17 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
                 score = min(max(score, 0), 10)
                 
                 # 更新知識點分數
-                cursor.execute("""
-                INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
-                VALUES (%s, %s, %s)
-                ON DUPLICATE KEY UPDATE score = %s
-                """, (user_id, knowledge_id, score, score))
-                
-                updated_count += 1
-                print(f"已更新知識點 {knowledge_id} 的分數: {score}")
+                try:
+                    cursor.execute("""
+                    INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE score = %s
+                    """, (user_id, knowledge_id, score, score))
+                    
+                    updated_count += 1
+                    print(f"已更新知識點 {knowledge_id} 的分數: {score}")
+                except Exception as e:
+                    print(f"更新知識點 {knowledge_id} 分數時出錯: {str(e)}")
             
             connection.commit()
             print(f"已更新 {updated_count} 個知識點的分數")

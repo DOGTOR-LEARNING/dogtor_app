@@ -722,6 +722,8 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         final data = jsonDecode(response.body);
         if (!data['success']) {
           print('保存關卡記錄失敗：${data['message']}');
+        } else {
+          print('成功保存關卡記錄並更新知識點分數');
         }
       } else {
         print('保存關卡記錄失敗，狀態碼：${response.statusCode}');
