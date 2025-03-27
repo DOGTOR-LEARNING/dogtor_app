@@ -668,7 +668,7 @@ async def get_questions_by_level(request: Request):
                     
                     # 查詢題目，排除有錯誤訊息的題目
                     sql = f"""
-                    SELECT q.id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
+                    SELECT q.id, q.knowledge_id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
                     FROM questions q
                     JOIN knowledge_points kp ON q.knowledge_id = kp.id
                     JOIN chapter_list cl ON kp.chapter_id = cl.id
@@ -697,7 +697,7 @@ async def get_questions_by_level(request: Request):
                     
                     # 查詢補充題目
                     supplement_sql = f"""
-                    SELECT q.id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
+                    SELECT q.id, q.knowledge_id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
                     FROM questions q
                     JOIN knowledge_points kp ON q.knowledge_id = kp.id
                     JOIN chapter_list cl ON kp.chapter_id = cl.id

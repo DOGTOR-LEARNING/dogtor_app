@@ -363,8 +363,8 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       isCalculatingResult = true;
     });
     
-    // 使用 Future.delayed 來模擬計算過程，並在完成後顯示結果對話框
-    Future.delayed(Duration(milliseconds: 500), () {
+    // 更新知識點分數
+    _updateKnowledgeScore().then((_) {
       // 計算完成後，重置狀態
       setState(() {
         isCalculatingResult = false;
@@ -402,102 +402,108 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Row(
+          title: Center(
+            child: Text(
+              '測驗結果',
+              style: GoogleFonts.notoSans(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 resultIcon,
                 color: resultColor,
-                size: 24,
+                size: 64,
               ),
-              SizedBox(width: 10),
+              SizedBox(height: 16),
               Text(
-                "測驗結果",
+                '$percentage% 正確率',
+                style: GoogleFonts.notoSans(
+                  color: resultColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '${correctAnswersCount}/${questions.length} 題答對',
+                style: GoogleFonts.notoSans(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                resultMessage,
+                textAlign: TextAlign.center,
                 style: GoogleFonts.notoSans(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  fontSize: 16,
                 ),
               ),
             ],
           ),
-          content: Container(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "答對 $correctAnswersCount/${questions.length} 題",
-                  style: GoogleFonts.notoSans(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  resultMessage,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.notoSans(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
           actions: [
             TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // 關閉對話框
+                Navigator.of(context).pop(); // 返回上一頁
+              },
               style: TextButton.styleFrom(
-                foregroundColor: Colors.white.withOpacity(0.7),
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                foregroundColor: accentColor,
               ),
               child: Text(
-                "返回課程",
+                '返回',
                 style: GoogleFonts.notoSans(
-                  fontSize: 15,
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: resultColor,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                "重新測驗",
-                style: GoogleFonts.notoSans(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  fontSize: 15,
                 ),
               ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                // 重置測驗
-                setState(() {
-                  currentQuestionIndex = 0;
-                  selectedAnswer = null;
-                  isCorrect = null;
-                  correctAnswersCount = 0;
-                  _animationController.reset();
-                  _animationController.forward();
-                });
-              },
             ),
           ],
-          actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       );
     });
+  }
+
+  // 添加更新知識點分數的方法
+  Future<void> _updateKnowledgeScore() async {
+    try {
+      final userId = await _getUserId();
+      if (userId == null || userId.isEmpty) {
+        print('無法更新知識點分數：用戶 ID 為空');
+        return;
+      }
+      
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/update_knowledge_score'),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json; charset=utf-8'
+        },
+        body: jsonEncode({
+          'user_id': userId,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data['success']) {
+          print('知識點分數更新成功: ${data['message']}');
+        } else {
+          print('知識點分數更新失敗: ${data['message']}');
+        }
+      } else {
+        print('知識點分數更新請求失敗: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('更新知識點分數時出錯: $e');
+    }
   }
 
   // 顯示報告錯誤的對話框
