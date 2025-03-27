@@ -85,13 +85,13 @@ CREATE TABLE `user_question_stats` (
 
 CREATE TABLE `user_knowledge_score` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` int NOT NULL,
+  `user_id` varchar(100) NOT NULL,
   `knowledge_id` int NOT NULL,
   `score` float DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_id` (`user_id`,`knowledge_id`),
   KEY `knowledge_id` (`knowledge_id`),
-  CONSTRAINT `user_knowledge_score_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_user_knowledge_userid` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `user_knowledge_score_ibfk_2` FOREIGN KEY (`knowledge_id`) REFERENCES `knowledge_points` (`id`) ON DELETE CASCADE,
   CONSTRAINT `user_knowledge_score_chk_1` CHECK ((`score` between 0 and 10))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

@@ -342,17 +342,6 @@ async def create_user(user: User):
 async def initialize_user_knowledge_scores(user_id: str, connection):
     try:
         with connection.cursor() as cursor:
-            # 獲取用戶的數值型 ID
-            sql = "SELECT id FROM users WHERE user_id = %s"
-            cursor.execute(sql, (user_id,))
-            user_result = cursor.fetchone()
-            
-            if not user_result:
-                print(f"找不到用戶 ID: {user_id}")
-                return
-                
-            numeric_user_id = user_result['id']
-            
             # 獲取所有知識點
             sql = "SELECT id FROM knowledge_points"
             cursor.execute(sql)
@@ -360,7 +349,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             
             # 獲取用戶已有的知識點分數
             sql = "SELECT knowledge_id FROM user_knowledge_score WHERE user_id = %s"
-            cursor.execute(sql, (numeric_user_id,))
+            cursor.execute(sql, (user_id,))  # 直接使用 user_id 字符串
             existing_scores = cursor.fetchall()
             existing_knowledge_ids = [score['knowledge_id'] for score in existing_scores]
             
@@ -372,7 +361,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
                     INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
                     VALUES (%s, %s, 0)
                     """
-                    cursor.execute(sql, (numeric_user_id, knowledge_id))
+                    cursor.execute(sql, (user_id, knowledge_id))  # 直接使用 user_id 字符串
             
             connection.commit()
             print(f"已初始化用戶 {user_id} 的知識點分數")
