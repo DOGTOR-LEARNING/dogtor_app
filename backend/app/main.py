@@ -571,8 +571,18 @@ async def get_questions_by_level(request: Request):
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
                 # 將知識點字符串拆分為列表
-                knowledge_point_list = [kp.strip() for kp in knowledge_points.split('、')]
-                
+                knowledge_point_list = []
+                if knowledge_points:
+                    # 嘗試使用頓號（、）分隔
+                    if '、' in knowledge_points:
+                        knowledge_point_list = [kp.strip() for kp in knowledge_points.split('、')]
+                    # 嘗試使用逗號（,）分隔
+                    elif ',' in knowledge_points:
+                        knowledge_point_list = [kp.strip() for kp in knowledge_points.split(',')]
+                    # 如果只有一個知識點
+                    else:
+                        knowledge_point_list = [knowledge_points.strip()]
+
                 # 獲取知識點的ID
                 knowledge_ids = []
                 for kp in knowledge_point_list:
@@ -580,6 +590,28 @@ async def get_questions_by_level(request: Request):
                     result = cursor.fetchone()
                     if result:
                         knowledge_ids.append(result['id'])
+                    else:
+                        # 嘗試模糊匹配
+                        cursor.execute("SELECT id FROM knowledge_points WHERE point_name LIKE %s", (f"%{kp}%",))
+                        results = cursor.fetchall()
+                        for r in results:
+                            if r['id'] not in knowledge_ids:
+                                knowledge_ids.append(r['id'])
+
+                # 如果仍然沒有找到知識點，嘗試使用 level_id 查找
+                if not knowledge_ids and level_id:
+                    cursor.execute("""
+                    SELECT kp.id
+                    FROM knowledge_points kp
+                    JOIN level_knowledge_mapping lkm ON kp.id = lkm.knowledge_id
+                    WHERE lkm.level_id = %s
+                    """, (level_id,))
+                    results = cursor.fetchall()
+                    for r in results:
+                        knowledge_ids.append(r['id'])
+
+                print(f"知識點列表: {knowledge_point_list}")
+                print(f"找到的知識點 ID: {knowledge_ids}")
                 
                 # 如果有用戶ID，獲取用戶對這些知識點的掌握程度
                 knowledge_scores = {}
@@ -596,16 +628,22 @@ async def get_questions_by_level(request: Request):
                         knowledge_scores[knowledge_id] = score
                         total_score += score
                 
+                # 如果沒有找到任何知識點 ID，返回錯誤
+                if not knowledge_ids:
+                    return {"success": False, "message": "找不到匹配的知識點"}
+
                 # 計算每個知識點應該分配的題目數量
                 total_questions = 10  # 總共要獲取10題
                 questions_per_knowledge = {}
-                
+
                 if user_id and knowledge_scores:
                     # 計算每個知識點的反向權重（分數越低，權重越高）
                     inverse_weights = {}
                     total_inverse_weight = 0
                     
-                    for knowledge_id, score in knowledge_scores.items():
+                    for knowledge_id in knowledge_ids:
+                        # 獲取知識點分數，如果沒有記錄則默認為5
+                        score = knowledge_scores.get(knowledge_id, 5)
                         # 使用反向分數作為權重（10-score），確保最小為1
                         inverse_weight = max(10 - score, 1)
                         inverse_weights[knowledge_id] = inverse_weight
@@ -1005,10 +1043,10 @@ async def get_level_id(request: Request):
         data = await request.json()
         chapter = data.get("chapter", "")
         section = data.get("section", "")  # 這可能包含關卡名稱
-        knowledge_points_str = data.get("knowledge_points", "")
+        knowledge_points = data.get("knowledge_points", "")
         level_num = data.get("level_num", "")  # 從請求中獲取關卡編號
         
-        print(f"接收到的參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points_str}, level_num={level_num}")
+        print(f"接收到的參數: chapter={chapter}, section={section}, knowledge_points={knowledge_points}, level_num={level_num}")
         
         connection = get_db_connection()
         connection.charset = 'utf8mb4'
