@@ -342,6 +342,17 @@ async def create_user(user: User):
 async def initialize_user_knowledge_scores(user_id: str, connection):
     try:
         with connection.cursor() as cursor:
+            # 獲取用戶的數值型 ID
+            sql = "SELECT id FROM users WHERE user_id = %s"
+            cursor.execute(sql, (user_id,))
+            user_result = cursor.fetchone()
+            
+            if not user_result:
+                print(f"找不到用戶 ID: {user_id}")
+                return
+                
+            numeric_user_id = user_result['id']
+            
             # 獲取所有知識點
             sql = "SELECT id FROM knowledge_points"
             cursor.execute(sql)
@@ -349,7 +360,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             
             # 獲取用戶已有的知識點分數
             sql = "SELECT knowledge_id FROM user_knowledge_score WHERE user_id = %s"
-            cursor.execute(sql, (user_id,))
+            cursor.execute(sql, (numeric_user_id,))
             existing_scores = cursor.fetchall()
             existing_knowledge_ids = [score['knowledge_id'] for score in existing_scores]
             
@@ -361,7 +372,7 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
                     INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
                     VALUES (%s, %s, 0)
                     """
-                    cursor.execute(sql, (user_id, knowledge_id))
+                    cursor.execute(sql, (numeric_user_id, knowledge_id))
             
             connection.commit()
             print(f"已初始化用戶 {user_id} 的知識點分數")
@@ -594,55 +605,68 @@ async def get_questions_by_level(request: Request):
 async def record_answer(request: Request):
     try:
         data = await request.json()
-        user_id = data.get("user_id")
-        question_id = data.get("question_id")
-        is_correct = data.get("is_correct", False)
+        user_id = data.get('user_id')
+        question_id = data.get('question_id')
+        is_correct = data.get('is_correct')
         
         if not user_id or not question_id:
-            return {"success": False, "message": "用戶ID和題目ID不能為空"}
+            return {"success": False, "message": "缺少必要參數"}
         
-        # 連接數據庫
-        connection = get_db_connection()
+        # 連接到資料庫
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
         try:
-            with connection.cursor() as cursor:
-                # 檢查記錄是否存在
-                sql = """
-                SELECT id, total_attempts, correct_attempts 
-                FROM user_question_stats 
-                WHERE user_id = %s AND question_id = %s
-                """
-                cursor.execute(sql, (user_id, question_id))
-                result = cursor.fetchone()
+            # 首先獲取數值型的 user_id
+            cursor.execute("SELECT id FROM users WHERE user_id = %s", (user_id,))
+            user_result = cursor.fetchone()
+            
+            if not user_result:
+                return {"success": False, "message": "找不到該用戶"}
+            
+            numeric_user_id = user_result[0]
+            
+            # 檢查是否已有該用戶對該題目的記錄
+            cursor.execute(
+                "SELECT id, total_attempts, correct_attempts FROM user_question_stats WHERE user_id = %s AND question_id = %s",
+                (numeric_user_id, question_id)
+            )
+            record = cursor.fetchone()
+            
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            if record:
+                # 更新現有記錄
+                record_id, total_attempts, correct_attempts = record
+                total_attempts += 1
+                if is_correct:
+                    correct_attempts += 1
                 
-                if result:
-                    # 更新現有記錄
-                    sql = """
-                    UPDATE user_question_stats 
-                    SET total_attempts = total_attempts + 1,
-                        correct_attempts = correct_attempts + %s,
-                        last_attempted_at = NOW()
-                    WHERE id = %s
-                    """
-                    cursor.execute(sql, (1 if is_correct else 0, result["id"]))
-                else:
-                    # 創建新記錄
-                    sql = """
-                    INSERT INTO user_question_stats 
-                    (user_id, question_id, total_attempts, correct_attempts, last_attempted_at)
-                    VALUES (%s, %s, 1, %s, NOW())
-                    """
-                    cursor.execute(sql, (user_id, question_id, 1 if is_correct else 0))
-                
-                connection.commit()
-                return {"success": True}
-        
+                cursor.execute(
+                    "UPDATE user_question_stats SET total_attempts = %s, correct_attempts = %s, last_attempted_at = %s WHERE id = %s",
+                    (total_attempts, correct_attempts, current_time, record_id)
+                )
+            else:
+                # 創建新記錄
+                cursor.execute(
+                    "INSERT INTO user_question_stats (user_id, question_id, total_attempts, correct_attempts, last_attempted_at) VALUES (%s, %s, %s, %s, %s)",
+                    (numeric_user_id, question_id, 1, 1 if is_correct else 0, current_time)
+                )
+            
+            conn.commit()
+            return {"success": True}
+            
+        except Exception as e:
+            conn.rollback()
+            print(f"資料庫錯誤: {str(e)}")
+            return {"success": False, "message": f"資料庫錯誤: {str(e)}"}
         finally:
-            connection.close()
-    
+            cursor.close()
+            conn.close()
+            
     except Exception as e:
-        print(f"Error: {str(e)}")
-        return {"success": False, "message": f"記錄答題情況時出錯: {str(e)}"}
+        print(f"處理答題記錄時出錯: {str(e)}")
+        return {"success": False, "message": f"處理錯誤: {str(e)}"}
 
 @app.post("/report_question_error")
 async def report_question_error(request: Request):
