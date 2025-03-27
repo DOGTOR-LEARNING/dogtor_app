@@ -245,10 +245,10 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   Future<void> _recordUserAnswer(int questionId, bool isCorrect) async {
     try {
       // 如果用戶已登入，則記錄答題情況
-      // 這裡需要根據你的用戶系統進行調整
       final userId = await _getUserId();
       if (userId != null) {
-        await http.post(
+        // 發送請求到後端 API 記錄答題情況
+        final response = await http.post(
           Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/record_answer'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
@@ -257,6 +257,16 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
             'is_correct': isCorrect,
           }),
         );
+        
+        // 檢查響應
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (!data['success']) {
+            print('記錄答題情況失敗：${data['message']}');
+          }
+        } else {
+          print('記錄答題情況失敗，狀態碼：${response.statusCode}');
+        }
       }
     } catch (e) {
       print('Error recording answer: $e');
