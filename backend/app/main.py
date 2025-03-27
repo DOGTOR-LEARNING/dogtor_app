@@ -913,8 +913,9 @@ async def complete_level(request: Request):
         user_id = data.get('user_id')
         level_id = data.get('level_id')
         stars = data.get('stars', 0)
+        knowledge_points = data.get('knowledge_points', [])  # 從前端獲取知識點列表
         
-        print(f"收到關卡完成請求: user_id={user_id}, level_id={level_id}, stars={stars}")
+        print(f"收到關卡完成請求: user_id={user_id}, level_id={level_id}, stars={stars}, knowledge_points={knowledge_points}")
         
         if not user_id or not level_id:
             print(f"錯誤: 缺少必要參數")
@@ -960,10 +961,10 @@ async def complete_level(request: Request):
                     else:
                         print(f"警告: 無法驗證記錄是否保存成功")
                 
-                # 只更新與當前關卡相關的知識點分數
-                print(f"開始更新與關卡 {level_id} 相關的知識點分數")
-                await _update_level_knowledge_scores(user_id, level_id, connection)
-                print(f"關卡相關知識點分數更新完成")
+                # 更新知識點分數
+                print(f"開始更新用戶 {user_id} 的知識點分數")
+                await _update_user_knowledge_scores(user_id, connection)
+                print(f"知識點分數更新完成")
                 
                 return {"success": True, "message": "關卡完成記錄已新增"}
         
@@ -977,51 +978,14 @@ async def complete_level(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"記錄關卡完成時出錯: {str(e)}"}
 
-# 修改輔助函數：只更新與特定關卡相關的知識點分數
-async def _update_level_knowledge_scores(user_id: str, level_id: str, connection):
+# 新的輔助函數：更新用戶的所有知識點分數
+async def _update_user_knowledge_scores(user_id: str, connection):
     try:
-        print(f"正在更新用戶 {user_id} 的關卡 {level_id} 相關知識點分數...")
+        print(f"正在更新用戶 {user_id} 的知識點分數...")
         
         with connection.cursor() as cursor:
-            # 首先檢查並創建必要的表
+            # 獲取用戶最近回答的題目的知識點
             try:
-                # 檢查 level_knowledge_mapping 表是否存在
-                cursor.execute("SHOW TABLES LIKE 'level_knowledge_mapping'")
-                if not cursor.fetchone():
-                    print("警告: level_knowledge_mapping 表不存在，正在創建...")
-                    cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS level_knowledge_mapping (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        level_id INT NOT NULL,
-                        knowledge_id INT NOT NULL,
-                        UNIQUE KEY unique_level_knowledge (level_id, knowledge_id)
-                    )
-                    """)
-                    connection.commit()
-                    print("已創建 level_knowledge_mapping 表")
-                
-                # 檢查 level_questions 表是否存在
-                cursor.execute("SHOW TABLES LIKE 'level_questions'")
-                if not cursor.fetchone():
-                    print("警告: level_questions 表不存在，正在創建...")
-                    cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS level_questions (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        level_id INT NOT NULL,
-                        question_id INT NOT NULL,
-                        UNIQUE KEY unique_level_question (level_id, question_id)
-                    )
-                    """)
-                    connection.commit()
-                    print("已創建 level_questions 表")
-            except Exception as e:
-                print(f"檢查或創建表時出錯: {str(e)}")
-                # 繼續執行，不要因為表創建失敗而中斷整個流程
-            
-            # 直接從用戶最近回答的題目獲取知識點
-            print(f"嘗試從用戶最近回答的題目獲取知識點...")
-            try:
-                # 獲取用戶最近回答的題目的知識點
                 cursor.execute("""
                 SELECT DISTINCT q.knowledge_id
                 FROM questions q
@@ -1032,39 +996,17 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
                 """, (user_id,))
                 
                 knowledge_points = cursor.fetchall()
-                knowledge_ids = [point['knowledge_id'] for point in knowledge_points]
+                knowledge_ids = [point['knowledge_id'] for point in knowledge_points if point['knowledge_id']]
                 
                 if not knowledge_ids:
-                    print(f"警告: 用戶沒有回答過任何題目，嘗試獲取所有知識點...")
-                    # 如果用戶沒有回答過任何題目，獲取所有知識點
-                    cursor.execute("SELECT id FROM knowledge_points LIMIT 10")
-                    knowledge_points = cursor.fetchall()
-                    knowledge_ids = [point['id'] for point in knowledge_points]
-                    
-                    if not knowledge_ids:
-                        print(f"警告: 無法獲取任何知識點，無法更新知識點分數")
-                        return
-            except Exception as e:
-                print(f"獲取知識點時出錯: {str(e)}")
-                # 嘗試獲取所有知識點
-                try:
-                    cursor.execute("SELECT id FROM knowledge_points LIMIT 10")
-                    knowledge_points = cursor.fetchall()
-                    knowledge_ids = [point['id'] for point in knowledge_points]
-                    
-                    if not knowledge_ids:
-                        print(f"警告: 無法獲取任何知識點，無法更新知識點分數")
-                        return
-                except Exception as e2:
-                    print(f"獲取所有知識點時出錯: {str(e2)}")
+                    print(f"警告: 用戶沒有回答過任何題目，無法更新知識點分數")
                     return
-            
-            print(f"找到 {len(knowledge_ids)} 個知識點: {knowledge_ids}")
-            updated_count = 0
-            
-            # 對每個知識點計算分數
-            for knowledge_id in knowledge_ids:
-                try:
+                
+                print(f"找到 {len(knowledge_ids)} 個知識點: {knowledge_ids}")
+                updated_count = 0
+                
+                # 對每個知識點計算分數
+                for knowledge_id in knowledge_ids:
                     # 獲取與該知識點相關的所有題目
                     cursor.execute("""
                     SELECT id 
@@ -1097,12 +1039,12 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
                     total_attempts = stats['total_attempts'] if stats and stats['total_attempts'] else 0
                     correct_attempts = stats['correct_attempts'] if stats and stats['correct_attempts'] else 0
                     
-                    # 修正的分數計算公式
+                    # 分數計算公式
                     if total_attempts == 0:
                         score = 0  # 沒有嘗試過，分數為 0
                     else:
                         # 使用正確率作為基礎分數
-                        accuracy = correct_attempts / total_attempts if total_attempts > 0 else 0
+                        accuracy = correct_attempts / total_attempts
                         
                         # 根據嘗試次數給予額外加權（熟練度）
                         experience_factor = min(1, total_attempts / 10)  # 最多嘗試 10 次達到滿分加權
@@ -1114,25 +1056,25 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
                     score = min(max(score, 0), 10)
                     
                     # 更新知識點分數
-                    try:
-                        cursor.execute("""
-                        INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
-                        VALUES (%s, %s, %s)
-                        ON DUPLICATE KEY UPDATE score = %s
-                        """, (user_id, knowledge_id, score, score))
-                        
-                        updated_count += 1
-                        print(f"已更新知識點 {knowledge_id} 的分數: {score}")
-                    except Exception as e:
-                        print(f"更新知識點 {knowledge_id} 分數時出錯: {str(e)}")
-                except Exception as e:
-                    print(f"處理知識點 {knowledge_id} 時出錯: {str(e)}")
+                    cursor.execute("""
+                    INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE score = %s
+                    """, (user_id, knowledge_id, score, score))
+                    
+                    updated_count += 1
+                    print(f"已更新知識點 {knowledge_id} 的分數: {score}")
+                
+                connection.commit()
+                print(f"已更新 {updated_count} 個知識點的分數")
             
-            connection.commit()
-            print(f"已更新 {updated_count} 個知識點的分數")
+            except Exception as e:
+                print(f"更新知識點分數時出錯: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
     
     except Exception as e:
-        print(f"更新關卡相關知識點分數時出錯: {str(e)}")
+        print(f"更新用戶知識點分數時出錯: {str(e)}")
         import traceback
         print(traceback.format_exc())
 
@@ -1218,7 +1160,7 @@ async def update_knowledge_score(request: Request):
                         score = 0  # 沒有嘗試過，分數為 0
                     else:
                         # 使用正確率作為基礎分數
-                        accuracy = correct_attempts / total_attempts if total_attempts > 0 else 0
+                        accuracy = correct_attempts / total_attempts
                         
                         # 根據嘗試次數給予額外加權（熟練度）
                         experience_factor = min(1, total_attempts / 10)  # 最多嘗試 10 次達到滿分加權

@@ -707,6 +707,14 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         return;
       }
       
+      // 收集本次測驗中的所有知識點
+      Set<String> knowledgePointsSet = {};
+      for (var question in questions) {
+        if (question['knowledge_point'] != null && question['knowledge_point'].isNotEmpty) {
+          knowledgePointsSet.add(question['knowledge_point']);
+        }
+      }
+      
       // 準備請求數據
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/complete_level'),
@@ -714,7 +722,8 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         body: jsonEncode({
           'user_id': userId,
           'level_id': levelId,
-          'stars': _calculateStars(correctAnswersCount, questions.length)  // 根據正確率計算星星數
+          'stars': _calculateStars(correctAnswersCount, questions.length),  // 根據正確率計算星星數
+          'knowledge_points': knowledgePointsSet.toList(),  // 添加知識點列表
         }),
       );
       
