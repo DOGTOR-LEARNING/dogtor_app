@@ -720,6 +720,16 @@ async def get_questions_by_level(request: Request):
                 # 將結果轉換為 JSON 格式
                 result = []
                 for q in all_questions:
+                    # 獲取題目對應的知識點
+                    cursor.execute("""
+                    SELECT kp.point_name
+                    FROM knowledge_points kp
+                    WHERE kp.id = %s
+                    """, (q['knowledge_id'],))
+                    
+                    knowledge_point_result = cursor.fetchone()
+                    knowledge_point = knowledge_point_result['point_name'] if knowledge_point_result else ""
+                    
                     result.append({
                         "id": q["id"],
                         "question_text": q["question_text"],
@@ -730,7 +740,8 @@ async def get_questions_by_level(request: Request):
                             q["option_4"]
                         ],
                         "correct_answer": int(q["correct_answer"]) - 1,  # 轉換為 0-based 索引
-                        "explanation": q["explanation"] or ""
+                        "explanation": q["explanation"] or "",
+                        "knowledge_point": knowledge_point  # 添加知識點信息
                     })
                 
                 return {"success": True, "questions": result}
@@ -1283,4 +1294,3 @@ async def get_knowledge_scores(user_id: str):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取知識點分數時出錯: {str(e)}"}
-
