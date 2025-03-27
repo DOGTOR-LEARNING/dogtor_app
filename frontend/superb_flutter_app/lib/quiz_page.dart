@@ -364,8 +364,11 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       isCalculatingResult = true;
     });
     
-    // 更新知識點分數
-    _updateKnowledgeScore().then((_) {
+    // 先記錄關卡完成情況
+    _completeLevel().then((_) {
+      // 然後更新知識點分數
+      return _updateKnowledgeScore();
+    }).then((_) {
       // 計算完成後，重置狀態
       setState(() {
         isCalculatingResult = false;
@@ -472,7 +475,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     });
   }
 
-  // 添加更新知識點分數的方法
+  // 修改更新知識點分數的方法，添加關卡ID參數
   Future<void> _updateKnowledgeScore() async {
     try {
       final userId = await _getUserId();
@@ -489,6 +492,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         },
         body: jsonEncode({
           'user_id': userId,
+          'level_id': levelId,  // 添加關卡ID參數
         }),
       );
       
@@ -747,10 +751,9 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/complete_level'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'user_id': userId,  // 使用字串形式的用戶 ID
+          'user_id': userId,
           'level_id': levelId,
-          'correct_count': correctAnswersCount,
-          'total_questions': questions.length
+          'stars': _calculateStars(correctAnswersCount, questions.length)  // 根據正確率計算星星數
         }),
       );
       
@@ -765,6 +768,15 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     } catch (e) {
       print('Error completing level: $e');
     }
+  }
+
+  // 根據正確率計算星星數
+  int _calculateStars(int correctCount, int totalQuestions) {
+    final percentage = (correctCount / totalQuestions * 100).round();
+    if (percentage >= 90) return 3;  // 90% 以上獲得 3 星
+    if (percentage >= 70) return 2;  // 70% 以上獲得 2 星
+    if (percentage >= 50) return 1;  // 50% 以上獲得 1 星
+    return 0;  // 50% 以下獲得 0 星
   }
 
   @override

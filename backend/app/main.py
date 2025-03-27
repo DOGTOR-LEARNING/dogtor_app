@@ -959,10 +959,10 @@ async def complete_level(request: Request):
                     else:
                         print(f"警告: 無法驗證記錄是否保存成功")
                 
-                # 更新用戶的知識點分數
-                print(f"開始更新用戶知識點分數")
-                await _update_user_knowledge_scores(user_id, connection)
-                print(f"用戶知識點分數更新完成")
+                # 只更新與當前關卡相關的知識點分數
+                print(f"開始更新與關卡 {level_id} 相關的知識點分數")
+                await _update_level_knowledge_scores(user_id, level_id, connection)
+                print(f"關卡相關知識點分數更新完成")
                 
                 return {"success": True, "message": "關卡完成記錄已新增"}
         
@@ -976,22 +976,45 @@ async def complete_level(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"記錄關卡完成時出錯: {str(e)}"}
 
-# 輔助函數：更新用戶知識點分數
-async def _update_user_knowledge_scores(user_id: str, connection):
+# 新增輔助函數：只更新與特定關卡相關的知識點分數
+async def _update_level_knowledge_scores(user_id: str, level_id: str, connection):
     try:
-        print(f"正在更新用戶 {user_id} 的知識點分數...")
+        print(f"正在更新用戶 {user_id} 的關卡 {level_id} 相關知識點分數...")
         
         with connection.cursor() as cursor:
-            # 獲取所有知識點
-            cursor.execute("SELECT id FROM knowledge_points")
-            all_knowledge_points = cursor.fetchall()
+            # 獲取與該關卡相關的知識點
+            cursor.execute("""
+            SELECT DISTINCT knowledge_id 
+            FROM level_knowledge_mapping 
+            WHERE level_id = %s
+            """, (level_id,))
             
+            knowledge_points = cursor.fetchall()
+            knowledge_ids = [point['knowledge_id'] for point in knowledge_points]
+            
+            if not knowledge_ids:
+                print(f"警告: 找不到與關卡 {level_id} 相關的知識點，嘗試從題目中獲取...")
+                
+                # 如果沒有直接映射，嘗試從題目中獲取知識點
+                cursor.execute("""
+                SELECT DISTINCT q.knowledge_id
+                FROM questions q
+                JOIN level_questions lq ON q.id = lq.question_id
+                WHERE lq.level_id = %s
+                """, (level_id,))
+                
+                knowledge_points = cursor.fetchall()
+                knowledge_ids = [point['knowledge_id'] for point in knowledge_points]
+                
+                if not knowledge_ids:
+                    print(f"警告: 仍然找不到與關卡 {level_id} 相關的知識點")
+                    return
+            
+            print(f"找到 {len(knowledge_ids)} 個與關卡相關的知識點: {knowledge_ids}")
             updated_count = 0
             
             # 對每個知識點計算分數
-            for point in all_knowledge_points:
-                knowledge_id = point['id']
-                
+            for knowledge_id in knowledge_ids:
                 # 獲取與該知識點相關的所有題目
                 cursor.execute("""
                 SELECT q.id 
@@ -1003,7 +1026,7 @@ async def _update_user_knowledge_scores(user_id: str, connection):
                 question_ids = [q['id'] for q in questions]
                 
                 if not question_ids:
-                    # 如果沒有相關題目，跳過此知識點
+                    print(f"知識點 {knowledge_id} 沒有相關題目，跳過")
                     continue
                 
                 # 獲取用戶對這些題目的答題記錄
@@ -1048,67 +1071,24 @@ async def _update_user_knowledge_scores(user_id: str, connection):
                 """, (user_id, knowledge_id, score, score))
                 
                 updated_count += 1
+                print(f"已更新知識點 {knowledge_id} 的分數: {score}")
             
             connection.commit()
             print(f"已更新 {updated_count} 個知識點的分數")
     
     except Exception as e:
-        print(f"更新知識點分數時出錯: {str(e)}")
+        print(f"更新關卡相關知識點分數時出錯: {str(e)}")
         import traceback
         print(traceback.format_exc())
-
-@app.post("/get_user_level_stars")
-async def get_user_level_stars(request: Request):
-    try:
-        data = await request.json()
-        user_id = data.get("user_id")
-        
-        if not user_id:
-            return {"success": False, "message": "缺少用戶 ID"}
-        
-        connection = get_db_connection()
-        connection.charset = 'utf8mb4'
-        
-        try:
-            with connection.cursor() as cursor:
-                # 設置連接的字符集
-                cursor.execute("SET NAMES utf8mb4")
-                cursor.execute("SET CHARACTER SET utf8mb4")
-                cursor.execute("SET character_set_connection=utf8mb4")
-                
-                # 查詢用戶在每個關卡中獲得的最大星星數，使用 level_id 作為鍵
-                sql = """
-                SELECT ul.level_id, MAX(ul.stars) as max_stars
-                FROM user_level ul
-                WHERE ul.user_id = %s
-                GROUP BY ul.level_id
-                """
-                cursor.execute(sql, (user_id,))
-                results = cursor.fetchall()
-                
-                # 將結果轉換為字典格式，使用 level_id 作為鍵
-                level_stars = {}
-                for row in results:
-                    level_stars[str(row['level_id'])] = row['max_stars']
-                
-                return {"success": True, "level_stars": level_stars}
-        
-        finally:
-            connection.close()
-    
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return {"success": False, "message": f"獲取用戶關卡星星數時出錯: {str(e)}"}
 
 @app.post("/update_knowledge_score")
 async def update_knowledge_score(request: Request):
     try:
         data = await request.json()
         user_id = data.get('user_id')
+        level_id = data.get('level_id')  # 新增參數，可選
         
-        print(f"收到更新知識點分數請求: user_id={user_id}")
+        print(f"收到更新知識點分數請求: user_id={user_id}, level_id={level_id}")
         
         if not user_id:
             print(f"錯誤: 缺少用戶 ID")
@@ -1124,6 +1104,17 @@ async def update_knowledge_score(request: Request):
                 cursor.execute("SET CHARACTER SET utf8mb4")
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
+                # 如果提供了關卡 ID，只更新該關卡相關的知識點
+                if level_id:
+                    print(f"只更新關卡 {level_id} 相關的知識點")
+                    await _update_level_knowledge_scores(user_id, level_id, connection)
+                    return {
+                        "success": True, 
+                        "message": f"已更新關卡 {level_id} 相關的知識點分數"
+                    }
+                
+                # 否則更新所有知識點（保留原有功能）
+                print(f"更新所有知識點")
                 # 獲取所有知識點
                 cursor.execute("SELECT id FROM knowledge_points")
                 all_knowledge_points = cursor.fetchall()
