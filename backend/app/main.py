@@ -708,7 +708,7 @@ async def get_questions_by_level(request: Request):
                     
                     # 查詢題目，排除有錯誤訊息的題目
                     sql = f"""
-                    SELECT q.id, q.knowledge_id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
+                    SELECT q.id, q.knowledge_id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation, kp.point_name as knowledge_point
                     FROM questions q
                     JOIN knowledge_points kp ON q.knowledge_id = kp.id
                     JOIN chapter_list cl ON kp.chapter_id = cl.id
@@ -737,7 +737,7 @@ async def get_questions_by_level(request: Request):
                     
                     # 查詢補充題目
                     supplement_sql = f"""
-                    SELECT q.id, q.knowledge_id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation
+                    SELECT q.id, q.knowledge_id, q.question_text, q.option_1, q.option_2, q.option_3, q.option_4, q.correct_answer, q.explanation, kp.point_name as knowledge_point
                     FROM questions q
                     JOIN knowledge_points kp ON q.knowledge_id = kp.id
                     JOIN chapter_list cl ON kp.chapter_id = cl.id
@@ -760,15 +760,8 @@ async def get_questions_by_level(request: Request):
                 # 將結果轉換為 JSON 格式
                 result = []
                 for q in all_questions:
-                    # 獲取題目對應的知識點
-                    cursor.execute("""
-                    SELECT kp.point_name
-                    FROM knowledge_points kp
-                    WHERE kp.id = %s
-                    """, (q['knowledge_id'],))
-                    
-                    knowledge_point_result = cursor.fetchone()
-                    knowledge_point = knowledge_point_result['point_name'] if knowledge_point_result else ""
+                    # 直接使用查詢中獲取的知識點名稱
+                    knowledge_point = q['knowledge_point'] if q['knowledge_point'] else ""
                     
                     result.append({
                         "id": q["id"],
@@ -781,7 +774,8 @@ async def get_questions_by_level(request: Request):
                         ],
                         "correct_answer": int(q["correct_answer"]) - 1,  # 轉換為 0-based 索引
                         "explanation": q["explanation"] or "",
-                        "knowledge_point": knowledge_point  # 添加知識點信息
+                        "knowledge_point": knowledge_point,  # 添加知識點信息
+                        "knowledge_id": q["knowledge_id"]  # 添加知識點ID
                     })
                 
                 return {"success": True, "questions": result}
@@ -963,7 +957,87 @@ async def complete_level(request: Request):
                 
                 # 更新知識點分數
                 print(f"開始更新用戶 {user_id} 的知識點分數")
-                await _update_level_knowledge_scores(user_id, level_id, connection)
+                
+                # 如果前端傳來了知識點列表，則使用這些知識點更新分數
+                if knowledge_points and len(knowledge_points) > 0:
+                    print(f"使用前端提供的知識點列表: {knowledge_points}")
+                    
+                    # 獲取知識點ID
+                    knowledge_ids = []
+                    for kp_name in knowledge_points:
+                        cursor.execute("SELECT id FROM knowledge_points WHERE point_name = %s", (kp_name,))
+                        result = cursor.fetchone()
+                        if result:
+                            knowledge_ids.append(result['id'])
+                    
+                    if knowledge_ids:
+                        print(f"找到知識點ID: {knowledge_ids}")
+                        # 更新這些知識點的分數
+                        for knowledge_id in knowledge_ids:
+                            # 獲取與該知識點相關的所有題目
+                            cursor.execute("""
+                            SELECT id 
+                            FROM questions 
+                            WHERE knowledge_id = %s
+                            """, (knowledge_id,))
+                            
+                            questions = cursor.fetchall()
+                            question_ids = [q['id'] for q in questions]
+                            
+                            if not question_ids:
+                                print(f"知識點 {knowledge_id} 沒有相關題目，跳過")
+                                continue
+                            
+                            # 獲取用戶對這些題目的答題記錄
+                            placeholders = ', '.join(['%s'] * len(question_ids))
+                            query = f"""
+                            SELECT 
+                                SUM(total_attempts) as total_attempts,
+                                SUM(correct_attempts) as correct_attempts
+                            FROM user_question_stats 
+                            WHERE user_id = %s AND question_id IN ({placeholders})
+                            """
+                            
+                            params = [user_id] + question_ids
+                            cursor.execute(query, params)
+                            stats = cursor.fetchone()
+                            
+                            # 計算分數
+                            total_attempts = stats['total_attempts'] if stats and stats['total_attempts'] else 0
+                            correct_attempts = stats['correct_attempts'] if stats and stats['correct_attempts'] else 0
+                            
+                            # 分數計算公式
+                            if total_attempts == 0:
+                                score = 0  # 沒有嘗試過，分數為 0
+                            else:
+                                # 使用正確率作為基礎分數
+                                accuracy = correct_attempts / total_attempts
+                                
+                                # 根據嘗試次數給予額外加權（熟練度）
+                                experience_factor = min(1, total_attempts / 10)  # 最多嘗試 10 次達到滿分加權
+                                
+                                # 最終分數 = 正確率 * 10 * 經驗係數
+                                score = accuracy * 10 * experience_factor
+                            
+                            # 限制分數在 0-10 範圍內
+                            score = min(max(score, 0), 10)
+                            
+                            # 更新知識點分數
+                            cursor.execute("""
+                            INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                            VALUES (%s, %s, %s)
+                            ON DUPLICATE KEY UPDATE score = %s
+                            """, (user_id, knowledge_id, score, score))
+                            
+                            print(f"已更新知識點 {knowledge_id} 的分數: {score}")
+                    else:
+                        print(f"無法找到知識點ID，使用關卡ID更新知識點分數")
+                        await _update_level_knowledge_scores(user_id, level_id, connection)
+                else:
+                    # 如果沒有提供知識點列表，則使用關卡ID更新知識點分數
+                    print(f"沒有提供知識點列表，使用關卡ID更新知識點分數")
+                    await _update_level_knowledge_scores(user_id, level_id, connection)
+                
                 print(f"知識點分數更新完成")
                 
                 return {"success": True, "message": "關卡完成記錄已新增"}
