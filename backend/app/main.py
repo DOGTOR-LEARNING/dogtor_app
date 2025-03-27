@@ -81,58 +81,6 @@ async def chat_with_openai(request: ChatRequest):
     
     return {"response": response.choices[0].message.content}
 
-# @app.post("/generate_questions")
-# async def generate_questions(request: dict):
-#     section = request.get("section", "")
-#     knowledge_points = request.get("knowledge_points", {})
-#     section_summary = request.get("section_summary", "")
-    
-#     prompt = f"""請根據國中「{section}」章節的範圍出 10 題認知性選擇題，格式請嚴格遵守下列 CSV 格式：
-
-# 知識點,問題,解答,選項一,選項二,選項三,選項四
-
-# **課程大綱**：
-# {section_summary}
-
-# **請限制範圍在國中程度，不要涉及高中及以上知識。**
-# 此回合涵蓋的知識點及該學生對各知識點的認知程度：
-# """
-
-#     # 添加知識點和分數
-#     for point, score in knowledge_points.items():
-#         prompt += f"{point},{score}\n"
-
-#     # 添加其他提示內容...
-#     # prompt += f"**嚴禁以下內容**：{negative_prompt}"
-
-#     prompt += f"""
-
-# 請根據學生對這些知識點的掌握程度（1~10 分）來調整題數及難度：
-# 掌握分數越高(8分以上)的題數少一點、難度高一點。
-# 掌握分數越高(3分以上)的題數多一點、簡單一點。
-
-# 範例：
-# 知識點,問題,解答,選項一,選項二,選項三,選項四
-# 常見化學反應,下列那一項不是化學反應常伴隨的現象？,3,氣體產生,沉澱物產生,固體融化,顏色改變
-# 示性式,醋酸的示性式是？,4,HCOOH,H₂CO₃,H₂O,CH₃COOH
-
-# 請針對該學生產生 10 題相關題目，不要有多餘的解釋或格式錯誤，僅回傳純 CSV 格式數據，開頭 **不要重複標題行**，並重複檢查格式是否符合要求，並重複確認題目與答案正確。
-# """
-    
-#     response = client.chat.completions.create(
-#         model="gpt-4o",
-#         messages=[
-#             {"role": "system", "content": "你是一個專業的題目生成器，請使用繁體中文。"},
-#             {"role": "user", "content": prompt}
-#         ],
-#         temperature=0.7,
-#     )
-    
-#     content = response.choices[0].message.content
-#     print(f"Generated content: {content}")
-    
-#     return content
-
 # Ensure the Qpics directory exists
 os.makedirs('Qpics', exist_ok=True)
 
@@ -237,11 +185,6 @@ async def chat_with_openai(request: ChatRequest):
     )
     
     return {"response": response.choices[0].message.content}
-
-'''
-# 串 GPT 解答錯題本中問題
-@app.post("/answer")
-'''
 
 ############### SQL
 
