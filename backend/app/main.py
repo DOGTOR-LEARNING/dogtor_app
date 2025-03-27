@@ -926,35 +926,20 @@ async def complete_level(request: Request):
                 cursor.execute("SET CHARACTER SET utf8mb4")
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
-                # 檢查記錄是否存在
-                cursor.execute(
-                    "SELECT id, stars FROM user_level WHERE user_id = %s AND level_id = %s",
-                    (user_id, level_id)
-                )
-                record = cursor.fetchone()
-                
                 current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 
-                if record:
-                    # 只有當新的星星數量更高時才更新
-                    if stars > record['stars']:
-                        cursor.execute(
-                            "UPDATE user_level SET stars = %s, answered_at = %s WHERE id = %s",
-                            (stars, current_time, record['id'])
-                        )
-                else:
-                    # 創建新記錄
-                    cursor.execute(
-                        "INSERT INTO user_level (user_id, level_id, stars, answered_at) VALUES (%s, %s, %s, %s)",
-                        (user_id, level_id, stars, current_time)
-                    )
+                # 每次都創建新記錄，不檢查是否已存在
+                cursor.execute(
+                    "INSERT INTO user_level (user_id, level_id, stars, answered_at) VALUES (%s, %s, %s, %s)",
+                    (user_id, level_id, stars, current_time)
+                )
                 
                 connection.commit()
                 
                 # 更新用戶的知識點分數
                 await _update_user_knowledge_scores(user_id, connection)
                 
-                return {"success": True, "message": "關卡完成記錄已更新"}
+                return {"success": True, "message": "關卡完成記錄已新增"}
         
         finally:
             connection.close()
