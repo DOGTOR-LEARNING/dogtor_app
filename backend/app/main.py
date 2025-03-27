@@ -983,99 +983,212 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
         print(f"正在更新用戶 {user_id} 的關卡 {level_id} 相關知識點分數...")
         
         with connection.cursor() as cursor:
+            # 首先檢查 level_knowledge_mapping 表是否存在
+            try:
+                cursor.execute("SHOW TABLES LIKE 'level_knowledge_mapping'")
+                if not cursor.fetchone():
+                    print("警告: level_knowledge_mapping 表不存在")
+                    # 嘗試創建表
+                    try:
+                        cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS level_knowledge_mapping (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            level_id INT NOT NULL,
+                            knowledge_id INT NOT NULL,
+                            UNIQUE KEY unique_level_knowledge (level_id, knowledge_id)
+                        )
+                        """)
+                        connection.commit()
+                        print("已創建 level_knowledge_mapping 表")
+                    except Exception as e:
+                        print(f"創建表失敗: {str(e)}")
+            except Exception as e:
+                print(f"檢查表時出錯: {str(e)}")
+            
             # 獲取與該關卡相關的知識點
-            cursor.execute("""
-            SELECT DISTINCT knowledge_id 
-            FROM level_knowledge_mapping 
-            WHERE level_id = %s
-            """, (level_id,))
-            
-            knowledge_points = cursor.fetchall()
-            knowledge_ids = [point['knowledge_id'] for point in knowledge_points]
-            
-            if not knowledge_ids:
-                print(f"警告: 找不到與關卡 {level_id} 相關的知識點，嘗試從題目中獲取...")
-                
-                # 如果沒有直接映射，嘗試從題目中獲取知識點
+            try:
                 cursor.execute("""
-                SELECT DISTINCT q.knowledge_id
-                FROM questions q
-                JOIN level_questions lq ON q.id = lq.question_id
-                WHERE lq.level_id = %s
+                SELECT DISTINCT knowledge_id 
+                FROM level_knowledge_mapping 
+                WHERE level_id = %s
                 """, (level_id,))
                 
                 knowledge_points = cursor.fetchall()
                 knowledge_ids = [point['knowledge_id'] for point in knowledge_points]
                 
                 if not knowledge_ids:
-                    print(f"警告: 仍然找不到與關卡 {level_id} 相關的知識點")
-                    return
+                    print(f"警告: 找不到與關卡 {level_id} 相關的知識點，嘗試從題目中獲取...")
+                    
+                    # 檢查 level_questions 表是否存在
+                    cursor.execute("SHOW TABLES LIKE 'level_questions'")
+                    if not cursor.fetchone():
+                        print("警告: level_questions 表不存在")
+                        # 嘗試創建表
+                        try:
+                            cursor.execute("""
+                            CREATE TABLE IF NOT EXISTS level_questions (
+                                id INT AUTO_INCREMENT PRIMARY KEY,
+                                level_id INT NOT NULL,
+                                question_id INT NOT NULL,
+                                UNIQUE KEY unique_level_question (level_id, question_id)
+                            )
+                            """)
+                            connection.commit()
+                            print("已創建 level_questions 表")
+                        except Exception as e:
+                            print(f"創建表失敗: {str(e)}")
+                    
+                    # 如果沒有直接映射，嘗試從題目中獲取知識點
+                    try:
+                        cursor.execute("""
+                        SELECT DISTINCT q.knowledge_id
+                        FROM questions q
+                        JOIN level_questions lq ON q.id = lq.question_id
+                        WHERE lq.level_id = %s
+                        """, (level_id,))
+                        
+                        knowledge_points = cursor.fetchall()
+                        knowledge_ids = [point['knowledge_id'] for point in knowledge_points]
+                    except Exception as e:
+                        print(f"從題目獲取知識點時出錯: {str(e)}")
+                
+                if not knowledge_ids:
+                    print(f"警告: 仍然找不到與關卡 {level_id} 相關的知識點，嘗試直接從題目獲取...")
+                    
+                    # 直接從題目獲取知識點
+                    try:
+                        # 獲取關卡相關的所有題目
+                        cursor.execute("""
+                        SELECT id FROM questions 
+                        WHERE id IN (
+                            SELECT question_id FROM user_question_stats 
+                            WHERE user_id = %s 
+                            ORDER BY last_attempted_at DESC 
+                            LIMIT 10
+                        )
+                        """, (user_id,))
+                        
+                        recent_questions = cursor.fetchall()
+                        if recent_questions:
+                            recent_question_ids = [q['id'] for q in recent_questions]
+                            
+                            # 獲取這些題目的知識點
+                            placeholders = ', '.join(['%s'] * len(recent_question_ids))
+                            cursor.execute(f"""
+                            SELECT DISTINCT knowledge_id 
+                            FROM questions 
+                            WHERE id IN ({placeholders})
+                            """, recent_question_ids)
+                            
+                            knowledge_points = cursor.fetchall()
+                            knowledge_ids = [point['knowledge_id'] for point in knowledge_points]
+                            
+                            # 將這些知識點與關卡關聯起來
+                            for knowledge_id in knowledge_ids:
+                                try:
+                                    cursor.execute("""
+                                    INSERT IGNORE INTO level_knowledge_mapping (level_id, knowledge_id)
+                                    VALUES (%s, %s)
+                                    """, (level_id, knowledge_id))
+                                except Exception as e:
+                                    print(f"關聯知識點時出錯: {str(e)}")
+                            
+                            connection.commit()
+                            print(f"已將 {len(knowledge_ids)} 個知識點與關卡 {level_id} 關聯")
+                    except Exception as e:
+                        print(f"直接從題目獲取知識點時出錯: {str(e)}")
+                
+                if not knowledge_ids:
+                    print(f"警告: 無法找到任何與關卡 {level_id} 相關的知識點，使用用戶最近回答的題目...")
+                    
+                    # 獲取用戶最近回答的題目的知識點
+                    cursor.execute("""
+                    SELECT DISTINCT q.knowledge_id
+                    FROM questions q
+                    JOIN user_question_stats uqs ON q.id = uqs.question_id
+                    WHERE uqs.user_id = %s
+                    ORDER BY uqs.last_attempted_at DESC
+                    LIMIT 5
+                    """, (user_id,))
+                    
+                    knowledge_points = cursor.fetchall()
+                    knowledge_ids = [point['knowledge_id'] for point in knowledge_points]
+                    
+                    if not knowledge_ids:
+                        print(f"警告: 用戶沒有回答過任何題目，無法更新知識點分數")
+                        return
+            except Exception as e:
+                print(f"獲取知識點時出錯: {str(e)}")
+                return
             
             print(f"找到 {len(knowledge_ids)} 個與關卡相關的知識點: {knowledge_ids}")
             updated_count = 0
             
             # 對每個知識點計算分數
             for knowledge_id in knowledge_ids:
-                # 獲取與該知識點相關的所有題目
-                cursor.execute("""
-                SELECT q.id 
-                FROM questions q 
-                WHERE q.knowledge_id = %s
-                """, (knowledge_id,))
-                
-                questions = cursor.fetchall()
-                question_ids = [q['id'] for q in questions]
-                
-                if not question_ids:
-                    print(f"知識點 {knowledge_id} 沒有相關題目，跳過")
-                    continue
-                
-                # 獲取用戶對這些題目的答題記錄
-                placeholders = ', '.join(['%s'] * len(question_ids))
-                query = f"""
-                SELECT 
-                    SUM(total_attempts) as total_attempts,
-                    SUM(correct_attempts) as correct_attempts
-                FROM user_question_stats 
-                WHERE user_id = %s AND question_id IN ({placeholders})
-                """
-                
-                params = [user_id] + question_ids
-                cursor.execute(query, params)
-                stats = cursor.fetchone()
-                
-                # 計算分數
-                total_attempts = stats['total_attempts'] if stats and stats['total_attempts'] else 0
-                correct_attempts = stats['correct_attempts'] if stats and stats['correct_attempts'] else 0
-                
-                # 修正的分數計算公式
-                if total_attempts == 0:
-                    score = 0  # 沒有嘗試過，分數為 0
-                else:
-                    # 使用正確率作為基礎分數
-                    accuracy = correct_attempts / total_attempts if total_attempts > 0 else 0
-                    
-                    # 根據嘗試次數給予額外加權（熟練度）
-                    experience_factor = min(1, total_attempts / 10)  # 最多嘗試 10 次達到滿分加權
-                    
-                    # 最終分數 = 正確率 * 10 * 經驗係數
-                    score = accuracy * 10 * experience_factor
-                
-                # 限制分數在 0-10 範圍內
-                score = min(max(score, 0), 10)
-                
-                # 更新知識點分數
                 try:
+                    # 獲取與該知識點相關的所有題目
                     cursor.execute("""
-                    INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
-                    VALUES (%s, %s, %s)
-                    ON DUPLICATE KEY UPDATE score = %s
-                    """, (user_id, knowledge_id, score, score))
+                    SELECT id 
+                    FROM questions 
+                    WHERE knowledge_id = %s
+                    """, (knowledge_id,))
                     
-                    updated_count += 1
-                    print(f"已更新知識點 {knowledge_id} 的分數: {score}")
+                    questions = cursor.fetchall()
+                    question_ids = [q['id'] for q in questions]
+                    
+                    if not question_ids:
+                        print(f"知識點 {knowledge_id} 沒有相關題目，跳過")
+                        continue
+                    
+                    # 獲取用戶對這些題目的答題記錄
+                    placeholders = ', '.join(['%s'] * len(question_ids))
+                    query = f"""
+                    SELECT 
+                        SUM(total_attempts) as total_attempts,
+                        SUM(correct_attempts) as correct_attempts
+                    FROM user_question_stats 
+                    WHERE user_id = %s AND question_id IN ({placeholders})
+                    """
+                    
+                    params = [user_id] + question_ids
+                    cursor.execute(query, params)
+                    stats = cursor.fetchone()
+                    
+                    # 計算分數
+                    total_attempts = stats['total_attempts'] if stats and stats['total_attempts'] else 0
+                    correct_attempts = stats['correct_attempts'] if stats and stats['correct_attempts'] else 0
+                    
+                    # 修正的分數計算公式
+                    if total_attempts == 0:
+                        score = 0  # 沒有嘗試過，分數為 0
+                    else:
+                        # 使用正確率作為基礎分數
+                        accuracy = correct_attempts / total_attempts if total_attempts > 0 else 0
+                        
+                        # 根據嘗試次數給予額外加權（熟練度）
+                        experience_factor = min(1, total_attempts / 10)  # 最多嘗試 10 次達到滿分加權
+                        
+                        # 最終分數 = 正確率 * 10 * 經驗係數
+                        score = accuracy * 10 * experience_factor
+                    
+                    # 限制分數在 0-10 範圍內
+                    score = min(max(score, 0), 10)
+                    
+                    # 更新知識點分數
+                    try:
+                        cursor.execute("""
+                        INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
+                        VALUES (%s, %s, %s)
+                        ON DUPLICATE KEY UPDATE score = %s
+                        """, (user_id, knowledge_id, score, score))
+                        
+                        updated_count += 1
+                        print(f"已更新知識點 {knowledge_id} 的分數: {score}")
+                    except Exception as e:
+                        print(f"更新知識點 {knowledge_id} 分數時出錯: {str(e)}")
                 except Exception as e:
-                    print(f"更新知識點 {knowledge_id} 分數時出錯: {str(e)}")
+                    print(f"處理知識點 {knowledge_id} 時出錯: {str(e)}")
             
             connection.commit()
             print(f"已更新 {updated_count} 個知識點的分數")
