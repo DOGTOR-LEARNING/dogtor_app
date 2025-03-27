@@ -907,9 +907,8 @@ async def complete_level(request: Request):
         user_id = data.get('user_id')
         level_id = data.get('level_id')
         stars = data.get('stars', 0)
-        knowledge_points = data.get('knowledge_points', [])  # 從前端獲取知識點列表
         
-        print(f"收到關卡完成請求: user_id={user_id}, level_id={level_id}, stars={stars}, knowledge_points={knowledge_points}")
+        print(f"收到關卡完成請求: user_id={user_id}, level_id={level_id}, stars={stars}")
         
         if not user_id or not level_id:
             print(f"錯誤: 缺少必要參數")
@@ -955,131 +954,37 @@ async def complete_level(request: Request):
                     else:
                         print(f"警告: 無法驗證記錄是否保存成功")
                 
-                # 更新知識點分數
+                # 更新知識點分數 - 使用新的方法
                 print(f"開始更新用戶 {user_id} 的知識點分數")
                 
-                # 如果前端傳來了知識點列表，則使用這些知識點更新分數
-                if knowledge_points and len(knowledge_points) > 0:
-                    print(f"使用前端提供的知識點列表: {knowledge_points}")
-                    
-                    # 獲取知識點ID
-                    knowledge_ids = []
-                    for kp_name in knowledge_points:
-                        cursor.execute("SELECT id FROM knowledge_points WHERE point_name = %s", (kp_name,))
-                        result = cursor.fetchone()
-                        if result:
-                            knowledge_ids.append(result['id'])
-                    
-                    if knowledge_ids:
-                        print(f"找到知識點ID: {knowledge_ids}")
-                        # 更新這些知識點的分數
-                        for knowledge_id in knowledge_ids:
-                            # 獲取與該知識點相關的所有題目
-                            cursor.execute("""
-                            SELECT id 
-                            FROM questions 
-                            WHERE knowledge_id = %s
-                            """, (knowledge_id,))
-                            
-                            questions = cursor.fetchall()
-                            question_ids = [q['id'] for q in questions]
-                            
-                            if not question_ids:
-                                print(f"知識點 {knowledge_id} 沒有相關題目，跳過")
-                                continue
-                            
-                            # 獲取用戶對這些題目的答題記錄
-                            placeholders = ', '.join(['%s'] * len(question_ids))
-                            query = f"""
-                            SELECT 
-                                SUM(total_attempts) as total_attempts,
-                                SUM(correct_attempts) as correct_attempts
-                            FROM user_question_stats 
-                            WHERE user_id = %s AND question_id IN ({placeholders})
-                            """
-                            
-                            params = [user_id] + question_ids
-                            cursor.execute(query, params)
-                            stats = cursor.fetchone()
-                            
-                            # 計算分數
-                            total_attempts = stats['total_attempts'] if stats and stats['total_attempts'] else 0
-                            correct_attempts = stats['correct_attempts'] if stats and stats['correct_attempts'] else 0
-                            
-                            # 分數計算公式
-                            if total_attempts == 0:
-                                score = 0  # 沒有嘗試過，分數為 0
-                            else:
-                                # 使用正確率作為基礎分數
-                                accuracy = correct_attempts / total_attempts
-                                
-                                # 根據嘗試次數給予額外加權（熟練度）
-                                experience_factor = min(1, total_attempts / 10)  # 最多嘗試 10 次達到滿分加權
-                                
-                                # 最終分數 = 正確率 * 10 * 經驗係數
-                                score = accuracy * 10 * experience_factor
-                            
-                            # 限制分數在 0-10 範圍內
-                            score = min(max(score, 0), 10)
-                            
-                            # 更新知識點分數
-                            cursor.execute("""
-                            INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
-                            VALUES (%s, %s, %s)
-                            ON DUPLICATE KEY UPDATE score = %s
-                            """, (user_id, knowledge_id, score, score))
-                            
-                            print(f"已更新知識點 {knowledge_id} 的分數: {score}")
-                    else:
-                        print(f"無法找到知識點ID，使用關卡ID更新知識點分數")
-                        await _update_level_knowledge_scores(user_id, level_id, connection)
-                else:
-                    # 如果沒有提供知識點列表，則使用關卡ID更新知識點分數
-                    print(f"沒有提供知識點列表，使用關卡ID更新知識點分數")
-                    await _update_level_knowledge_scores(user_id, level_id, connection)
-                
-                print(f"知識點分數更新完成")
-                
-                return {"success": True, "message": "關卡完成記錄已新增"}
-        
-        finally:
-            connection.close()
-            print(f"資料庫連接已關閉")
-    
-    except Exception as e:
-        print(f"記錄關卡完成時出錯: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return {"success": False, "message": f"記錄關卡完成時出錯: {str(e)}"}
-
-# 新的輔助函數：更新用戶的所有知識點分數
-async def _update_user_knowledge_scores(user_id: str, connection):
-    try:
-        print(f"正在更新用戶 {user_id} 的知識點分數...")
-        
-        with connection.cursor() as cursor:
-            # 獲取用戶最近回答的題目的知識點
-            try:
+                # 從 level_info 表中獲取關卡對應的 chapter_id
                 cursor.execute("""
-                SELECT DISTINCT q.knowledge_id
-                FROM questions q
-                JOIN user_question_stats uqs ON q.id = uqs.question_id
-                WHERE uqs.user_id = %s
-                ORDER BY uqs.last_attempted_at DESC
-                LIMIT 10
-                """, (user_id,))
+                SELECT chapter_id FROM level_info WHERE id = %s
+                """, (level_id,))
+                level_result = cursor.fetchone()
                 
+                if not level_result:
+                    print(f"錯誤: 找不到關卡 ID {level_id} 的信息")
+                    return {"success": True, "message": "關卡完成記錄已新增，但無法更新知識點分數"}
+                
+                chapter_id = level_result['chapter_id']
+                print(f"找到關卡 {level_id} 對應的章節 ID: {chapter_id}")
+                
+                # 獲取該章節的所有知識點
+                cursor.execute("""
+                SELECT id FROM knowledge_points WHERE chapter_id = %s
+                """, (chapter_id,))
                 knowledge_points = cursor.fetchall()
-                knowledge_ids = [point['knowledge_id'] for point in knowledge_points if point['knowledge_id']]
                 
-                if not knowledge_ids:
-                    print(f"警告: 用戶沒有回答過任何題目，無法更新知識點分數")
-                    return
+                if not knowledge_points:
+                    print(f"警告: 章節 {chapter_id} 沒有相關知識點")
+                    return {"success": True, "message": "關卡完成記錄已新增，但該章節沒有知識點"}
                 
-                print(f"找到 {len(knowledge_ids)} 個知識點: {knowledge_ids}")
+                knowledge_ids = [kp['id'] for kp in knowledge_points]
+                print(f"找到章節 {chapter_id} 的 {len(knowledge_ids)} 個知識點: {knowledge_ids}")
+                
+                # 更新這些知識點的分數
                 updated_count = 0
-                
-                # 對每個知識點計算分數
                 for knowledge_id in knowledge_ids:
                     # 獲取與該知識點相關的所有題目
                     cursor.execute("""
@@ -1141,18 +1046,20 @@ async def _update_user_knowledge_scores(user_id: str, connection):
                 
                 connection.commit()
                 print(f"已更新 {updated_count} 個知識點的分數")
-            
-            except Exception as e:
-                print(f"更新知識點分數時出錯: {str(e)}")
-                import traceback
-                print(traceback.format_exc())
+                
+                return {"success": True, "message": "關卡完成記錄已新增"}
+        
+        finally:
+            connection.close()
+            print(f"資料庫連接已關閉")
     
     except Exception as e:
-        print(f"更新用戶知識點分數時出錯: {str(e)}")
+        print(f"記錄關卡完成時出錯: {str(e)}")
         import traceback
         print(traceback.format_exc())
+        return {"success": False, "message": f"記錄關卡完成時出錯: {str(e)}"}
 
-@app.post("/update_knowledge_score")
+@app.post("/update_knowledge_score") # 沒有用到
 async def update_knowledge_score(request: Request):
     try:
         data = await request.json()

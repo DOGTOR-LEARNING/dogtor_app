@@ -707,15 +707,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         return;
       }
       
-      // 收集本次測驗中的所有知識點
-      Set<String> knowledgePointsSet = {};
-      for (var question in questions) {
-        if (question['knowledge_point'] != null && question['knowledge_point'].isNotEmpty) {
-          knowledgePointsSet.add(question['knowledge_point']);
-        }
-      }
-      
-      // 準備請求數據
+      // 準備請求數據 - 移除了 knowledge_points 參數
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/complete_level'),
         headers: {'Content-Type': 'application/json'},
@@ -723,19 +715,18 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           'user_id': userId,
           'level_id': levelId,
           'stars': _calculateStars(correctAnswersCount, questions.length),  // 根據正確率計算星星數
-          'knowledge_points': knowledgePointsSet.toList(),  // 添加知識點列表
         }),
       );
       
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (!data['success']) {
-          print('保存關卡記錄失敗：${data['message']}');
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data['success']) {
+          print('關卡完成記錄已保存');
         } else {
-          print('成功保存關卡記錄並更新知識點分數');
+          print('保存關卡記錄失敗: ${data['message']}');
         }
       } else {
-        print('保存關卡記錄失敗，狀態碼：${response.statusCode}');
+        print('保存關卡記錄失敗: HTTP ${response.statusCode}');
       }
     } catch (e) {
       print('Error completing level: $e');
