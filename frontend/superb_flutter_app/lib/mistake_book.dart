@@ -31,7 +31,8 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
               .toList();
           _filteredMistakes = _mistakes; // Initially show all mistakes
           print("hi from load mistakes");
-          print(_mistakes);
+          //print(len(_mistakes));
+          print(_mistakes[5]);
         });
       } else {
         throw Exception('Failed to load mistakes');
@@ -221,14 +222,15 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                     itemBuilder: (context, index) {
                       final mistake = _filteredMistakes[_filteredMistakes.length - index - 1];
                       final currentDate = mistake['timestamp'].split('T')[0];
-                      final previousDate = (index < _filteredMistakes.length - 1)
-                          ? _filteredMistakes[_filteredMistakes.length - index - 2]['timestamp'].split('T')[0]
+                      final nextDate = (index > 0)
+                          ? _filteredMistakes[_filteredMistakes.length - index]['timestamp'].split('T')[0]
                           : null;
-
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (index == 0 || currentDate != previousDate)
+                          
+                          if (index == 0 || currentDate != nextDate)
+    
                             Padding(
                               padding: const EdgeInsets.only(top: 0.0, bottom: 4.0, left: 4.0),
                               child: Text(
@@ -237,7 +239,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                   fontFamily: 'Medium',
-                                  color: Color.fromARGB(234, 68, 154, 228),
+                                  color: Color.fromARGB(234, 74, 171, 255),
                                 ),
                               ),
                             ),
@@ -277,59 +279,60 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            '題目編號: ${mistake['q_id']}',
+                                            mistake['q_id'],
                                             style: TextStyle(
                                               color: Color(0xFF102031),
                                               fontSize: 18,
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
-                                          Icon(
-                                            Icons.arrow_forward_ios,
-                                            color: Colors.white60,
-                                            size: 16,
+                                          // Stars directly without tag container
+                                          Text(
+                                            '${'★' * _getDifficultyStars(mistake['difficulty'])}',
+                                            style: TextStyle(
+                                              color: Color(0xFFFFA368), // Orange color for the stars
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ],
                                       ),
                                       SizedBox(height: 12),
-                                      // Tags with modern design
+                                      // Tags with modern design - remove stars from here
                                       Wrap(
                                         spacing: 8,
                                         runSpacing: 8,
-                                         children: [
+                                        children: [
                                           if(mistake['subject'] != '')...[
-                                          _buildChipTag(mistake['subject']),
+                                            _buildChipTag(mistake['subject']),
                                           ],
                                           if(mistake['chapter'] != '')...[
-                                          _buildChipTag(mistake['chapter']),
+                                            _buildChipTag(mistake['chapter']),
                                           ],
-                                          if(mistake['difficulty'] != '')...[
-                                          _buildChipTag('${'★' * _getDifficultyStars(mistake['difficulty'])}'),
-                                          ],
-                                          if(mistake['tags'] != null)...[
-                                              _buildChipTag(mistake['tags']),
+                                          // Remove the difficulty stars tag
+                                          if(mistake['tag'] != '')...[
+                                            _buildChipTag(mistake['tag']),
                                           ],
                                         ],
                                       ),
-                                      // Preview with rounded corners
+                                      SizedBox(height: 12),
+                                      // Image preview
                                       FutureBuilder(
                                         future: http.head(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg')),
                                         builder: (context, snapshot) {
                                           if (snapshot.connectionState == ConnectionState.waiting) {
                                             return SizedBox.shrink();
                                           } else if (snapshot.hasError || snapshot.data?.statusCode != 200) {
+                                            // Return nothing when no image is available
                                             return SizedBox.shrink();
                                           } else {
-                                            return Padding(
-                                              padding: const EdgeInsets.only(top: 16.0), // 👈 Adds space before the image
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(12),
-                                                child: Image.network(
-                                                  'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg',
-                                                  height: 60,
-                                                  width: double.infinity,
-                                                  fit: BoxFit.cover,
-                                                ),
+                                            return ClipRRect(
+                                              borderRadius: BorderRadius.circular(12),
+                                              child: Image.network(
+                                                'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg',
+                                                height: 60,
+                                                width: double.infinity,
+                                                fit: BoxFit.cover,
                                               ),
                                             );
                                           }
@@ -400,7 +403,7 @@ Widget _buildChipTag(String text) {
             text,
             style: TextStyle(
               color:  Color(0xFF102031),
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -474,79 +477,47 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.mistake['summary'],
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              widget.mistake['summary'],
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '${'★' * _getDifficultyStars(widget.mistake['difficulty'])}',
+                              style: TextStyle(
+                                color: Color(0xFFFFA368), // Orange color for the stars
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                         SizedBox(height: 8),
                         Row(
                           children: [
                             if(widget.mistake['subject'] != '')...[
-                            _buildChipTag(widget.mistake['subject']),
-                            SizedBox(width: 8),
+                              _buildChipTag(widget.mistake['subject']),
+                              SizedBox(width: 8),
                             ],
                             if(widget.mistake['chapter'] != '')...[
-                            _buildChipTag(widget.mistake['chapter']),
-                            SizedBox(width: 8),
+                              _buildChipTag(widget.mistake['chapter']),
+                              SizedBox(width: 8),
                             ],
-                            if(widget.mistake['difficulty'] != '')...[
-                            _buildChipTag('${'★' * _getDifficultyStars(widget.mistake['difficulty'])}'),
-                            SizedBox(width: 8),
-                            ],
+                            // Remove the difficulty stars tag
                             if(widget.mistake['tags'] != null)...[
-                                _buildChipTag(widget.mistake['tags']),
-                                SizedBox(width: 8),
+                              _buildChipTag(widget.mistake['tags']),
+                              SizedBox(width: 8),
                             ],
                           ],
                         ),
                       ],
                     ),
-                  ),
-
-                  // Image section
-                  FutureBuilder<bool>(
-                    future: _checkImageExistence(widget.mistake),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator(color: Colors.white));
-                      } else if (snapshot.hasError) {
-                        return Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text('Error loading image', style: TextStyle(color: Colors.white)),
-                        );
-                      } else if (snapshot.data == true) {
-                        return Container(
-                          margin: EdgeInsets.only(bottom: 20),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 12,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(0),
-                            child: Image.network(
-                              'https://superb-backend-1041765261654.asia-east1.run.app/static/${widget.mistake['q_id']}.jpg',
-                              width: double.infinity,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        );
-                      }
-                      return SizedBox.shrink();
-                    },
                   ),
 
                   // Description section
@@ -571,6 +542,37 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                             ),
                           ),
                           SizedBox(height: 12),
+                          
+                          // Image inside the description section
+                          FutureBuilder<bool>(
+                            future: _checkImageExistence(widget.mistake),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return Center(
+                                  child: Container(
+                                    height: 60,
+                                    child: CircularProgressIndicator(color: Colors.white),
+                                  )
+                                );
+                              } else if (snapshot.hasError || snapshot.data != true) {
+                                return SizedBox.shrink(); // No image to display
+                              } else {
+                                return Container(
+                                  margin: EdgeInsets.only(bottom: 16),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(2),
+                                    child: Image.network(
+                                      'https://superb-backend-1041765261654.asia-east1.run.app/static/${widget.mistake['q_id']}.jpg',
+                                      width: double.infinity,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          
+                          // Description text
                           Text(
                             widget.mistake['description'],
                             style: TextStyle(
@@ -629,28 +631,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
   }
 
   // Modern chip-style tag for detail page
-  Widget _buildChipTag(String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Color(0xFF8BB7E0),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            text,
-            style: TextStyle(
-              color: Color(0xFF102031),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  
 }
 
 // Create a separate stateful widget for the detailed answer section
