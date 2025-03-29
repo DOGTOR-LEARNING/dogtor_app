@@ -111,7 +111,7 @@ def read_csv_data(csv_file_path: str) -> List[Dict[str, Any]]:
         return []
 
 def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dict[str, Any], batch_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    """使用 GPT-4o 為每個知識點生成題目，分批處理知識點"""
+    """使用 Gemini 2.0 Flash 為每個知識點生成題目，分批處理知識點"""
     all_questions = {}
     
     # 將知識點分成小批次
@@ -163,7 +163,7 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
 """
 
         try:
-            print(f"[生成題目] 調用 GPT-4o API")
+            print(f"[生成題目] 調用 Gemini 2.0 Flash API")
             # 調用 GPT-4o API
             # response = openai_client.chat.completions.create(
             #     model="gpt-4o",
