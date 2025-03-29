@@ -55,13 +55,14 @@ def preprocess_and_encode(image_path):
 # 轉換 PDF 每一頁為圖片
 pdf_path = "/Users/bowen/Desktop/NTU/Grade2-2/人工智慧/B12705014_hw1_written.pdf"
 pdf_path = "/Users/bowen/Desktop/NTU/Grade2-2/DOGTOR/Dogtor_Database_Schema.pdf"
-pdf_path = "/Users/bowen/Desktop/NTU/Grade2-2/DOGTOR/國二社會/5.112上康軒社會2上A卷_答案.pdf"
+pdf_path = "/Users/bowen/Desktop/NTU/Grade2-2/DOGTOR/國二社會/test.pdf"
 #img_path = "/Users/bowen/Desktop/Screenshots/math_test.png"
 img_path = "/Users/bowen/Desktop/Screenshots/geography_test3.png"
 #img_path = "/Users/bowen/Desktop/Screenshots/small.png"
 #img_path = "/Users/bowen/Desktop/Screenshots/big.png"
 #img_path = "/Users/bowen/Desktop/Screenshots/three.png"
 images = convert_from_path(pdf_path)
+path = "/Users/bowen/Desktop/NTU/Grade2-2/DOGTOR/國中社會科題庫-地理.csv"
 
 #img = Image.open(img_path)
 #text = pytesseract.image_to_string(img, lang='eng')
@@ -72,6 +73,32 @@ prompt1 = "你是一個OCR助手，請完成以下簡單任務：如果覺得不
 prompt2 = "你是一個OCR助手，請逐行瀏覽，回傳你看到的文字和數字"
 prompt3 = "你是一個OCR助手，請總結你看到的文字，並嚴格按照以下csv格式回傳：敘述, 選項A, 選項B, 選項C, 選項D"
 prompt4 = "你是一個OCR助手，請就你能力所及範圍盡可能整合你看到的文字，再就你能力所及範圍，把這些文字變成認知性選擇題，並按照以下csv格式回傳：問題, 選項A, 選項B, 選項C, 選項D, 答案{1,2,3,4}, 詳解"
+prompt5 = """
+請根據頁面上方的資訊整理出年級、冊數、單元名稱、小節名稱等資訊。再來根據題目幫我整理出這個小節含蓋了哪些知識點，知識點只需要是概念名詞，列出 5~9 個知識點，不用分項，並用頓號分隔出所有的知識點。再來幫我整理一段 200 字的小節介紹，概括整節內容，不用換行。
+最後整理成以下csv格式回傳：
+year_grade,book,chapter_name,section_name,knowledge_points,section_summary
+"""
+#較穩定的prompt
+prompt6 = """
+請根據題目幫我整理單元名稱、小節名稱、這個小節含蓋了哪些知識點，知識點只需要是概念名詞，列出 5~9 個知識點，不用分項，並用頓號分隔出所有的知識點。再來幫我整理一段 200 字的小節介紹，概括整節內容，不用換行。
+"""
+#有些可以有些不行
+prompt7 = """
+請根據題目幫我整理單元名稱(chapter_name)、小節名稱(section_name)、這個小節含蓋了哪些知識點，知識點只需要是概念名詞，列出 5~9 個知識點，不用分項，並用頓號分隔出所有的知識點(knowledge_points)。再來幫我整理一段 200 字的小節介紹，概括整節內容，不用換行(section_summary)。
+接著整理成以下格式回傳：chapter_name,section_name,knowledge_points（用頓號分隔同個欄位的知識點）,section_summary
+"""
+prompt8 = "最後整理成以下csv格式回傳：chapter_name,section_name,knowledge_points,section_summary"
+
+prompt9 = """
+請根據題目幫我整理科目、單元名稱、小節名稱、這個小節含蓋了哪些知識點，知識點只需要是概念名詞，列出 5~9 個知識點，不用分項，並用頓號分隔出所有的知識點(knowledge_points)。再來幫我整理一段 200 字的小節介紹，概括整節內容，不用換行(section_summary)。
+接著回傳：{科目},{單元名稱},{小節名稱},{知識點}（用頓號分隔同個小節裡超過一個的知識點）,{大綱}
+"""
+
+prompt9 = """
+請根據題目幫我整理科目、單元名稱、小節名稱、這個小節含蓋了哪些知識點，知識點只需要是概念名詞，列出 5~9 個知識點，不用分項，並用頓號分隔出所有的知識點(knowledge_points)。再來幫我整理一段 200 字的小節介紹，概括整節內容，不用換行(section_summary)。
+接著回傳以上資訊。
+"""
+
 #「記下」vs.「總結」vs. 「整合」vs. 瀏覽
 # 如果response含有抱歉的話再丟一次？
 
@@ -83,17 +110,23 @@ def encode_image(image):
 # OCR 辨識每一頁文字
 text = ""
 for i, img in enumerate(images):
+    # 先測地理
+    if i >= 5:
+        break 
+
     print(f"Processing page {i+1}...")
     base64_image = encode_image(img)
 
-    system_message = "你是一個OCR助手，請逐行瀏覽，回傳你看到的文字"
+    system_message_old = "你是一個OCR助手，請逐行瀏覽，回傳你看到的文字"
+    system_message_old2 = "整理裡面題目的以下資訊：年級、第幾冊、單元名稱、小節名稱、知識點、大綱"
+    system_message = "整理題目的單元名稱、小節名稱、知識點、大綱"
 
     response = client.chat.completions.create(
         model="gpt-4o", #gpt-4-vision-preview
         messages=[
             {"role": "system", "content": system_message},
             {"role": "user", "content": [
-                {"type": "text", "text": prompt4},
+                {"type": "text", "text": prompt9},
                 {"type": "image_url", "image_url": {
                  "url": f"data:image/png;base64,{base64_image}"}
                 }
@@ -104,9 +137,11 @@ for i, img in enumerate(images):
 
     page_text = response.choices[0].message.content
     # 存成文字檔
-    with open(f"Processed_Pics/output_{i}.txt", "w", encoding="utf-8") as f:
-        f.write(text)
-    text += f"\n--- Page {i+1} ---\n" + page_text
+    
+    #with open(f"Processed_Pics/output_{i}.txt", "w", encoding="utf-8") as f:
+    #    f.write(text)
+    #text += f"\n--- Page {i+1} ---\n" + page_text
+    text += (page_text + "\n")
 
 # 顯示或儲存結果
 print("-------辨識結果--------")

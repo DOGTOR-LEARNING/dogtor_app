@@ -789,6 +789,7 @@ async def get_questions_by_level(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取題目時出錯: {str(e)}"}
 
+# 處理question_stats
 @app.post("/record_answer")
 async def record_answer(request: Request):
     try:
@@ -900,6 +901,7 @@ async def report_question_error(request: Request):
         print(traceback.format_exc())
         return {"success": False, "message": f"回報題目錯誤時出錯: {str(e)}"}
 
+# 紀錄答題狀況、更新知識點紀錄
 @app.post("/complete_level")
 async def complete_level(request: Request):
     try:
