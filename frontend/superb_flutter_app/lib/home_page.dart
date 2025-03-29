@@ -291,6 +291,7 @@ void _onItemTapped(int index) {
                                                 fontSize: calculateTextSize(size),
                                                 color: Colors.white,
                                               ),
+                                              // hello
                                               child: Text(
                                                 planets[index]['name'],
                                                 textAlign: TextAlign.start,
