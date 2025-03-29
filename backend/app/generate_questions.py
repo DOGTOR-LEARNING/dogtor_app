@@ -6,6 +6,7 @@ import pymysql
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from google.cloud import aiplatform
+from google.auth import exceptions
 from openai import OpenAI
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
@@ -22,7 +23,14 @@ deepseek_client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com"
 )
-aiplatform.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"))
+try:
+    # 嘗試初始化 AI Platform 客戶端
+    aiplatform.init(project="dogtor-454402", location="us-central1")
+    print("成功初始化AI平台客戶端")
+except exceptions.DefaultCredentialsError:
+    print("未能找到有效的認證。請檢查您的憑證設置。")
+except Exception as e:
+    print(f"發生錯誤: {e}")
 
 gemini_client = OpenAI(
     api_key=os.getenv("GEMINI_API_KEY"),
@@ -54,6 +62,7 @@ def get_db_connection():
             # 在 App Engine 或 Cloud Run 中運行
             connection = pymysql.connect(
                 user=os.getenv('DB_USER'),
+                port=5433,
                 password=os.getenv('DB_PASSWORD'),
                 database=os.getenv('DB_NAME'),
                 unix_socket=f"/cloudsql/{os.getenv('INSTANCE_CONNECTION_NAME')}",
@@ -63,7 +72,7 @@ def get_db_connection():
             # 在本地環境中運行，使用 Cloud SQL Proxy
             connection = pymysql.connect(
                 host=os.getenv('DB_HOST', '127.0.0.1'),
-                port=int(os.getenv('DB_PORT', 3306)),
+                port=int(os.getenv('DB_PORT', 5433)),
                 user=os.getenv('DB_USER'),
                 password=os.getenv('DB_PASSWORD'),
                 database=os.getenv('DB_NAME'),
@@ -135,7 +144,7 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
 但在本次請求中，我只需要你為以下知識點生成題目:
 {', '.join(batch_points)}
 
-請為每個指定的知識點生成 16 道選擇題，題型可以是一般的選擇題，或是挖空格選出正確選項的挖空選擇題。每道題有 4 個選項，只有 1 個正確答案。
+請為每個指定的知識點生成 20 道選擇題，題型可以是一般的選擇題，或是挖空格選出正確選項的挖空選擇題。每道題有 4 個選項，只有 1 個正確答案。
 
 要求:
 1. 題目難度可以從簡單到挑戰，但要適合該年級學生，不要出現太過艱深的題目
@@ -245,7 +254,8 @@ def verify_question_with_deepseek(question_data: Dict[str, Any]) -> Tuple[bool, 
         
         # 解析回應
         content = response.choices[0].message.content.strip()
-        
+        content = content.strip('"')
+        print("content deepseek:", content)
         # 判斷結果
         is_correct = content == "Y"
         correct_answer = ""
@@ -288,9 +298,11 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
         
         # 解析回應
         content = response.choices[0].message.content.strip()
-        
+        content = content.strip('"')
+        print("content o3-mini:", content)
         # 判斷結果
         is_correct = content == "Y"
+        #print("is_correct_o3-mini:", is_correct)
         correct_answer = ""
         explanation = ""
         
@@ -316,7 +328,7 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請分析這道題目，如果題目有瑕疵，請只回答 "N"。
+請稍微分析這道題目，如果題目有瑕疵，請只回答 "N"。
 如果題目沒有瑕疵，請判斷給出的答案是否正確。
 如果答案正確，請只回答 "Y"。
 如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
@@ -324,19 +336,35 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
 """
 
 
-        vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
+        # 改用 Gemini 2.0 Flash 生成題目
+        response = gemini_client.chat.completions.create(
+            model="gemini-2.0-flash",
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        
+        content = response.choices[0].message.content.strip()
+        content = content.strip('"')
+        print("content gemini:", content)
+        #print(content)
+        
+        #Bowen跑不起來的 vertexai
+        #vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
         
         # 創建模型實例
-        model = GenerativeModel("gemini-2.0-flash")
+        #model = GenerativeModel("gemini-2.0-flash")
         
         # 生成回應
-        response = model.generate_content(prompt)
+        #response = model.generate_content(prompt)
         
         # 解析回應
-        content = response.text.strip()
+        #content = response.text.strip()
         
         # 判斷結果
-        is_correct = content == "Y"
+        is_correct = (content == "Y")
+        #print("is_correct:", is_correct)
         correct_answer = ""
         explanation = ""
         
@@ -491,7 +519,11 @@ def get_or_create_knowledge_point(connection, chapter_id: int, section_data: Dic
 def process_question(connection, knowledge_id: int, question_data: Dict[str, Any]):
     """處理單個題目：驗證並保存到數據庫"""
     try:
+        
         print(f"  [驗證開始] 使用三個模型驗證題目")
+
+        print("題目內容：")
+        print()
         
         # 使用三個模型驗證題目
         print(f"  [驗證 1/3] 使用 DeepSeek 驗證")
@@ -534,7 +566,7 @@ def process_question(connection, knowledge_id: int, question_data: Dict[str, Any
         
         # 其他情況：模型給出不同答案或認為題目有問題
         else:
-            print(f"  [捨棄] 題目被捨棄: {question_data['question'][:30]}...")
+            print(f"  [捨棄] 題目被捨棄: {question_data['question']}...") #[:30]
             print(f"  [詳情] DeepSeek: 正確={deepseek_correct}, 答案={deepseek_answer}")
             print(f"  [詳情] o3mini: 正確={gpt4_correct}, 答案={gpt4_answer}")
             print(f"  [詳情] Gemini: 正確={gemini_correct}, 答案={gemini_answer}")
@@ -581,7 +613,12 @@ def process_section(subject: str, section_data: Dict[str, Any]):
             # 處理該知識點的所有題目
             successful_questions = 0
             for i, question_data in enumerate(questions):
-                print(f"[檢查點 4.2] 處理題目 {i+1}/{len(questions)}: {question_data['question'][:30]}...")
+                print(f"[檢查點 4.2] 處理題目 {i+1}/{len(questions)}: {question_data['question']}...") #[:30]
+                print("選項A:", question_data['options'][0])
+                print("選項B:", question_data['options'][1])
+                print("選項C:", question_data['options'][2])
+                print("選項D:", question_data['options'][3])
+                print("答案：", question_data['answer'])
                 # 添加延遲以避免 API 限制
                 time.sleep(1)
                 
