@@ -19,6 +19,9 @@ class _AddMistakePageState extends State<AddMistakePage> {
   final TextEditingController _detailedAnswerController = TextEditingController();
 
   String _selectedTag = "A"; // Default selection for answer options
+  String _selectedSubject = "數學"; // Default subject
+  String _selectedDifficulty = "Medium"; // Default difficulty
+  
   final ImagePicker _picker = ImagePicker();
   XFile? _selectedImage; // 用於存儲選擇的圖片
   String _response = ""; // 存儲 AI 的回應
@@ -36,7 +39,9 @@ class _AddMistakePageState extends State<AddMistakePage> {
       "description": _questionController.text,
       "simple_answer": _selectedTag,
       "detailed_answer": _detailedAnswerController.text,
-      "tag": _selectedTag,
+      "tag": _tagController.text,
+      "subject": _selectedSubject,
+      "difficulty": _selectedDifficulty,
     };
 
     try {
@@ -55,19 +60,43 @@ class _AddMistakePageState extends State<AddMistakePage> {
         _response = responseData["response"] ?? "No response";
         _isLoading = false; // 停止加載
       });
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('錯題添加成功！'),
+          backgroundColor: Color(0xFF1E3875),
+        ),
+      );
+      
+      // Navigate back after successful submission
+      Future.delayed(Duration(seconds: 1), () {
+        Navigator.pop(context);
+      });
+      
     } catch (e) {
       setState(() {
         _response = "Error: $e";
         _isLoading = false; // 停止加載
       });
-      print("Detailed error: $e");
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('錯誤: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   Future<void> _generateAnswer() async {
-    if (_imageBytes == null) {
+    if (_selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('請選擇一張圖片')),
+        SnackBar(
+          content: Text('請選擇一張圖片'),
+          backgroundColor: Colors.red,
+        )
       );
       return;
     }
@@ -77,26 +106,17 @@ class _AddMistakePageState extends State<AddMistakePage> {
     });
 
     try {
-
-      
-      if (_selectedImage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('請選擇一張圖片')),
-        );
-        return;
-      }
-      
       final bytes = await _selectedImage!.readAsBytes();
+      setState(() {
+        _imageBytes = bytes; // Set the image bytes for display
+      });
+      
       final base64Image = base64Encode(bytes);
-
-      // 使用已經讀取的圖片字節
-      //final base64Image = base64Encode(_imageBytes!);
 
       // 構建請求體
       final Map<String, dynamic> requestBody = {
         "image_base64": base64Image,
         "question": _questionController.text,
-        // 可以根據需要添加其他字段
       };
 
       final response = await http.post(
@@ -113,163 +133,620 @@ class _AddMistakePageState extends State<AddMistakePage> {
       setState(() {
         _response = responseData["response"] ?? "No response";
         _isLoading = false; // 停止加載
-      }
-      );
-      print("response:");
-      //print(_response[1]);
+      });
     } catch (e) {
       setState(() {
         _response = "Error: $e";
         _isLoading = false; // 停止加載
       });
-      //print("Detailed error: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('新增錯題'),
-        actions: [
-          TextButton(
-            onPressed: _submitData,
-            child: Text('Submit', style: TextStyle(color: Colors.white)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close the page
-            },
-            child: Text('Cancel', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 題目部分
-              Text('題目', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              TextField(
-                controller: _questionController,
-                decoration: InputDecoration(labelText: '輸入題目'),
-              ),
-              SizedBox(height: 10),
-              
-              // 圖片選擇按鈕
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      backgroundColor: Color(0xFF102031),
+      body: Stack(
+        children: [
+          // Background color and image at top
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 240,
+            child: Container(
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  ElevatedButton(
-                    onPressed: () async {
-                      // 打開相機
-                      final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-                      if (image != null) {
-                        setState(() {
-                          _selectedImage = image; // 存儲選擇的圖片
-                        });
-                      }
-                    },
-                    child: Text('打開相機'),
-                  ),
-                  
-                  ElevatedButton(
-                    onPressed: () async {
-                      // 從相簿中選擇
-                      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-                      if (image != null) {
-                        setState(() {
-                          _selectedImage = image; // 存儲選擇的圖片
-                        });
-                      }
-                    },
-                    child: Text('從相簿中選擇'),
-                  ),
-                
-                  ElevatedButton(
-                    onPressed: _generateAnswer,
-                    child: Text('生成摘要'),
-                  ),
-                ],
-              ),
-              
-              // 顯示選擇的圖片
-              SizedBox(height: 20),
-              if (_imageBytes != null)
-                Center(
-                  child: Image.memory(
-                    _imageBytes!,
-                    height: 150,
-                    fit: BoxFit.contain,
-                  ),
-                )
-              else
-                Center(child: Text("尚未選擇圖片")),
-              
-              // AI 回應顯示
-              if (_response.isNotEmpty) ...[
-                SizedBox(height: 20),
-                Text('AI 回應:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Container(
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Text(_response),
-                ),
-              ],
-
-              SizedBox(height: 20),
-
-              // 解答部分
-              Text('解答', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              Row(
-                children: [
-                  DropdownButton<String>(
-                    value: _selectedTag,
-                    items: ['A', 'B', 'C', 'D'].map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (newValue) {
-                      setState(() {
-                        _selectedTag = newValue!;
-                      });
-                    },
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: _detailedAnswerController,
-                      decoration: InputDecoration(labelText: '輸入詳解'),
+                  // Color block above image
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 40,
+                      color:  Color(0xFF102031),
+                      width: double.infinity,
                     ),
                   ),
+                  // Image positioned below color block
+ 
                 ],
               ),
-              
-              SizedBox(height: 20),
-              TextField(
-                controller: _tagController,
-                decoration: InputDecoration(labelText: '備註/標籤'),
-              ),
-              
-              // 加載指示器
-              if (_isLoading)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: CircularProgressIndicator(),
+            ),
+          ),
+
+          // Main content
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Top bar with back button
+                Container(
+                  height: 56,
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Row(
+                          children: [
+                            Icon(Icons.arrow_back, color: Colors.white, size: 14),
+                            SizedBox(width: 4),
+                            Text(
+                              "返回",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        "新增錯題",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _submitData,
+                        child: Text(
+                          "提交",
+                          style: TextStyle(
+                            color:  Color(0xFFFFA368),
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Medium',
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+                
+                // Scrollable form
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // FIRST GROUP: Question input and image selection together
+                        Container(
+                          margin: EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Question input
+                              Text(
+                                "題目",
+                                style: TextStyle(
+                                  color: const Color.fromARGB(255, 255, 255, 255),
+                                  fontSize: 18,
+                                  fontFamily: 'Medium',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: TextField(
+                                  controller: _questionController,
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 16.0,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: "輸入題目",
+                                    hintStyle: TextStyle(color: Colors.black54),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  ),
+                                  maxLines: 5,
+                                  minLines: 1,
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              
+                              // Image section
+                              
+                              SizedBox(height: 8),
+                              
+                              // Image preview
+                              Container(
+                                width: double.infinity,
+                                height: 180,
+                                decoration: BoxDecoration(
+                                  color: Colors.black12,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white24, width: 1),
+                                ),
+                                child: _imageBytes != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.memory(
+                                        _imageBytes!,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Text(
+                                        "尚未選擇圖片",
+                                        style: TextStyle(color: Colors.white70),
+                                      ),
+                                    ),
+                              ),
+                              SizedBox(height: 16),
+                              
+                              // Image selection buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildActionButton(
+                                      icon: Icons.camera_alt,
+                                      label: "相機",
+                                      onPressed: () async {
+                                        final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+                                        if (image != null) {
+                                          setState(() {
+                                            _selectedImage = image;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildActionButton(
+                                      icon: Icons.photo_library,
+                                      label: "相簿",
+                                      onPressed: () async {
+                                        final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+                                        if (image != null) {
+                                          setState(() {
+                                            _selectedImage = image;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildActionButton(
+                                      icon: Icons.auto_awesome,
+                                      label: "生成摘要",
+                                      color: Color(0xFF1E3875),
+                                      iconColor: Color(0xFFFFA368),
+                                      textColor: Colors.white,
+                                      onPressed: _generateAnswer,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // AI response display
+                        if (_response.isNotEmpty) ...[
+                          Container(
+                            width: double.infinity,
+                            margin: EdgeInsets.only(bottom: 16),
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "AI 回應",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  _response,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        
+                        // SECOND GROUP: Subject, difficulty dropdowns and tag input
+                        Container(
+                          margin: EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "分類與標籤",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontFamily: 'Medium',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              
+                              // Subject and difficulty dropdowns
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        
+                                        SizedBox(height: 6),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFF8BB7E0),
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          padding: EdgeInsets.symmetric(horizontal: 12),
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton<String>(
+                                              isExpanded: true,
+                                              value: _selectedSubject,
+                                              borderRadius: BorderRadius.circular(12),
+                                              dropdownColor: Color(0xFF8BB7E0),
+                                              icon: Icon(Icons.arrow_drop_down, color: Color(0xFF102031)),
+                                              style: TextStyle(color: Color(0xFF102031), fontSize: 15),
+                                              items: ["數學", "國文", "理化", "歷史"]
+                                                  .map((subject) => DropdownMenuItem<String>(
+                                                        value: subject,
+                                                        child: Text(subject),
+                                                      ))
+                                                  .toList(),
+                                              onChanged: (newValue) {
+                                                setState(() {
+                                                  _selectedSubject = newValue!;
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        
+                                        SizedBox(height: 6),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFF8BB7E0),
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          padding: EdgeInsets.symmetric(horizontal: 12),
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton<String>(
+                                              isExpanded: true,
+                                              value: _selectedDifficulty,
+                                              borderRadius: BorderRadius.circular(12),
+                                              dropdownColor: Color(0xFF8BB7E0),
+                                              icon: Icon(Icons.arrow_drop_down, color: Color(0xFF102031)),
+                                              style: TextStyle(color: Color(0xFF102031), fontSize: 15),
+                                              items: ["Easy", "Medium", "Hard"]
+                                                  .map((difficulty) => DropdownMenuItem<String>(
+                                                        value: difficulty,
+                                                        child: Row(
+                                                          children: [
+                                                            Text(
+                                                              '★' * (_getDifficultyStars(difficulty)),
+                                                              style: TextStyle(
+                                                                color: Color(0xFFFFA368),
+                                                              ),
+                                                            ),
+                                                            SizedBox(width: 8),
+                                                            Text(difficulty),
+                                                          ],
+                                                        ),
+                                                      ))
+                                                  .toList(),
+                                              onChanged: (newValue) {
+                                                setState(() {
+                                                  _selectedDifficulty = newValue!;
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16),
+                              
+                              // Tags input
+                              
+                              SizedBox(height: 6),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: TextField(
+                                  controller: _tagController,
+                                  style: TextStyle(color: Colors.black87, fontSize: 16),
+                                  decoration: InputDecoration(
+                                    hintText: "輸入標籤 (選填)",
+                                    hintStyle: TextStyle(color: Colors.black54),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Answer section
+                        Container(
+                          margin: EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "答案",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontFamily: 'Medium',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              
+                              // Simple answer
+                              Row(
+                                children: [
+                                  Text(
+                                    "選項: ",
+                                    style: TextStyle(color: Colors.white, fontSize: 15),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFF8BB7E0),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: EdgeInsets.symmetric(horizontal: 8),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: _selectedTag,
+                                        dropdownColor: Color(0xFF8BB7E0),
+                                        icon: Icon(Icons.arrow_drop_down, color: Color(0xFF102031)),
+                                        style: TextStyle(color: Color(0xFF102031), fontSize: 15),
+                                        items: ['A', 'B', 'C', 'D'].map((String value) {
+                                          return DropdownMenuItem<String>(
+                                            value: value,
+                                            child: Text(value),
+                                          );
+                                        }).toList(),
+                                        onChanged: (newValue) {
+                                          setState(() {
+                                            _selectedTag = newValue!;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16),
+                              
+                              // Detailed answer
+                              
+                              SizedBox(height: 6),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: TextField(
+                                  controller: _detailedAnswerController,
+                                  style: TextStyle(color: Colors.black87, fontSize: 16),
+                                  decoration: InputDecoration(
+                                    hintText: "輸入詳解",
+                                    hintStyle: TextStyle(color: Colors.black54),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.all(12),
+                                  ),
+                                  maxLines: 4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Submit button
+                        Container(
+                          margin: EdgeInsets.only(bottom: 60), // Extra space at bottom
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0xFF1E3875).withOpacity(0.3),
+                                blurRadius: 12,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
+          
+          // Loading overlay
+          if (_isLoading)
+            Container(
+              color: Colors.black54,
+              width: double.infinity,
+              height: double.infinity,
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF102031),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8BB7E0)),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        "處理中...",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+  
+  // Helper methods for UI components
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
+  }
+  
+  Widget _buildInputContainer({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: child,
+    );
+  }
+  
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    Color iconColor = const Color(0xFF102031),
+    Color color = Colors.white,
+    Color textColor = const Color(0xFF102031),
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: textColor,
+        elevation: 0,
+        padding: EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18, color: iconColor),
+          SizedBox(width: 6),
+          Text(label),
+        ],
+      ),
+    );
+  }
+}
+
+int _getDifficultyStars(String difficulty) {
+  switch (difficulty) {
+    case 'Easy':
+      return 1;
+    case 'Medium':
+      return 2;
+    case 'Hard':
+      return 3;
+    default:
+      return 0;
   }
 }
