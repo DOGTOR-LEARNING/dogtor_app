@@ -362,8 +362,8 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
 4. {question_data['options'][3]}
 正確答案: {question_data['answer']}
 
-請提供一個簡潔但清楚點出題目重點的解釋，告訴這位同學為什麼這個答案是正確的，或是其他選項為什麼不正確。
-解釋應該有教育意義，幫助學生理解相關知識點，且中文字要是繁體中文。
+請提供一個簡短但清楚條列出題目重點的解釋，告訴這位同學為什麼這個答案是正確的，或其他選項為什麼不正確。
+解釋應該有教育意義，幫助學生理解相關知識點，且中文字要是繁體中文，可以非常少量使用合適的 emoji 。
 """
 
         # 調用 o3-mini API
