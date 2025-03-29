@@ -4,7 +4,8 @@ import 'main.dart';  // 引入原來的 AI 問問題頁面
 import 'auth_page.dart';  // Import the AuthPage
 import 'mistake_book.dart';  // Import the MistakeBookPage
 import 'dart:math';
-import 'chapter_detail_page.dart';  // Import the ChapterDetailPage
+// import 'chapter_detail_page.dart';  // 默認深藍色
+import 'chapter_detail_page_n.dart';  // 藍橘配色
 import 'chat_page_s.dart';
 import 'user_profile_page.dart';  // 引入新的用戶中心頁面
 import 'package:flutter_svg/flutter_svg.dart';
