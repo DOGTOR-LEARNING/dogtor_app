@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:ui';  // 添加這行來引入 ImageFilter
 import 'main.dart';  // 引入原來的 AI 問問題頁面
 import 'auth_page.dart';  // Import the AuthPage
 import 'mistake_book.dart';  // Import the MistakeBookPage
@@ -9,6 +10,7 @@ import 'chapter_detail_page_n.dart';  // 藍橘配色
 import 'chat_page_s.dart';
 import 'user_profile_page.dart';  // 引入新的用戶中心頁面
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/rendering.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -112,21 +114,25 @@ void _onItemTapped(int index) {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBody: true,
       body: Stack(
         children: [
-          // 主要內容區域
+          // 背景圖片
+          Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/home-background.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // 主要內容
           IndexedStack(
             index: _selectedIndex,
             children: [
               MistakeBookPage(),
               Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/home-background.png'),
-                    fit: BoxFit.fill,
-                  ),
-                  color: Color(0xFF1B3B4B),
-                ),
                 child: Column(
                   children: [
                     SizedBox(height: 50),
@@ -308,46 +314,220 @@ void _onItemTapped(int index) {
               ChatPage(),
             ],
           ),
-        ],
-      ),
-      // 底部導航欄
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: Colors.white.withOpacity(0.2),
-              width: 0.5,
+          // 自定義底部導航欄
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // 獲取屏幕寬度
+                final screenWidth = MediaQuery.of(context).size.width;
+                // 計算基準尺寸（以屏幕寬度的比例）
+                final baseWidth = screenWidth * 0.36; // 約佔屏幕寬度的 36%
+                
+                // 計算各個按鈕的尺寸，保持原始寬高比
+                final questionSize = Size(baseWidth * 0.78, baseWidth * 1.1);  // 140/179 ≈ 0.78, 198/179 ≈ 1.1
+                final studySize = Size(baseWidth, baseWidth * 1.41);  // 179/179 = 1, 253/179 ≈ 1.41
+                final chatSize = Size(baseWidth * 0.79, baseWidth * 1.11);  // 141/179 ≈ 0.79, 199/179 ≈ 1.11
+
+                return Container(
+                  height: baseWidth * 1.41,  // 使用最高按鈕的高度
+                  child: Stack(
+                    clipBehavior: Clip.none, // 允許子元素超出邊界
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      // 模糊效果底框 (最底層)
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: SizedBox(
+                          height: baseWidth * 1, // Provide a height constraint
+                          child: Column(
+                            children: [
+                              // Top part with lighter blur
+                              Expanded(
+                                flex: 2,
+                                child: ClipRect(
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 1.0, sigmaY: 1.0),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.0),
+                                            Colors.white.withOpacity(0.02),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Middle part with stronger blur
+                              Expanded(
+                                flex: 4,
+                                child: ClipRect(
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 3.0, sigmaY: 3.0),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.02),
+                                            Colors.white.withOpacity(0.05),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Bottom part with lighter blur
+                              Expanded(
+                                flex: 2,
+                                child: ClipRect(
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.05),
+                                            Colors.white.withOpacity(0.0),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+
+                      // 導航按鈕 - 學習（次底層）
+                      Positioned(
+                        bottom: baseWidth * 0.1,
+                        left: (screenWidth - studySize.width) / 2,
+                        child: Container(
+                          width: studySize.width * 1.17,
+                          height: studySize.height * 1.17,
+                          child: GestureDetector(
+                            onTap: () => _onItemTapped(1),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Expanded(
+                                  child: Image.asset(
+                                    'assets/images/toolbar-study.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                SizedBox(height: baseWidth * 0.02),
+                                Text(
+                                  '學習',
+                                  style: TextStyle(
+                                    color: _selectedIndex == 1 ? Colors.white : Colors.white.withOpacity(0.7),
+                                    fontSize: baseWidth * 0.08,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 背景圖片 - 放在學習按鈕上方
+                      Positioned(
+                        bottom: -screenWidth * 0.06,
+                        left: 0,
+                        child: Container(
+                          width: screenWidth * 1.2,
+                          height: baseWidth,
+                          child: Image.asset(
+                            'assets/images/toolbar-background.png',
+                            fit: BoxFit.fill,
+                          ),
+                        ),
+                      ),
+                      // 導航按鈕 - 即問題
+                      Positioned(
+                        right: screenWidth * 0.05,
+                        bottom: baseWidth * 0.19,
+                        child: Container(
+                          width: chatSize.width * 1.2,
+                          height: chatSize.height * 1.2,
+                          child: GestureDetector(
+                            onTap: () => _onItemTapped(2),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Expanded(
+                                  child: Image.asset(
+                                    'assets/images/toolbar-chat.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                SizedBox(height: baseWidth * 0.02),
+                                Text(
+                                  '汪汪題',
+                                  style: TextStyle(
+                                    color: _selectedIndex == 2 ? Colors.white : Colors.white.withOpacity(0.7),
+                                    fontSize: baseWidth * 0.08,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 導航按鈕 - 錯題本（最上層）
+                      Positioned(
+                        left: screenWidth * 0.04,
+                        bottom: baseWidth * 0.16,
+                        child: Container(
+                          width: questionSize.width * 1.2,
+                          height: questionSize.height * 1.2,
+                          child: GestureDetector(
+                            onTap: () => _onItemTapped(0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Expanded(
+                                  child: Image.asset(
+                                    'assets/images/toolbar-question.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                SizedBox(height: baseWidth * 0.02),
+                                Text(
+                                  '錯題本',
+                                  style: TextStyle(
+                                    color: _selectedIndex == 0 ? Colors.white : Colors.white.withOpacity(0.7),
+                                    fontSize: baseWidth * 0.08,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
-        ),
-        child: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Image(
-                image: AssetImage('assets/images/toolbar-mistake.png'),
-              ),
-              label: '錯題本',
-            ),
-            BottomNavigationBarItem(
-              icon: Image(
-                image: AssetImage('assets/images/toolbar-learn.png'),
-              ),
-              label: '學習',
-            ),
-            BottomNavigationBarItem(
-              icon: Image(
-                image: AssetImage('assets/images/toolbar-ask.png'),
-              ),
-              label: '汪汪題',
-            ),
-          ],
-          currentIndex: _selectedIndex,
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.white.withOpacity(0.5),
-          backgroundColor: Color(0xFF102031),
-          type: BottomNavigationBarType.fixed,
-          onTap: _onItemTapped,
-        ),
+        ],
       ),
     );
   }
