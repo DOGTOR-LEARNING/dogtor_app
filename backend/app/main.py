@@ -486,10 +486,10 @@ async def import_knowledge_points(file: UploadFile = File(...)):
                 print(f"跳過無效行: {row}")
                 continue
             
-            chapter_name = row[0].strip()
-            section_num = int(row[1].strip())
-            section_name = row[2].strip()
-            knowledge_points_str = row[3].strip()
+            chapter_name = row[4].strip()
+            section_num = int(row[5].strip())
+            section_name = row[6].strip()
+            knowledge_points_str = row[7].strip()
             
             # 查找 chapter_id
             with connection.cursor() as cursor:
