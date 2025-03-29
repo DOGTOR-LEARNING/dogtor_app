@@ -21,7 +21,7 @@ openai.api_key = api_key
 # 初始化 OpenAI 客戶端
 client = OpenAI(api_key=api_key)
 
-path = "/Users/bowen/Desktop/NTU/Grade2-2/DOGTOR/國中社會科題庫-地理.csv"
+path = "/Users/bowen/Desktop/NTU/Grade2-2/DOGTOR/國中社會科題庫-公民.csv"
 
 system_message = "['num', 'year_grade', 'book', 'chapter_num', 'chapter_name', 'section_num', 'section_name', 'knowledge_points', 'section_summary'] 請針對輸入的範圍資訊找出2個重要的知識點（以頓號分隔），並整理一段 200 字的小節大綱介紹，概括整節內容，不用換行；回傳格式請嚴格遵守csv格式：知識點,小節大綱，其中csv的分隔逗號請使用半形符號，並且前後都不要有換行符號"
 
