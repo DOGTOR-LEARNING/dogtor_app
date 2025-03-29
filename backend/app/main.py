@@ -306,9 +306,6 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
             try:
                 cursor.execute("DESCRIBE user_knowledge_score")
                 table_structure = cursor.fetchall()
-                print(f"user_knowledge_score 表結構:")
-                for column in table_structure:
-                    # print(f"  - {column['Field']}: {column['Type']} (Null: {column['Null']}, Key: {column['Key']})")
             except Exception as e:
                 print(f"無法獲取表結構: {str(e)}")
             
@@ -913,7 +910,6 @@ async def complete_level(request: Request):
         print(f"收到關卡完成請求: user_id={user_id}, level_id={level_id}, stars={stars}")
         
         if not user_id or not level_id:
-            print(f"錯誤: 缺少必要參數")
             return {"success": False, "message": "缺少必要參數"}
         
         connection = get_db_connection()
@@ -933,32 +929,11 @@ async def complete_level(request: Request):
                 INSERT INTO user_level (user_id, level_id, stars, answered_at) 
                 VALUES (%s, %s, %s, %s)
                 """
-                print(f"執行 SQL: {insert_sql} 參數: {user_id}, {level_id}, {stars}, {current_time}")
-                
                 cursor.execute(insert_sql, (user_id, level_id, stars, current_time))
-                affected_rows = cursor.rowcount
-                print(f"插入結果: 影響 {affected_rows} 行")
                 
-                print(f"提交事務")
                 connection.commit()
-                print(f"事務提交成功")
                 
-                # 驗證記錄是否成功保存
-                with connection.cursor() as verify_cursor:
-                    verify_sql = """
-                    SELECT * FROM user_level 
-                    WHERE user_id = %s AND level_id = %s AND stars = %s AND answered_at = %s
-                    """
-                    verify_cursor.execute(verify_sql, (user_id, level_id, stars, current_time))
-                    verification = verify_cursor.fetchone()
-                    if verification:
-                        print(f"驗證成功: 找到記錄 ID={verification['id']}")
-                    else:
-                        print(f"警告: 無法驗證記錄是否保存成功")
-                
-                # 更新知識點分數 - 使用新的方法
-                print(f"開始更新用戶 {user_id} 的知識點分數")
-                
+                # 更新知識點分數
                 # 從 level_info 表中獲取關卡對應的 chapter_id
                 cursor.execute("""
                 SELECT chapter_id FROM level_info WHERE id = %s
@@ -966,11 +941,9 @@ async def complete_level(request: Request):
                 level_result = cursor.fetchone()
                 
                 if not level_result:
-                    print(f"錯誤: 找不到關卡 ID {level_id} 的信息")
                     return {"success": True, "message": "關卡完成記錄已新增，但無法更新知識點分數"}
                 
                 chapter_id = level_result['chapter_id']
-                print(f"找到關卡 {level_id} 對應的章節 ID: {chapter_id}")
                 
                 # 獲取該章節的所有知識點
                 cursor.execute("""
@@ -979,28 +952,9 @@ async def complete_level(request: Request):
                 knowledge_points = cursor.fetchall()
                 
                 if not knowledge_points:
-                    print(f"警告: 章節 {chapter_id} 沒有相關知識點")
                     return {"success": True, "message": "關卡完成記錄已新增，但該章節沒有知識點"}
                 
                 knowledge_ids = [kp['id'] for kp in knowledge_points]
-                print(f"找到章節 {chapter_id} 的 {len(knowledge_ids)} 個知識點: {knowledge_ids}")
-                
-                # 檢查 level_knowledge_mapping 表是否存在
-                try:
-                    cursor.execute("SHOW TABLES LIKE 'level_knowledge_mapping'")
-                    has_mapping_table = cursor.fetchone() is not None
-                    if has_mapping_table:
-                        print("找到 level_knowledge_mapping 表，嘗試使用映射關係")
-                        cursor.execute("""
-                        SELECT knowledge_id FROM level_knowledge_mapping WHERE level_id = %s
-                        """, (level_id,))
-                        mapping_results = cursor.fetchall()
-                        if mapping_results:
-                            mapped_knowledge_ids = [r['knowledge_id'] for r in mapping_results]
-                            print(f"從映射表找到 {len(mapped_knowledge_ids)} 個知識點: {mapped_knowledge_ids}")
-                            knowledge_ids = mapped_knowledge_ids
-                except Exception as e:
-                    print(f"檢查映射表時出錯: {e}")
                 
                 # 更新這些知識點的分數
                 updated_count = 0
@@ -1016,10 +970,7 @@ async def complete_level(request: Request):
                     question_ids = [q['id'] for q in questions]
                     
                     if not question_ids:
-                        print(f"知識點 {knowledge_id} 沒有相關題目，跳過")
                         continue
-                    
-                    print(f"知識點 {knowledge_id} 有 {len(question_ids)} 個相關題目")
                     
                     # 獲取用戶對這些題目的答題記錄
                     placeholders = ', '.join(['%s'] * len(question_ids))
@@ -1039,8 +990,6 @@ async def complete_level(request: Request):
                     total_attempts = stats['total_attempts'] if stats and stats['total_attempts'] else 0
                     correct_attempts = stats['correct_attempts'] if stats and stats['correct_attempts'] else 0
                     
-                    print(f"知識點 {knowledge_id} 的答題統計: 總嘗試={total_attempts}, 正確={correct_attempts}")
-                    
                     # 分數計算公式
                     if total_attempts == 0:
                         score = 0  # 沒有嘗試過，分數為 0
@@ -1057,8 +1006,6 @@ async def complete_level(request: Request):
                     # 限制分數在 0-10 範圍內
                     score = min(max(score, 0), 10)
                     
-                    print(f"計算得到知識點 {knowledge_id} 的分數: {score}")
-                    
                     # 更新知識點分數
                     cursor.execute("""
                     INSERT INTO user_knowledge_score (user_id, knowledge_id, score)
@@ -1068,15 +1015,12 @@ async def complete_level(request: Request):
                     
                     updated_count += 1
                 
-                print(f"提交知識點分數更新")
                 connection.commit()
-                print(f"已更新 {updated_count} 個知識點的分數")
                 
                 return {"success": True, "message": "關卡完成記錄已新增"}
         
         finally:
             connection.close()
-            print(f"資料庫連接已關閉")
     
     except Exception as e:
         print(f"記錄關卡完成時出錯: {str(e)}")
