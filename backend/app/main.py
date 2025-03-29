@@ -482,6 +482,7 @@ async def import_knowledge_points(file: UploadFile = File(...)):
         connection = get_db_connection()
         
         for row in csv_reader:
+            print(f"處理行: {row}")
             if len(row) < 4:
                 print(f"跳過無效行: {row}")
                 continue
