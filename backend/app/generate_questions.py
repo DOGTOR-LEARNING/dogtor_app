@@ -24,6 +24,11 @@ deepseek_client = OpenAI(
 )
 aiplatform.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"))
 
+gemini_client = OpenAI(
+    api_key=os.getenv("GEMINI_API_KEY"),
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
+
 def validate_env_vars():
     """驗證必要的環境變量"""
     required_vars = [
@@ -106,7 +111,7 @@ def read_csv_data(csv_file_path: str) -> List[Dict[str, Any]]:
         return []
 
 def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dict[str, Any], batch_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    """使用 GPT-4o 為每個知識點生成題目，分批處理知識點"""
+    """使用 Gemini 2.0 Flash 為每個知識點生成題目，分批處理知識點"""
     all_questions = {}
     
     # 將知識點分成小批次
@@ -130,7 +135,7 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
 但在本次請求中，我只需要你為以下知識點生成題目:
 {', '.join(batch_points)}
 
-請為每個指定的知識點生成 14 道選擇題，題型可以是一般的選擇題，或是挖空格選出正確選項的挖空選擇題。每道題有 4 個選項，只有 1 個正確答案。
+請為每個指定的知識點生成 16 道選擇題，題型可以是一般的選擇題，或是挖空格選出正確選項的挖空選擇題。每道題有 4 個選項，只有 1 個正確答案。
 
 要求:
 1. 題目難度可以從簡單到挑戰，但要適合該年級學生，不要出現太過艱深的題目
@@ -158,10 +163,20 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
 """
 
         try:
-            print(f"[生成題目] 調用 GPT-4o API")
+            print(f"[生成題目] 調用 Gemini 2.0 Flash API")
             # 調用 GPT-4o API
-            response = openai_client.chat.completions.create(
-                model="gpt-4o",
+            # response = openai_client.chat.completions.create(
+            #     model="gpt-4o",
+            #     messages=[
+            #         {"role": "system", "content": "你是一個專業的臺灣教育題目生成器，專注於生成符合中學學生認知水平的選擇題，中文字一律用繁體中文，不要使用簡體中文。"},
+            #         {"role": "user", "content": prompt}
+            #     ],
+            #     response_format={"type": "json_object"}
+            # )
+
+            # 改用 Gemini 2.0 Flash 生成題目
+            response = gemini_client.chat.completions.create(
+                model="gemini-2.0-flash",
                 messages=[
                     {"role": "system", "content": "你是一個專業的臺灣教育題目生成器，專注於生成符合中學學生認知水平的選擇題，中文字一律用繁體中文，不要使用簡體中文。"},
                     {"role": "user", "content": prompt}
@@ -213,7 +228,8 @@ def verify_question_with_deepseek(question_data: Dict[str, Any]) -> Tuple[bool, 
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請分析這道題目，判斷給出的答案是否正確。
+請分析這道題目，如果題目有瑕疵，請只回答 "N"。
+如果題目沒有瑕疵，請判斷給出的答案是否正確。
 如果答案正確，請只回答 "Y"。
 如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
 不要提供任何其他解釋或格式。
@@ -257,7 +273,8 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請分析這道題目，判斷給出的答案是否正確。
+請分析這道題目，如果題目有瑕疵，請只回答 "N"。
+如果題目沒有瑕疵，請判斷給出的答案是否正確。
 如果答案正確，請只回答 "Y"。
 如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
 不要提供任何其他解釋或格式。
@@ -299,7 +316,8 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請分析這道題目，判斷給出的答案是否正確。
+請分析這道題目，如果題目有瑕疵，請只回答 "N"。
+如果題目沒有瑕疵，請判斷給出的答案是否正確。
 如果答案正確，請只回答 "Y"。
 如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
 不要提供任何其他解釋或格式。
@@ -344,8 +362,8 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
 4. {question_data['options'][3]}
 正確答案: {question_data['answer']}
 
-請提供一個清晰、簡潔的解釋，告訴這位同學為什麼這個答案是正確的，或是其他選項為什麼不正確。
-解釋應該有教育意義，幫助學生理解相關知識點，且中文字要是繁體中文。
+請提供一個簡短但清楚條列出題目重點的解釋，告訴這位同學為什麼這個答案是正確的，或其他選項為什麼不正確。
+解釋應該有教育意義，幫助學生理解相關知識點，且中文字要是繁體中文，可以非常少量使用合適的 emoji 。
 """
 
         # 調用 o3-mini API
@@ -503,7 +521,7 @@ def process_question(connection, knowledge_id: int, question_data: Dict[str, Any
               deepseek_answer == gpt4_answer == gemini_answer and
               deepseek_answer in ["1", "2", "3", "4"]):
             
-            print(f"  [處理] 三個模型都給出相同的不同答案: {deepseek_answer}，修正答案")
+            print(f"  [處理] 三個模型都給出相同的另一個答案: {deepseek_answer}，修正答案")
             # 修正答案
             question_data['answer'] = deepseek_answer
             
