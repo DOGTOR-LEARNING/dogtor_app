@@ -43,13 +43,28 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   // 修改 UI 風格，使其與 chat_page_s.dart 一致
 
   // 1. 更新顏色方案
-  final Color primaryColor = Color(0xFF1E5B8C);  // 深藍色主題
-  final Color secondaryColor = Color(0xFF2A7AB8); // 較淺的藍色
+  final Color primaryColor = Colors.white;
+  final Color secondaryColor = Colors.white; 
   final Color accentColor = Color.fromARGB(255, 238, 159, 41);    // 橙色強調色，類似小島的顏色
-  final Color cardColor = Color(0xFF3A8BC8);      // 淺藍色卡片背景色
+  final Color cardColor = Colors.white;      // 白色卡片背景色
 
   // 添加一個新的狀態變量來跟踪結果計算過程
   bool isCalculatingResult = false;
+
+  bool isExplanationVisible = false; // Add this line to track explanation visibility
+
+  TextStyle _textStyle({
+    Color color = Colors.black,
+    double fontSize = 14.0,
+    FontWeight fontWeight = FontWeight.normal,
+  }) {
+    return TextStyle(
+      fontFamily: 'Medium',
+      color: color,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+    );
+  }
 
   @override
   void initState() {
@@ -264,12 +279,20 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
     setState(() {
       selectedAnswer = selectedOption;
-      
+      print('選擇的答案: $selectedAnswer');
+    });
+  }
+
+  // Add new method to handle answer confirmation
+  void _confirmAnswer() {
+    if (selectedAnswer == null) return;
+    
+    setState(() {
       // 獲取當前題目
       final currentQuestion = questions[currentQuestionIndex];
       
       // 獲取選中選項在列表中的位置（從0開始）
-      final selectedIndex = currentQuestion['options'].indexOf(selectedOption);
+      final selectedIndex = currentQuestion['options'].indexOf(selectedAnswer);
       
       // 獲取資料庫中的正確答案（已經是0-based索引）
       final correctAnswerStr = currentQuestion['correct_answer'];
@@ -282,13 +305,6 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       if (isCorrect!) {
         correctAnswersCount++;
       }
-      
-      // 調試信息
-      print('題目: ${currentQuestion['question']}');
-      print('選項列表: ${currentQuestion['options']}');
-      print('選中選項: $selectedOption (索引: $selectedIndex)');
-      print('資料庫中的正確答案: $correctAnswerStr (已是0-based索引)');
-      print('判斷結果: $isCorrect');
     });
     
     // 記錄答題情況
@@ -344,16 +360,17 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
   void _nextQuestion() {
     if (currentQuestionIndex < questions.length - 1) {
-      // 重置動畫
+      // Reset animation
       _animationController.reset();
       
       setState(() {
         currentQuestionIndex++;
         selectedAnswer = null;
         isCorrect = null;
+        isExplanationVisible = false; // Reset explanation visibility
       });
       
-      // 播放進入動畫
+      // Play enter animation
       _animationController.forward();
     }
   }
@@ -406,11 +423,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           title: Center(
             child: Text(
               '測驗結果',
-              style: GoogleFonts.notoSans(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+              style: _textStyle(color: secondaryColor, fontSize: 22, fontWeight: FontWeight.bold),
             ),
           ),
           content: Column(
@@ -424,28 +437,18 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               SizedBox(height: 16),
               Text(
                 '$percentage% 正確率',
-                style: GoogleFonts.notoSans(
-                  color: resultColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: _textStyle(color: resultColor, fontSize: 24, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 8),
               Text(
                 '${correctAnswersCount}/${questions.length} 題答對',
-                style: GoogleFonts.notoSans(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 16,
-                ),
+                style: _textStyle(color: secondaryColor, fontSize: 16),
               ),
               SizedBox(height: 16),
               Text(
                 resultMessage,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.notoSans(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: _textStyle(color: Colors.white, fontSize: 16),
               ),
             ],
           ),
@@ -460,10 +463,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               ),
               child: Text(
                 '返回',
-                style: GoogleFonts.notoSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: _textStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -506,11 +506,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               SizedBox(width: 10),
               Text(
                 '回報題目錯誤',
-                style: GoogleFonts.notoSans(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+                style: _textStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ],
           ),
@@ -522,10 +518,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               children: [
                 Text(
                   '請描述題目的錯誤之處：',
-                  style: GoogleFonts.notoSans(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 15,
-                  ),
+                  style: _textStyle(color: Colors.white.withOpacity(0.9), fontSize: 15),
                 ),
                 SizedBox(height: 16),
                 Container(
@@ -540,16 +533,10 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                   child: TextField(
                     controller: _errorController,
                     maxLines: 4,
-                    style: GoogleFonts.notoSans(
-                      color: Colors.white,
-                      fontSize: 15,
-                    ),
+                    style: _textStyle(color: Colors.white, fontSize: 15),
                     decoration: InputDecoration(
                       hintText: '例如：選項有誤、答案不正確、題目敘述不清...',
-                      hintStyle: GoogleFonts.notoSans(
-                        color: Colors.white.withOpacity(0.4),
-                        fontSize: 14,
-                      ),
+                      hintStyle: _textStyle(color: secondaryColor, fontSize: 14),
                       contentPadding: EdgeInsets.all(16),
                       border: InputBorder.none,
                     ),
@@ -569,9 +556,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               ),
               child: Text(
                 '取消',
-                style: GoogleFonts.notoSans(
-                  fontSize: 15,
-                ),
+                style: _textStyle(fontSize: 15),
               ),
               onPressed: () {
                 print("取消錯誤回報");
@@ -591,10 +576,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               ),
               child: Text(
                 '送出回報',
-                style: GoogleFonts.notoSans(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
+                style: _textStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
               onPressed: () {
                 print("送出錯誤回報");
@@ -753,6 +735,13 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     return 0;  // 50% 以下獲得 0 星
   }
 
+  // Add this method to toggle explanation visibility
+  void _toggleExplanation() {
+    setState(() {
+      isExplanationVisible = !isExplanationVisible;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // 底部按鈕邏輯
@@ -767,10 +756,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               SizedBox(height: 16),
               Text(
                 "正在分析測驗結果...",
-                style: GoogleFonts.notoSans(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: _textStyle(color: secondaryColor, fontSize: 16),
               ),
             ],
           ),
@@ -793,10 +779,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                 ),
                 child: Text(
                   '下一題',
-                  style: GoogleFonts.notoSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: _textStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               )
             else if (isCorrect != null)
@@ -813,21 +796,14 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                 ),
                 child: Text(
                   '完成測驗',
-                  style: GoogleFonts.notoSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: _textStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
           
             // 顯示題目進度
             Text(
               '${currentQuestionIndex + 1}/${questions.length}',
-              style: GoogleFonts.notoSans(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: _textStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         );
@@ -840,25 +816,16 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         elevation: 0,
         title: Text(
           '${widget.section}',
-          style: GoogleFonts.notoSans(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+          style: _textStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Container(
-        // 添加漸變背景，模擬海洋效果
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [primaryColor, Color(0xFF0D3B69)],
-          ),
+          color: primaryColor,
         ),
         child: SafeArea(
           child: isLoading 
@@ -870,10 +837,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                     SizedBox(height: 16),
                     Text(
                       '載入題目中...',
-                      style: GoogleFonts.notoSans(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: _textStyle(color: Colors.black, fontSize: 16),
                     ),
                   ],
                 ),
@@ -891,19 +855,12 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                       SizedBox(height: 16),
                       Text(
                         '無法載入題目',
-                        style: GoogleFonts.notoSans(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: _textStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                       SizedBox(height: 8),
                       Text(
                         '請檢查網絡連接或稍後再試',
-                        style: GoogleFonts.notoSans(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 16,
-                        ),
+                        style: _textStyle(color: Colors.black.withOpacity(0.8), fontSize: 16),
                       ),
                       SizedBox(height: 24),
                       ElevatedButton(
@@ -918,10 +875,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                         ),
                         child: Text(
                           '返回上一頁',
-                          style: GoogleFonts.notoSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: _textStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -943,22 +897,14 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                             children: [
                               Text(
                                 '問題 ${currentQuestionIndex + 1}/${questions.length}',
-                                style: GoogleFonts.notoSans(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                                style: _textStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w500),
                               ),
                               // 添加「題目有誤」按鈕
                               TextButton.icon(
                                 icon: Icon(Icons.report_problem_outlined, color: accentColor, size: 16),
                                 label: Text(
                                   '題目有誤',
-                                  style: GoogleFonts.notoSans(
-                                    color: accentColor,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  style: _textStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.w500),
                                 ),
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1017,11 +963,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                                 ),
                                 child: Text(
                                   questions[currentQuestionIndex]['knowledge_point'],
-                                  style: GoogleFonts.notoSans(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  style: _textStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
                                 ),
                               ),
                               SizedBox(height: 16),
@@ -1042,12 +984,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                                 ),
                                 child: Text(
                                   questions[currentQuestionIndex]['question'],
-                                  style: GoogleFonts.notoSans(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.5,
-                                  ),
+                                  style: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
                                 ),
                               ),
                               SizedBox(height: 24),
@@ -1111,11 +1048,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                                               Expanded(
                                                 child: Text(
                                                   option,
-                                                  style: GoogleFonts.notoSans(
-                                                    color: Colors.white,
-                                                    fontSize: 16,
-                                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                                  ),
+                                                  style: _textStyle(color: Colors.black, fontSize: 16, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
                                                 ),
                                               ),
                                               if (trailingIcon != null)
@@ -1135,88 +1068,6 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                               
                               SizedBox(height: 24),
                               
-                              // 確認按鈕
-                              if (selectedAnswer != null && isCorrect == null)
-                                Container(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      _handleAnswer(selectedAnswer!);
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: accentColor,
-                                      foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 16),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    child: Text(
-                                      '確認答案',
-                                      style: GoogleFonts.notoSans(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              
-                              // 解釋
-                              if (isCorrect != null)
-                                Container(
-                                  margin: EdgeInsets.only(top: 16),
-                                  padding: EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: cardColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isCorrect! ? Color(0xFF4ADE80) : Color(0xFFF87171),
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            isCorrect! ? Icons.check_circle : Icons.cancel,
-                                            color: isCorrect! ? Color(0xFF4ADE80) : Color(0xFFF87171),
-                                            size: 24,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            isCorrect! ? '答對了！' : '答錯了！',
-                                            style: GoogleFonts.notoSans(
-                                              color: isCorrect! ? Color(0xFF4ADE80) : Color(0xFFF87171),
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 12),
-                                      Text(
-                                        '解釋：',
-                                        style: GoogleFonts.notoSans(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        questions[currentQuestionIndex]['explanation'] ?? '無解釋',
-                                        style: GoogleFonts.notoSans(
-                                          color: Colors.white.withOpacity(0.9),
-                                          fontSize: 16,
-                                          height: 1.5,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -1226,13 +1077,120 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                 ),
         ),
       ),
-      bottomNavigationBar: questions.isEmpty && !isLoading
-        ? null  // 如果沒有題目且不在載入中，不顯示底部導航欄
-        : Container(
-            padding: EdgeInsets.all(16),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             color: primaryColor,
-            child: bottomButtons,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: isCorrect == null 
+                      ? (selectedAnswer != null ? _confirmAnswer : null)  // 確認答案
+                      : (currentQuestionIndex < questions.length - 1 ? _nextQuestion : _showResultDialog),  // 下一題或完成測驗
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isCorrect == null 
+                        ? (selectedAnswer != null ? accentColor : Colors.grey)  // 未選擇答案時為灰色
+                        : accentColor,  // 已確認答案時
+                      foregroundColor: isCorrect == null 
+                        ? (selectedAnswer != null ? Colors.white : Colors.grey[600])  // 未選擇答案時文字為深灰色
+                        : Colors.white,  // 已確認答案時
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      isCorrect == null 
+                        ? '確認答案'  // 未確認答案時
+                        : (currentQuestionIndex < questions.length - 1 ? '下一題' : '完成測驗'),  // 已確認答案時
+                      style: _textStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                // Replace question counter with explanation toggle button
+                if (isCorrect != null)
+                  ElevatedButton(
+                    onPressed: _toggleExplanation,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isExplanationVisible ? Colors.grey[300] : accentColor,
+                      foregroundColor: isExplanationVisible ? Colors.black : Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      isExplanationVisible ? '隱藏詳解' : '查看詳解',
+                      style: _textStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
           ),
+          // Add collapsible explanation section
+          if (isCorrect != null && isExplanationVisible)
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(
+                    color: isCorrect! ? Color(0xFF4ADE80) : Color(0xFFF87171),
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        isCorrect! ? Icons.check_circle : Icons.cancel,
+                        color: isCorrect! ? Color(0xFF4ADE80) : Color(0xFFF87171),
+                        size: 24,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        isCorrect! ? '答對了！' : '答錯了！',
+                        style: _textStyle(
+                          color: isCorrect! ? Color(0xFF4ADE80) : Color(0xFFF87171),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    '解釋：',
+                    style: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    questions[currentQuestionIndex]['explanation'] ?? '無解釋',
+                    style: _textStyle(color: Colors.black.withOpacity(0.9), fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+          // 添加底部導航圖片
+          Image.asset(
+            'assets/images/quiz-nav.png',
+            fit: BoxFit.contain,
+            width: double.infinity,
+          ),
+        ],
+      ),
     );
   }
 }

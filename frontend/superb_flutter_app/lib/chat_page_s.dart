@@ -891,7 +891,7 @@ class _ChatPageState extends State<ChatPage> {
                                       Padding(
                                         padding: EdgeInsets.all(16),
                                         child: Text(
-                                          _controller.text.isEmpty ? "什麼是民主憲政體制？" : _controller.text,
+                                          _controller.text.isEmpty ? "Dogtor, 請幫我回答這一個題目 ;-; " : _controller.text,
                                           style: TextStyle(
                                             color: Color(0xFF1E3875),
                                             fontSize: 16,

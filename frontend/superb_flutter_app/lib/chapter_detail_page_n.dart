@@ -40,7 +40,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   // 最大可能星星數 (每關3顆星)
   int maxPossibleStars = 0;
   
-  // 動畫控制器
+  // 動畫控制器q
   late AnimationController _animationController;
   Map<String, Animation<double>> _animations = {};
 
@@ -53,6 +53,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   @override
   void initState() {
     super.initState();
+    print("loaded");  // Debug statement to indicate the page has loaded
     _loadChapterData();
     _loadUserLevelStars();
     
@@ -311,13 +312,6 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: secondaryColor.withOpacity(0.7),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,7 +403,6 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                             // 章節卡片
                             Card(
                               margin: EdgeInsets.only(bottom: 16),
-                              elevation: 4,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
@@ -482,13 +475,6 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                                 decoration: BoxDecoration(
                                                   color: secondaryColor.withOpacity(0.7),
                                                   borderRadius: BorderRadius.circular(12),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: Colors.black.withOpacity(0.1),
-                                                      blurRadius: 4,
-                                                      offset: Offset(0, 2),
-                                                    ),
-                                                  ],
                                                 ),
                                                 child: ListTile(
                                                   contentPadding: EdgeInsets.symmetric(
