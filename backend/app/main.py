@@ -1375,56 +1375,120 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
 @app.get("/notify-daily-report")
 async def notify_daily_report():
     try:
+        print("開始執行每日報告功能...")
         import smtplib
         from email.mime.text import MIMEText
-        from datetime import datetime, timedelta, timezone  # 添加 timezone 導入
+        from datetime import datetime, timedelta, timezone
         import requests
-        import os
+        import json
         
         # 獲取環境變數
         OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
         DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
         GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
         APP_PASSWORD = os.getenv("APP_PASSWORD")
-        RECEIVERS = os.getenv("RECEIVERS").split(",")
+        RECEIVERS = os.getenv("RECEIVERS", "").split(",") if os.getenv("RECEIVERS") else []
+        
+        print(f"環境變數檢查: OPENAI_API_KEY={'已設置' if OPENAI_API_KEY else '未設置'}")
+        print(f"環境變數檢查: GMAIL_ADDRESS={'已設置' if GMAIL_ADDRESS else '未設置'}")
+        print(f"環境變數檢查: APP_PASSWORD={'已設置' if APP_PASSWORD else '未設置'}")
+        print(f"環境變數檢查: RECEIVERS={RECEIVERS}")
         
         # 獲取 OpenAI 使用量
         def get_openai_usage():
+            print("開始獲取 OpenAI 使用量...")
+            if not OPENAI_API_KEY:
+                print("警告: OpenAI API 密鑰未設置")
+                return {
+                    "monthly_usage": 0,
+                    "daily_usage": 0,
+                    "total_granted": 0,
+                    "remaining_balance": 0,
+                    "error": "OpenAI API 密鑰未設置"
+                }
+                
             headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
             today = datetime.now(timezone.utc).date()
             yesterday = today - timedelta(days=1)
             start_of_month = today.replace(day=1)
             
-            # 獲取當月總使用量
-            monthly_url = f"https://api.openai.com/v1/dashboard/billing/usage?start_date={start_of_month}&end_date={today + timedelta(days=1)}"
-            monthly_res = requests.get(monthly_url, headers=headers)
-            monthly_usage = monthly_res.json().get("total_usage", 0) / 100
+            print(f"查詢日期範圍: 月度={start_of_month} 至 {today}, 日度={yesterday} 至 {today}")
             
-            # 獲取昨天的使用量
-            daily_url = f"https://api.openai.com/v1/dashboard/billing/usage?start_date={yesterday}&end_date={today}"
-            daily_res = requests.get(daily_url, headers=headers)
-            daily_usage = daily_res.json().get("total_usage", 0) / 100
-            
-            # 獲取餘額
-            balance_url = "https://api.openai.com/v1/dashboard/billing/subscription"
-            balance_res = requests.get(balance_url, headers=headers)
-            balance_data = balance_res.json()
-            
-            # 提取餘額信息
-            total_granted = balance_data.get("hard_limit_usd", 0)
-            total_used = balance_data.get("total_usage", 0)
-            remaining_balance = total_granted - total_used
-            
-            return {
-                "monthly_usage": round(monthly_usage, 2),
-                "daily_usage": round(daily_usage, 2),
-                "total_granted": round(total_granted, 2),
-                "remaining_balance": round(remaining_balance, 2)
-            }
+            try:
+                # 獲取當月總使用量
+                monthly_url = f"https://api.openai.com/v1/dashboard/billing/usage?start_date={start_of_month}&end_date={today + timedelta(days=1)}"
+                print(f"請求月度使用量: {monthly_url}")
+                monthly_res = requests.get(monthly_url, headers=headers)
+                print(f"月度使用量響應狀態碼: {monthly_res.status_code}")
+                
+                if monthly_res.status_code != 200:
+                    print(f"月度使用量響應錯誤: {monthly_res.text}")
+                    return {
+                        "monthly_usage": 0,
+                        "daily_usage": 0,
+                        "total_granted": 0,
+                        "remaining_balance": 0,
+                        "error": f"獲取月度使用量失敗: {monthly_res.status_code}"
+                    }
+                
+                monthly_data = json.loads(monthly_res.text)
+                monthly_usage = monthly_data.get("total_usage", 0) / 100
+                print(f"月度使用量: ${monthly_usage}")
+                
+                # 獲取昨天的使用量
+                daily_url = f"https://api.openai.com/v1/dashboard/billing/usage?start_date={yesterday}&end_date={today}"
+                print(f"請求日度使用量: {daily_url}")
+                daily_res = requests.get(daily_url, headers=headers)
+                print(f"日度使用量響應狀態碼: {daily_res.status_code}")
+                
+                if daily_res.status_code != 200:
+                    print(f"日度使用量響應錯誤: {daily_res.text}")
+                    daily_usage = 0
+                else:
+                    daily_data = json.loads(daily_res.text)
+                    daily_usage = daily_data.get("total_usage", 0) / 100
+                    print(f"日度使用量: ${daily_usage}")
+                
+                # 獲取餘額
+                balance_url = "https://api.openai.com/v1/dashboard/billing/subscription"
+                print(f"請求餘額信息: {balance_url}")
+                balance_res = requests.get(balance_url, headers=headers)
+                print(f"餘額信息響應狀態碼: {balance_res.status_code}")
+                
+                if balance_res.status_code != 200:
+                    print(f"餘額信息響應錯誤: {balance_res.text}")
+                    total_granted = 0
+                    remaining_balance = 0
+                else:
+                    balance_data = json.loads(balance_res.text)
+                    total_granted = balance_data.get("hard_limit_usd", 0)
+                    total_used = balance_data.get("total_usage", 0)
+                    remaining_balance = total_granted - total_used
+                    print(f"總額度: ${total_granted}, 剩餘餘額: ${remaining_balance}")
+                
+                return {
+                    "monthly_usage": round(monthly_usage, 2),
+                    "daily_usage": round(daily_usage, 2),
+                    "total_granted": round(total_granted, 2),
+                    "remaining_balance": round(remaining_balance, 2)
+                }
+            except Exception as e:
+                print(f"獲取 OpenAI 使用量時出錯: {e}")
+                import traceback
+                print(traceback.format_exc())
+                return {
+                    "monthly_usage": 0,
+                    "daily_usage": 0,
+                    "total_granted": 0,
+                    "remaining_balance": 0,
+                    "error": str(e)
+                }
         
         # 獲取 DeepSeek 使用量
         def get_deepseek_usage():
+            print("開始獲取 DeepSeek 使用量...")
             if not DEEPSEEK_API_KEY:
+                print("警告: DeepSeek API 密鑰未設置")
                 return {
                     "monthly_usage": 0,
                     "daily_usage": 0,
@@ -1438,26 +1502,53 @@ async def notify_daily_report():
             yesterday = today - timedelta(days=1)
             start_of_month = today.replace(day=1)
             
+            print(f"查詢日期範圍: 月度={start_of_month} 至 {today}, 日度={yesterday} 至 {today}")
+            
             try:
                 # 獲取當月總使用量
                 monthly_url = f"https://api.deepseek.com/v1/dashboard/billing/usage?start_date={start_of_month}&end_date={today + timedelta(days=1)}"
+                print(f"請求月度使用量: {monthly_url}")
                 monthly_res = requests.get(monthly_url, headers=headers)
-                monthly_usage = monthly_res.json().get("total_usage", 0) / 100
+                print(f"月度使用量響應狀態碼: {monthly_res.status_code}")
+                
+                if monthly_res.status_code != 200:
+                    print(f"月度使用量響應錯誤: {monthly_res.text}")
+                    monthly_usage = 0
+                else:
+                    monthly_data = json.loads(monthly_res.text)
+                    monthly_usage = monthly_data.get("total_usage", 0) / 100
+                    print(f"月度使用量: ${monthly_usage}")
                 
                 # 獲取昨天的使用量
                 daily_url = f"https://api.deepseek.com/v1/dashboard/billing/usage?start_date={yesterday}&end_date={today}"
+                print(f"請求日度使用量: {daily_url}")
                 daily_res = requests.get(daily_url, headers=headers)
-                daily_usage = daily_res.json().get("total_usage", 0) / 100
+                print(f"日度使用量響應狀態碼: {daily_res.status_code}")
+                
+                if daily_res.status_code != 200:
+                    print(f"日度使用量響應錯誤: {daily_res.text}")
+                    daily_usage = 0
+                else:
+                    daily_data = json.loads(daily_res.text)
+                    daily_usage = daily_data.get("total_usage", 0) / 100
+                    print(f"日度使用量: ${daily_usage}")
                 
                 # 獲取餘額
                 balance_url = "https://api.deepseek.com/v1/dashboard/billing/subscription"
+                print(f"請求餘額信息: {balance_url}")
                 balance_res = requests.get(balance_url, headers=headers)
-                balance_data = balance_res.json()
+                print(f"餘額信息響應狀態碼: {balance_res.status_code}")
                 
-                # 提取餘額信息
-                total_granted = balance_data.get("hard_limit_usd", 0)
-                total_used = balance_data.get("total_usage", 0)
-                remaining_balance = total_granted - total_used
+                if balance_res.status_code != 200:
+                    print(f"餘額信息響應錯誤: {balance_res.text}")
+                    total_granted = 0
+                    remaining_balance = 0
+                else:
+                    balance_data = json.loads(balance_res.text)
+                    total_granted = balance_data.get("hard_limit_usd", 0)
+                    total_used = balance_data.get("total_usage", 0)
+                    remaining_balance = total_granted - total_used
+                    print(f"總額度: ${total_granted}, 剩餘餘額: ${remaining_balance}")
                 
                 return {
                     "monthly_usage": round(monthly_usage, 2),
@@ -1467,6 +1558,8 @@ async def notify_daily_report():
                 }
             except Exception as e:
                 print(f"獲取 DeepSeek 使用量時出錯: {e}")
+                import traceback
+                print(traceback.format_exc())
                 return {
                     "monthly_usage": 0,
                     "daily_usage": 0,
@@ -1477,21 +1570,40 @@ async def notify_daily_report():
         
         # 發送郵件
         def send_email(subject, body):
-            msg = MIMEText(body, "plain", "utf-8")
-            msg["Subject"] = subject
-            msg["From"] = GMAIL_ADDRESS
-            msg["To"] = ", ".join(RECEIVERS)
-
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                server.login(GMAIL_ADDRESS, APP_PASSWORD)
-                server.sendmail(GMAIL_ADDRESS, RECEIVERS, msg.as_string())
+            print(f"準備發送郵件: 主題={subject}, 收件人={RECEIVERS}")
+            if not GMAIL_ADDRESS or not APP_PASSWORD or not RECEIVERS:
+                print("警告: 郵件發送信息不完整，無法發送郵件")
+                return False
+                
+            try:
+                msg = MIMEText(body, "plain", "utf-8")
+                msg["Subject"] = subject
+                msg["From"] = GMAIL_ADDRESS
+                msg["To"] = ", ".join(RECEIVERS)
+                
+                print("連接到 SMTP 服務器...")
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                    print("登錄 SMTP 服務器...")
+                    server.login(GMAIL_ADDRESS, APP_PASSWORD)
+                    print("發送郵件...")
+                    server.sendmail(GMAIL_ADDRESS, RECEIVERS, msg.as_string())
+                    print("郵件發送成功")
+                return True
+            except Exception as e:
+                print(f"發送郵件時出錯: {e}")
+                import traceback
+                print(traceback.format_exc())
+                return False
         
         # 獲取使用數據
+        print("開始獲取 API 使用數據...")
         openai_data = get_openai_usage()
         deepseek_data = get_deepseek_usage()
+        
         today = datetime.now().strftime("%Y-%m-%d")
         subject = f"【Dogtor 每日報告】{today}"
         
+        print("構建郵件內容...")
         body = f"""API 使用報告 ({today})：
 
 【OpenAI API】
@@ -1499,18 +1611,34 @@ async def notify_daily_report():
 本月累計使用：${openai_data['monthly_usage']} USD
 剩餘餘額：${openai_data['remaining_balance']} USD
 總額度：${openai_data['total_granted']} USD
+"""
 
+        if "error" in openai_data:
+            body += f"錯誤信息：{openai_data['error']}\n"
+
+        body += f"""
 【DeepSeek API】
 昨日使用金額：${deepseek_data['daily_usage']} USD
 本月累計使用：${deepseek_data['monthly_usage']} USD
 剩餘餘額：${deepseek_data['remaining_balance']} USD
 總額度：${deepseek_data['total_granted']} USD
+"""
 
+        if "error" in deepseek_data:
+            body += f"錯誤信息：{deepseek_data['error']}\n"
+
+        body += """
 請留意 API 使用量哦！
 """
         
-        send_email(subject, body)
-        return {"status": "success", "message": "每日報告已發送"}
+        print("郵件內容構建完成，開始發送...")
+        email_sent = send_email(subject, body)
+        
+        if email_sent:
+            return {"status": "success", "message": "每日報告已發送"}
+        else:
+            return {"status": "warning", "message": "每日報告生成成功，但郵件發送失敗"}
+            
     except Exception as e:
         print(f"發送每日報告時出錯: {e}")
         import traceback
