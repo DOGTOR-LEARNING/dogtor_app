@@ -162,13 +162,17 @@ async def submit_question(request: dict):
 # 回傳摘要、科目
 @app.post("/summarize")
 async def chat_with_openai(request: ChatRequest):
-    message = "請你分辨輸入圖片的科目類型（國文、數學、英文、社會、自然），並且用十個字以內的話總結這個題目的重點。回傳csv格式為：科目,十字總結"
+    system_message = "請你分辨輸入圖片的科目類型（國文、數學、英文、社會、自然），並且用十個字以內的話總結這個題目的重點。回傳csv格式為：科目,十字總結"
     
+    messages = [
+        {"role": "system", "content": system_message}
+    ]
+
     if request.image_base64:
-        messages = {
+        messages.append({
             "role": "user",
             "content": [
-                {"type": "text", "text": message},
+                {"type": "text", "text": request.user_message},
                 {
                     "type": "image_url",
                     "image_url": {
@@ -176,9 +180,9 @@ async def chat_with_openai(request: ChatRequest):
                     }
                 }
             ]
-        }
+        })
     else:
-        messages = {"role": "user", "content": message}
+        messages.append({"role": "user", "content": request.user_message})
 
     response = client.chat.completions.create(
         model="gpt-4o",
