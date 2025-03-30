@@ -125,9 +125,9 @@ async def get_mistakes():
 @app.post("/submit_question")
 async def submit_question(request: dict):
     q_id = await get_next_q_id()
-    summary = request.get('summary')
+    summary = request.get('summary', '')
     subject = request.get('subject')
-    chapter = request.get('chapter')
+    chapter = request.get('chapter', '')
     description = request.get('description')
     difficulty = request.get('difficulty')
     simple_answer = request.get('simple_answer', '')
@@ -162,8 +162,9 @@ async def submit_question(request: dict):
 # 回傳摘要、科目
 @app.post("/summarize")
 async def chat_with_openai(request: ChatRequest):
-    system_message = "請你分辨輸入圖片的科目類型（國文、數學、英文、社會、自然），並且用十個字以內的話總結這個題目的重點。回傳csv格式為：科目,十字總結"
-    
+    #system_message = "請你分辨輸入圖片的科目類型（國文、數學、英文、社會、自然），並且用十個字以內的話總結這個題目的重點。回傳csv格式為：科目,十字總結"
+    system_message = "請你用十個字以內的話總結這個題目的重點，回傳十字總結"
+
     messages = [
         {"role": "system", "content": system_message}
     ]
