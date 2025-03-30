@@ -1216,8 +1216,9 @@ async def get_user_level_stars(request: Request):
     try:
         data = await request.json()
         user_id = data.get('user_id')
+        subject = data.get('subject')  # 新增科目參數
         
-        print(f"收到獲取用戶星星數請求: user_id={user_id}")
+        print(f"收到獲取用戶星星數請求: user_id={user_id}, subject={subject}")
         
         if not user_id:
             print(f"錯誤: 缺少用戶 ID")
@@ -1233,14 +1234,31 @@ async def get_user_level_stars(request: Request):
                 cursor.execute("SET CHARACTER SET utf8mb4")
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
-                # 獲取用戶在每個關卡的最高星星數
-                cursor.execute("""
-                SELECT level_id, MAX(stars) as stars
-                FROM user_level
-                WHERE user_id = %s
-                GROUP BY level_id
-                """, (user_id,))
+                # 構建查詢條件
+                query = """
+                SELECT ul.level_id, MAX(ul.stars) as stars
+                FROM user_level ul
+                """
                 
+                params = [user_id]
+                
+                # 如果提供了科目，則加入科目過濾條件
+                if subject:
+                    query += """
+                    JOIN level_info li ON ul.level_id = li.id
+                    JOIN chapter_list cl ON li.chapter_id = cl.id
+                    WHERE ul.user_id = %s AND cl.subject = %s
+                    """
+                    params.append(subject)
+                else:
+                    query += "WHERE ul.user_id = %s"
+                
+                query += " GROUP BY ul.level_id"
+                
+                print(f"執行查詢: {query}")
+                print(f"參數: {params}")
+                
+                cursor.execute(query, params)
                 results = cursor.fetchall()
                 
                 # 將結果轉換為字典格式
