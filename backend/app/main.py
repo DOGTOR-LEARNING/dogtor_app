@@ -1582,7 +1582,19 @@ async def get_user_stats(request: Request):
                 today_result = cursor.fetchone()
                 today_levels = today_result['today_levels'] if today_result else 0
                 
-                # 2. 獲取各科目完成的關卡數量
+                # 2. 獲取今日各科目完成的關卡數量
+                cursor.execute("""
+                SELECT cl.subject, COUNT(*) as level_count
+                FROM user_level ul
+                JOIN level_info li ON ul.level_id = li.id
+                JOIN chapter_list cl ON li.chapter_id = cl.id
+                WHERE ul.user_id = %s AND ul.answered_at BETWEEN %s AND %s
+                GROUP BY cl.subject
+                """, (user_id, today_start_str, today_end_str))
+                
+                today_subject_levels = cursor.fetchall()
+                
+                # 3. 獲取各科目完成的關卡數量
                 cursor.execute("""
                 SELECT cl.subject, COUNT(*) as level_count
                 FROM user_level ul
@@ -1594,7 +1606,7 @@ async def get_user_stats(request: Request):
                 
                 subject_levels = cursor.fetchall()
                 
-                # 3. 獲取總共完成的關卡數量
+                # 4. 獲取總共完成的關卡數量
                 cursor.execute("""
                 SELECT COUNT(*) as total_levels
                 FROM user_level
@@ -1604,7 +1616,7 @@ async def get_user_stats(request: Request):
                 total_result = cursor.fetchone()
                 total_levels = total_result['total_levels'] if total_result else 0
                 
-                # 4. 獲取總體答對率
+                # 5. 獲取總體答對率
                 cursor.execute("""
                 SELECT 
                     SUM(total_attempts) as total_attempts,
@@ -1621,7 +1633,7 @@ async def get_user_stats(request: Request):
                 if total_attempts > 0:
                     accuracy = (correct_attempts / total_attempts) * 100
                 
-                # 5. 獲取最近完成的關卡
+                # 6. 獲取最近完成的關卡
                 cursor.execute("""
                 SELECT 
                     ul.level_id, 
@@ -1648,6 +1660,7 @@ async def get_user_stats(request: Request):
                     "success": True,
                     "stats": {
                         "today_levels": today_levels,
+                        "today_subject_levels": today_subject_levels,
                         "subject_levels": subject_levels,
                         "total_levels": total_levels,
                         "accuracy": round(accuracy, 2),

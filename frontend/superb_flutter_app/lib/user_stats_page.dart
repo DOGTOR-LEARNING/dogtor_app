@@ -135,6 +135,8 @@ class _UserStatsPageState extends State<UserStatsPage> {
   }
 
   Widget _buildTodayStats() {
+    final todaySubjectLevels = _stats['today_subject_levels'] as List<dynamic>? ?? [];
+    
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -180,6 +182,64 @@ class _UserStatsPageState extends State<UserStatsPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            if (todaySubjectLevels.isNotEmpty)
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: secondaryColor.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '今日各科目完成情況',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: todaySubjectLevels.map<Widget>((subject) {
+                        final subjectName = subject['subject'] as String;
+                        final levelCount = subject['level_count'] as int;
+                        
+                        // 定義科目顏色映射
+                        final subjectColors = {
+                          '數學': Colors.blue,
+                          '國文': Colors.green,
+                          '英文': Colors.purple,
+                          '理化': Colors.orange,
+                          '生物': Colors.red,
+                          '地科': Colors.brown,
+                          '化學': Colors.blueGrey,
+                          '物理': Colors.deepPurple,
+                          '歷史': Colors.deepOrange,
+                          '地理': Colors.teal,
+                          '公民': Colors.pink,
+                        };
+                        
+                        return Chip(
+                          backgroundColor: subjectColors[subjectName]?.withOpacity(0.8) ?? Colors.grey,
+                          avatar: CircleAvatar(
+                            backgroundColor: Colors.white,
+                            child: Icon(Icons.book, size: 16, color: subjectColors[subjectName] ?? Colors.grey),
+                          ),
+                          label: Text(
+                            '$subjectName: $levelCount 關',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -265,7 +325,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                           return PieChartSectionData(
                             color: subjectColors[subjectName] ?? Colors.grey,
                             value: levelCount.toDouble(),
-                            title: '$subjectName\n$levelCount',
+                            title: '', // 移除標題，不顯示數字
                             radius: 80,
                             titleStyle: const TextStyle(
                               fontSize: 14,
