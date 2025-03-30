@@ -75,16 +75,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                 alignment: Alignment.center,
                 children: [
                   // Color block above image
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 40,
-                      color: Color.fromRGBO(99, 158, 171, 1),
-                      width: double.infinity,
-                    ),
-                  ),
+
                   // Image positioned below color block
                   Positioned(
                     top: 40,
@@ -117,15 +108,9 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                         onTap: () => Navigator.pop(context),
                         child: Row(
                           children: [
-                            Icon(Icons.arrow_back, color: Colors.white, size: 14),
+                            Icon(Icons.arrow_back, color: Colors.white, size: 24),
                             SizedBox(width: 4),
-                            Text(
-                              "返回",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                              ),
-                            ),
+
                           ],
                         ),
                       ),
@@ -138,7 +123,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                 
                 // Search and filter container
                 Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  margin: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Row(
                     children: [
                       // Search Bar
@@ -217,7 +202,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                 // Mistakes List 
                 Expanded(
                   child: ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     itemCount: _filteredMistakes.length,
                     itemBuilder: (context, index) {
                       final mistake = _filteredMistakes[_filteredMistakes.length - index - 1];
@@ -262,13 +247,18 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                               borderRadius: BorderRadius.circular(16),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
-                                onTap: () {
-                                  Navigator.push(
+                                onTap: () async {
+                                  final refreshNeeded = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => MistakeDetailPage(mistake: mistake),
                                     ),
                                   );
+                                  
+                                  // If we got back true, refresh the mistakes list
+                                  if (refreshNeeded == true) {
+                                    _loadMistakes();
+                                  }
                                 },
                                 child: Padding(
                                   padding: EdgeInsets.all(16),
@@ -445,12 +435,39 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
       backgroundColor: Color(0xFF102031),
       appBar: AppBar(
         title: Text('錯題詳情', style: TextStyle(fontSize: 18)),
-        backgroundColor: Color.fromRGBO(99, 158, 171, 1),
+        backgroundColor: Color(0xFF102031),
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              // Navigate to the AddMistakePage in edit mode with the current mistake data
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddMistakePage(
+                    isEditMode: true,
+                    mistakeToEdit: widget.mistake,
+                  ),
+                ),
+              );
+              
+              // If edit was successful and we got a result back, refresh the page
+              if (result == true) {
+                // Reload the page or refresh data
+                // If you have a method to reload the single mistake, call it here
+                Navigator.pop(context, true); // Return to mistake book page with refresh signal
+              }
+            },
+            child: Text(
+              '編輯',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ),
+        ],
       ),
       body: Container(
         width: MediaQuery.of(context).size.width,

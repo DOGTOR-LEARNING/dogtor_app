@@ -9,6 +9,14 @@ import 'dart:io';
 import 'dart:typed_data';// Flutter Web only
 
 class AddMistakePage extends StatefulWidget {
+  final bool isEditMode;
+  final Map<String, dynamic>? mistakeToEdit;
+
+  AddMistakePage({
+    this.isEditMode = false,
+    this.mistakeToEdit,
+  });
+
   @override
   _AddMistakePageState createState() => _AddMistakePageState();
 }
@@ -27,26 +35,122 @@ class _AddMistakePageState extends State<AddMistakePage> {
   String _response = ""; // 存儲 AI 的回應
   Uint8List? _imageBytes; // for web and mobile
   bool _isLoading = false; // 加載狀態
+  String _mistakeId = ""; // Store the ID for edits
   
-  Future<void> _submitData() async {
+  @override
+  void initState() {
+    super.initState();
+    
+    // If in edit mode, populate the fields with existing data
+    if (widget.isEditMode && widget.mistakeToEdit != null) {
+      _populateFieldsWithExistingData();
+    }
+  }
+  
+  // Helper method to populate fields with existing data
+  void _populateFieldsWithExistingData() {
+    final mistake = widget.mistakeToEdit!;
+    
+    // Populate text fields
+    _questionController.text = mistake['description'] ?? '';
+    _tagController.text = mistake['tag'] ?? '';
+    _detailedAnswerController.text = mistake['detailed_answer'] ?? '';
+    
+    // Set dropdown values
     setState(() {
-      _isLoading = true; // 開始加載
+      _selectedTag = mistake['simple_answer'] ?? 'A';
+      _selectedSubject = mistake['subject'] ?? '數學';
+      _selectedDifficulty = mistake['difficulty'] ?? 'Medium';
+      _mistakeId = mistake['q_id'] ?? ''; // Store the ID for the update request
+    });
+    
+    // Try to load the existing image
+    _loadExistingImage();
+  }
+  
+  // Helper method to load the existing image if available
+  Future<void> _loadExistingImage() async {
+    if (_mistakeId.isNotEmpty) {
+      try {
+        final response = await http.get(
+          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/static/${_mistakeId}.jpg')
+        );
+        
+        if (response.statusCode == 200) {
+          setState(() {
+            _imageBytes = response.bodyBytes;
+          });
+        }
+      } catch (e) {
+        print('Error loading existing image: $e');
+      }
+    }
+  }
+
+  Future<void> _submitData() async {
+    // Validate required fields before submission
+    if (_questionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('請輸入題目內容'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
     });
 
-    // 構建請求體
-    final Map<String, dynamic> requestBody = {
-      "summary": _questionController.text,
-      "description": _questionController.text,
-      "simple_answer": _selectedTag,
-      "detailed_answer": _detailedAnswerController.text,
-      "tag": _tagController.text,
-      "subject": _selectedSubject,
-      "difficulty": _selectedDifficulty,
-    };
-
     try {
+      // If we have a new image selected, upload it
+      if (_selectedImage != null) {
+        final bytes = await _selectedImage!.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        
+        // Add the image to the request if available
+        // You might need to adjust this depending on your API requirements
+        Map<String, dynamic> imageUploadBody = {
+          "q_id": _mistakeId.isNotEmpty ? _mistakeId : "new",
+          "image_base64": base64Image,
+        };
+        
+        // Upload the image first if we have one
+        final imageResponse = await http.post(
+          Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/upload_image"),
+          headers: {"Content-Type": "application/json; charset=UTF-8"},
+          body: jsonEncode(imageUploadBody),
+        );
+        
+        if (imageResponse.statusCode != 200) {
+          throw Exception('Image upload failed: ${imageResponse.statusCode}');
+        }
+      }
+
+      // Construct the request body for question data
+      final Map<String, dynamic> requestBody = {
+        "summary": _questionController.text,
+        "description": _questionController.text,
+        "simple_answer": _selectedTag,
+        "detailed_answer": _detailedAnswerController.text,
+        "tag": _tagController.text,
+        "subject": _selectedSubject,
+        "difficulty": _selectedDifficulty,
+      };
+      
+      // If in edit mode, include the ID
+      if (widget.isEditMode && _mistakeId.isNotEmpty) {
+        requestBody["q_id"] = _mistakeId;
+      }
+
+      // Choose endpoint based on whether we're editing or creating
+      final endpoint = widget.isEditMode 
+          ? "https://superb-backend-1041765261654.asia-east1.run.app/update_question"
+          : "https://superb-backend-1041765261654.asia-east1.run.app/submit_question";
+          
       final response = await http.post(
-        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/submit_question"),
+        Uri.parse(endpoint),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
@@ -58,26 +162,26 @@ class _AddMistakePageState extends State<AddMistakePage> {
       final responseData = jsonDecode(utf8.decode(response.bodyBytes));
       setState(() {
         _response = responseData["response"] ?? "No response";
-        _isLoading = false; // 停止加載
+        _isLoading = false;
       });
       
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('錯題添加成功！'),
+          content: Text(widget.isEditMode ? '錯題更新成功！' : '錯題添加成功！'),
           backgroundColor: Color(0xFF1E3875),
         ),
       );
       
-      // Navigate back after successful submission
+      // Navigate back after successful submission with result
       Future.delayed(Duration(seconds: 1), () {
-        Navigator.pop(context);
+        Navigator.pop(context, true); // Return true to indicate successful edit
       });
       
     } catch (e) {
       setState(() {
         _response = "Error: $e";
-        _isLoading = false; // 停止加載
+        _isLoading = false;
       });
       
       // Show error message
@@ -181,7 +285,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
             bottom: false,
             child: Column(
               children: [
-                // Top bar with back button
+                // Top bar with back button and title
                 Container(
                   height: 56,
                   padding: EdgeInsets.symmetric(horizontal: 16),
@@ -192,32 +296,35 @@ class _AddMistakePageState extends State<AddMistakePage> {
                         onTap: () => Navigator.pop(context),
                         child: Row(
                           children: [
-                            Icon(Icons.arrow_back, color: Colors.white, size: 14),
+                            Icon(Icons.arrow_back, color: Colors.white, size: 24),
                             SizedBox(width: 4),
-                            Text(
-                              "返回",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                              ),
-                            ),
                           ],
                         ),
                       ),
                       Text(
-                        "新增錯題",
+                        widget.isEditMode ? "編輯錯題" : "新增錯題", // Change title based on mode
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      TextButton(
+                      ElevatedButton(
                         onPressed: _submitData,
+                        style: ElevatedButton.styleFrom( 
+                          foregroundColor: Colors.white,
+                          backgroundColor: Color(0xFFFFA368),
+                          elevation: 20,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: Color(0xFFFFA368)),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          fixedSize: Size(60, 20),
+                        ),
                         child: Text(
-                          "提交",
+                          widget.isEditMode ? "更新" : "提交", // Change button text based on mode
                           style: TextStyle(
-                            color:  Color(0xFFFFA368),
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'Medium',
@@ -293,20 +400,41 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: Colors.white24, width: 1),
                                 ),
-                                child: _imageBytes != null
+                                child: _selectedImage != null
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Image.memory(
-                                        _imageBytes!,
-                                        fit: BoxFit.contain,
+                                      child: FutureBuilder<Uint8List>(
+                                        future: _selectedImage!.readAsBytes(),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.connectionState == ConnectionState.waiting) {
+                                            return Center(child: CircularProgressIndicator());
+                                          } else if (snapshot.hasError) {
+                                            return Center(child: Text('Error loading image', style: TextStyle(color: Colors.white70)));
+                                          } else if (snapshot.hasData) {
+                                            return Image.memory(
+                                              snapshot.data!,
+                                              fit: BoxFit.contain,
+                                            );
+                                          } else {
+                                            return Center(child: Text('No image selected', style: TextStyle(color: Colors.white70)));
+                                          }
+                                        },
                                       ),
                                     )
-                                  : Center(
-                                      child: Text(
-                                        "尚未選擇圖片",
-                                        style: TextStyle(color: Colors.white70),
+                                  : _imageBytes != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.memory(
+                                          _imageBytes!,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          "尚未選擇圖片",
+                                          style: TextStyle(color: Colors.white70),
+                                        ),
                                       ),
-                                    ),
                               ),
                               SizedBox(height: 16),
                               
@@ -350,7 +478,8 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                       color: Color(0xFF1E3875),
                                       iconColor: Color(0xFFFFA368),
                                       textColor: Colors.white,
-                                      onPressed: _generateAnswer,
+                                      onPressed: (_selectedImage != null) ? () => _generateAnswer() : null,
+                                      disabledColor: Colors.grey.shade700,
                                     ),
                                   ),
                                 ],
@@ -710,15 +839,16 @@ class _AddMistakePageState extends State<AddMistakePage> {
   Widget _buildActionButton({
     required IconData icon,
     required String label,
-    required VoidCallback onPressed,
+    VoidCallback? onPressed,
     Color iconColor = const Color(0xFF102031),
     Color color = Colors.white,
     Color textColor = const Color(0xFF102031),
+    Color disabledColor = Colors.grey,
   }) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: color,
+        backgroundColor: onPressed == null ? disabledColor : color,
         foregroundColor: textColor,
         elevation: 0,
         padding: EdgeInsets.symmetric(vertical: 12),
