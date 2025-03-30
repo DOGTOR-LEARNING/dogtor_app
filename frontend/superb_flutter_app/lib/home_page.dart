@@ -275,6 +275,50 @@ void _onItemTapped(int index) {
                                                   ),
                                                 );
                                               }
+                                              else if (planets[index]['name'] == '化學') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '化學',
+                                                      csvPath: 'assets/edu_data/level_info/high_chemistry_level.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                              else if (planets[index]['name'] == '歷史') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '歷史',
+                                                      csvPath: 'assets/edu_data/level_info/junior_his_level.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                              else if (planets[index]['name'] == '地理') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '地理',
+                                                      csvPath: 'assets/edu_data/level_info/junior_geo_level.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                              else if (planets[index]['name'] == '公民') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '公民',
+                                                      csvPath: 'assets/edu_data/level_info/junior_civ_level.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
                                             },
                                             child: Image.asset(
                                               planets[index]['image'],

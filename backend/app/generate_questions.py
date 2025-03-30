@@ -237,8 +237,8 @@ def verify_question_with_deepseek(question_data: Dict[str, Any]) -> Tuple[bool, 
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請分析這道題目，如果題目有瑕疵，請只回答 "N"。
-如果題目沒有瑕疵，請判斷給出的答案是否正確。
+請分析這道題目，如果題目有嚴重瑕疵，請只回答 "N"。
+如果題目沒有嚴重瑕疵，請判斷給出的答案是否正確。
 如果答案正確，請只回答 "Y"。
 如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
 不要提供任何其他解釋或格式。
@@ -257,12 +257,17 @@ def verify_question_with_deepseek(question_data: Dict[str, Any]) -> Tuple[bool, 
         content = content.strip('"')
         print("content deepseek:", content)
         # 判斷結果
-        is_correct = content == "Y"
+        is_correct = False
+        if content == "Y" or content == '\"Y\"':
+            is_correct = True
         correct_answer = ""
         explanation = ""
         
         if not is_correct and content in ["1", "2", "3", "4"]:
             correct_answer = content
+
+        if not is_correct and content == "N":
+            explanation = "題目有嚴重瑕疵。"
         
         return is_correct, correct_answer, explanation
     except Exception as e:
@@ -283,8 +288,8 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請分析這道題目，如果題目有瑕疵，請只回答 "N"。
-如果題目沒有瑕疵，請判斷給出的答案是否正確。
+請分析這道題目，如果題目有嚴重瑕疵，請只回答 "N"。
+如果題目沒有嚴重瑕疵，請判斷給出的答案是否正確。
 如果答案正確，請只回答 "Y"。
 如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
 不要提供任何其他解釋或格式。
@@ -301,13 +306,17 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
         content = content.strip('"')
         print("content o3-mini:", content)
         # 判斷結果
-        is_correct = content == "Y"
-        #print("is_correct_o3-mini:", is_correct)
+        is_correct = False
+        if content == "Y" or content == '\"Y\"':
+            is_correct = True
         correct_answer = ""
         explanation = ""
         
         if not is_correct and content in ["1", "2", "3", "4"]:
             correct_answer = content
+
+        if not is_correct and content == "N":
+            explanation = "題目有嚴重瑕疵。"
         
         return is_correct, correct_answer, explanation
     except Exception as e:
@@ -328,8 +337,8 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
 4. {question_data['options'][3]}
 給出的正確答案: {question_data['answer']}
 
-請稍微分析這道題目，如果題目有瑕疵，請只回答 "N"。
-如果題目沒有瑕疵，請判斷給出的答案是否正確。
+請分析這道題目，如果題目有嚴重瑕疵，請只回答 "N"。
+如果題目沒有嚴重瑕疵，請判斷給出的答案是否正確。
 如果答案正確，請只回答 "Y"。
 如果答案不正確，請只回答正確的選項編號（1、2、3 或 4）。
 不要提供任何其他解釋或格式。
@@ -363,13 +372,17 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
         #content = response.text.strip()
         
         # 判斷結果
-        is_correct = (content == "Y")
-        #print("is_correct:", is_correct)
+        is_correct = False
+        if content == "Y" or content == '\"Y\"':
+            is_correct = True
         correct_answer = ""
         explanation = ""
         
         if not is_correct and content in ["1", "2", "3", "4"]:
             correct_answer = content
+
+        if not is_correct and content == "N":
+            explanation = "題目有嚴重瑕疵。"
         
         return is_correct, correct_answer, explanation
     except Exception as e:
@@ -594,8 +607,8 @@ def process_section(subject: str, section_data: Dict[str, Any]):
         knowledge_points = section_data['knowledge_points']
         print(f"[檢查點 2] 小節 {section_data['section_name']} 包含 {len(knowledge_points)} 個知識點")
         
-        # 使用 GPT-4o 分批生成題目
-        print(f"[檢查點 3] 開始使用 GPT-4o 生成題目")
+        # 使用 gemini 分批生成題目
+        print(f"[檢查點 3] 開始使用 Gemini 生成題目")
         questions_by_point = generate_questions_with_gpt4o(knowledge_points, section_data, batch_size=2)
         print(f"[檢查點 3 完成] 成功生成 {sum(len(qs) for qs in questions_by_point.values())} 個題目")
         
