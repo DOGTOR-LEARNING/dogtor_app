@@ -92,7 +92,7 @@ async def save_question_to_csv(data):
         writer = csv.writer(file)
         if not file_exists:
             writer.writerow(['q_id', 'subject', 'chapter', 'description', 'difficulty', 'simple_answer', 'detailed_answer', 'timestamp'])
-        writer.writerow([data['q_id'], data['subject'], data['chapter'], data['description'], data['difficulty'], data['simple_answer'], data['detailed_answer'], data['timestamp']])
+        writer.writerow([data['q_id'], data['summary'], data['subject'], data['chapter'], data['description'], data['difficulty'], data['simple_answer'], data['detailed_answer'], data['tag'], data['timestamp']])
 
 # Function to get the next q_id
 async def get_next_q_id():
