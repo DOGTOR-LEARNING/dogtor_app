@@ -1366,127 +1366,148 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
         import traceback
         print(traceback.format_exc())
 
-# 添加每日報告功能
+# 新增處理每日使用量通知的 API
 @app.get("/notify-daily-report")
 async def notify_daily_report():
     try:
-        connection = get_db_connection()
-        try:
-            with connection.cursor() as cursor:
-                # 獲取所有用戶
-                cursor.execute("SELECT user_id, email, name FROM users WHERE email IS NOT NULL AND email != ''")
-                users = cursor.fetchall()
-                
-                if not users:
-                    return {"status": "success", "message": "沒有需要發送報告的用戶"}
-                
-                reports_sent = 0
-                for user in users:
-                    try:
-                        # 獲取用戶的學習數據
-                        user_id = user['user_id']
-                        email = user['email']
-                        name = user['name'] or "同學"
-                        
-                        # 獲取用戶最近一週的學習數據
-                        cursor.execute("""
-                        SELECT 
-                            COUNT(DISTINCT level_id) as completed_levels,
-                            SUM(stars) as total_stars,
-                            MAX(answered_at) as last_activity
-                        FROM user_level 
-                        WHERE user_id = %s AND answered_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                        """, (user_id,))
-                        
-                        learning_data = cursor.fetchone()
-                        
-                        # 如果用戶在過去一週沒有學習記錄，跳過
-                        if not learning_data or not learning_data['completed_levels']:
-                            continue
-                        
-                        # 獲取用戶的知識點掌握情況
-                        cursor.execute("""
-                        SELECT 
-                            COUNT(*) as total_points,
-                            SUM(CASE WHEN score >= 7 THEN 1 ELSE 0 END) as mastered_points
-                        FROM user_knowledge_score
-                        WHERE user_id = %s
-                        """, (user_id,))
-                        
-                        knowledge_data = cursor.fetchone()
-                        
-                        # 構建郵件內容
-                        completed_levels = learning_data['completed_levels'] or 0
-                        total_stars = learning_data['total_stars'] or 0
-                        last_activity = learning_data['last_activity']
-                        
-                        total_points = knowledge_data['total_points'] or 0
-                        mastered_points = knowledge_data['mastered_points'] or 0
-                        
-                        # 格式化郵件內容
-                        email_content = f"""
-                        <html>
-                        <head>
-                            <style>
-                                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                                .header {{ background-color: #1E5B8C; color: white; padding: 10px 20px; text-align: center; }}
-                                .content {{ padding: 20px; background-color: #f9f9f9; }}
-                                .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #999; }}
-                                .highlight {{ color: #2A7AB8; font-weight: bold; }}
-                            </style>
-                        </head>
-                        <body>
-                            <div class="container">
-                                <div class="header">
-                                    <h1>SUPERB 學習週報</h1>
-                                </div>
-                                <div class="content">
-                                    <p>親愛的 {name}：</p>
-                                    <p>以下是您過去一週的學習摘要：</p>
-                                    <ul>
-                                        <li>完成關卡數：<span class="highlight">{completed_levels}</span> 個</li>
-                                        <li>獲得星星數：<span class="highlight">{total_stars}</span> 顆</li>
-                                        <li>最近學習時間：{last_activity}</li>
-                                    </ul>
-                                    <p>知識點掌握情況：</p>
-                                    <ul>
-                                        <li>已掌握知識點：<span class="highlight">{mastered_points}</span> / {total_points}</li>
-                                    </ul>
-                                    <p>繼續保持學習熱情，每天進步一點點！</p>
-                                    <p>祝學習愉快！</p>
-                                    <p>SUPERB 團隊</p>
-                                </div>
-                                <div class="footer">
-                                    <p>此郵件為系統自動發送，請勿直接回覆。</p>
-                                </div>
-                            </div>
-                        </body>
-                        </html>
-                        """
-                        
-                        # 發送郵件
-                        # 這裡需要實現郵件發送功能，可以使用第三方服務如 SendGrid 或 SMTP
-                        # 為了示例，這裡只打印郵件內容
-                        print(f"準備發送郵件到 {email}")
-                        
-                        # TODO: 實現實際的郵件發送功能
-                        # 例如使用 SendGrid:
-                        # send_email(to_email=email, subject="SUPERB 學習週報", html_content=email_content)
-                        
-                        reports_sent += 1
-                        
-                    except Exception as e:
-                        print(f"處理用戶 {user['user_id']} 的報告時出錯: {str(e)}")
-                        continue
-                
-                return {"status": "success", "message": f"成功準備 {reports_sent} 份報告"}
-                
-        finally:
-            connection.close()
+        import smtplib
+        from email.mime.text import MIMEText
+        from datetime import datetime, timedelta, timezone  # 添加 timezone 導入
+        import requests
+        import os
+        
+        # 獲取環境變數
+        OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+        DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+        GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
+        APP_PASSWORD = os.getenv("APP_PASSWORD")
+        RECEIVERS = os.getenv("RECEIVERS").split(",")
+        
+        # 獲取 OpenAI 使用量
+        def get_openai_usage():
+            headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+            today = datetime.now(timezone.utc).date()
+            yesterday = today - timedelta(days=1)
+            start_of_month = today.replace(day=1)
             
+            # 獲取當月總使用量
+            monthly_url = f"https://api.openai.com/v1/dashboard/billing/usage?start_date={start_of_month}&end_date={today + timedelta(days=1)}"
+            monthly_res = requests.get(monthly_url, headers=headers)
+            monthly_usage = monthly_res.json().get("total_usage", 0) / 100
+            
+            # 獲取昨天的使用量
+            daily_url = f"https://api.openai.com/v1/dashboard/billing/usage?start_date={yesterday}&end_date={today}"
+            daily_res = requests.get(daily_url, headers=headers)
+            daily_usage = daily_res.json().get("total_usage", 0) / 100
+            
+            # 獲取餘額
+            balance_url = "https://api.openai.com/v1/dashboard/billing/subscription"
+            balance_res = requests.get(balance_url, headers=headers)
+            balance_data = balance_res.json()
+            
+            # 提取餘額信息
+            total_granted = balance_data.get("hard_limit_usd", 0)
+            total_used = balance_data.get("total_usage", 0)
+            remaining_balance = total_granted - total_used
+            
+            return {
+                "monthly_usage": round(monthly_usage, 2),
+                "daily_usage": round(daily_usage, 2),
+                "total_granted": round(total_granted, 2),
+                "remaining_balance": round(remaining_balance, 2)
+            }
+        
+        # 獲取 DeepSeek 使用量
+        def get_deepseek_usage():
+            if not DEEPSEEK_API_KEY:
+                return {
+                    "monthly_usage": 0,
+                    "daily_usage": 0,
+                    "total_granted": 0,
+                    "remaining_balance": 0,
+                    "error": "DeepSeek API 密鑰未設置"
+                }
+                
+            headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
+            today = datetime.now(timezone.utc).date()
+            yesterday = today - timedelta(days=1)
+            start_of_month = today.replace(day=1)
+            
+            try:
+                # 獲取當月總使用量
+                monthly_url = f"https://api.deepseek.com/v1/dashboard/billing/usage?start_date={start_of_month}&end_date={today + timedelta(days=1)}"
+                monthly_res = requests.get(monthly_url, headers=headers)
+                monthly_usage = monthly_res.json().get("total_usage", 0) / 100
+                
+                # 獲取昨天的使用量
+                daily_url = f"https://api.deepseek.com/v1/dashboard/billing/usage?start_date={yesterday}&end_date={today}"
+                daily_res = requests.get(daily_url, headers=headers)
+                daily_usage = daily_res.json().get("total_usage", 0) / 100
+                
+                # 獲取餘額
+                balance_url = "https://api.deepseek.com/v1/dashboard/billing/subscription"
+                balance_res = requests.get(balance_url, headers=headers)
+                balance_data = balance_res.json()
+                
+                # 提取餘額信息
+                total_granted = balance_data.get("hard_limit_usd", 0)
+                total_used = balance_data.get("total_usage", 0)
+                remaining_balance = total_granted - total_used
+                
+                return {
+                    "monthly_usage": round(monthly_usage, 2),
+                    "daily_usage": round(daily_usage, 2),
+                    "total_granted": round(total_granted, 2),
+                    "remaining_balance": round(remaining_balance, 2)
+                }
+            except Exception as e:
+                print(f"獲取 DeepSeek 使用量時出錯: {e}")
+                return {
+                    "monthly_usage": 0,
+                    "daily_usage": 0,
+                    "total_granted": 0,
+                    "remaining_balance": 0,
+                    "error": str(e)
+                }
+        
+        # 發送郵件
+        def send_email(subject, body):
+            msg = MIMEText(body, "plain", "utf-8")
+            msg["Subject"] = subject
+            msg["From"] = GMAIL_ADDRESS
+            msg["To"] = ", ".join(RECEIVERS)
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login(GMAIL_ADDRESS, APP_PASSWORD)
+                server.sendmail(GMAIL_ADDRESS, RECEIVERS, msg.as_string())
+        
+        # 獲取使用數據
+        openai_data = get_openai_usage()
+        deepseek_data = get_deepseek_usage()
+        today = datetime.now().strftime("%Y-%m-%d")
+        subject = f"【Dogtor 每日報告】{today}"
+        
+        body = f"""API 使用報告 ({today})：
+
+【OpenAI API】
+昨日使用金額：${openai_data['daily_usage']} USD
+本月累計使用：${openai_data['monthly_usage']} USD
+剩餘餘額：${openai_data['remaining_balance']} USD
+總額度：${openai_data['total_granted']} USD
+
+【DeepSeek API】
+昨日使用金額：${deepseek_data['daily_usage']} USD
+本月累計使用：${deepseek_data['monthly_usage']} USD
+剩餘餘額：${deepseek_data['remaining_balance']} USD
+總額度：${deepseek_data['total_granted']} USD
+
+請留意 API 使用量哦！
+"""
+        
+        send_email(subject, body)
+        return {"status": "success", "message": "每日報告已發送"}
     except Exception as e:
-        print(f"發送每日報告時出錯: {str(e)}")
+        print(f"發送每日報告時出錯: {e}")
         import traceback
         print(traceback.format_exc())
         return {"status": "error", "message": f"發送每日報告時出錯: {str(e)}"}
