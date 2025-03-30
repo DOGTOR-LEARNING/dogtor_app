@@ -179,7 +179,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
       // 儲存錯題資訊到 Hive
       var box = await Hive.openBox('questionsBox'); // 打開 Box
       //requestBody['q_id']
-      await box.put(1, {
+      await box.put("2", {
         'summary': requestBody['summary'],
         'subject': requestBody['subject'],
         'chapter': '', // 如果有章節資訊，可以在這裡填寫
@@ -189,6 +189,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
         'detailed_answer': requestBody['detailed_answer'],
         'tag': requestBody['tag'],
         'timestamp': DateTime.now().toIso8601String(), // 當前時間作為時間戳
+        "image_base64": base64Image,
       });
 
       print("已儲存錯題資訊到 Hive");

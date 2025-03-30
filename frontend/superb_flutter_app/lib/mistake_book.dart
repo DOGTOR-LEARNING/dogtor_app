@@ -5,6 +5,8 @@ import 'dart:io';
 import 'add_mistake_page.dart';
 
 import 'package:hive/hive.dart';
+import 'dart:typed_data';
+
 
 class MistakeBookPage extends StatefulWidget {
   @override
@@ -43,6 +45,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
           'detailed_answer': value['detailed_answer'],
           'tag': value['tag'],
           'timestamp': value['timestamp'],
+          "image_base64": value['image_base64'],
         });
       });
 
@@ -243,6 +246,9 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                     itemCount: _filteredMistakes.length,
                     itemBuilder: (context, index) {
                       final mistake = _filteredMistakes[_filteredMistakes.length - index - 1];
+                      final Uint8List? imageBytes = mistake['image_base64'] != null && mistake['image_base64'].isNotEmpty
+    ? base64Decode(mistake['image_base64'])
+    : null;
                       final currentDate = mistake['timestamp'].split('T')[0];
                       final nextDate = (index > 0)
                           ? _filteredMistakes[_filteredMistakes.length - index]['timestamp'].split('T')[0]
@@ -343,7 +349,21 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                         ],
                                       ),
                                       SizedBox(height: 12),
-                                      // Image preview
+
+                                      // Check for image_base64 and display image if available
+                                      if (imageBytes != null) ...[
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: Image.memory(
+                                            imageBytes,
+                                            height: 60,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ],
+
+                                      // Image preview (from cloud run)
                                       FutureBuilder(
                                         future: http.head(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg')),
                                         builder: (context, snapshot) {
