@@ -1478,10 +1478,6 @@ async def notify_daily_report():
                 WHERE last_attempted_at BETWEEN %s AND %s
                 """, (yesterday_start_str, yesterday_end_str))
                 
-                answer_stats = cursor.fetchone()
-                total_answers = answer_stats['total_answers'] if answer_stats else 0
-                answer_users = answer_stats['answer_users'] if answer_stats else 0
-                
                 # 獲取昨天活躍的前5名用戶
                 cursor.execute("""
                 SELECT user_id, COUNT(*) as level_count
@@ -1518,7 +1514,6 @@ async def notify_daily_report():
 
 【使用統計】
 昨日完成關卡數：{total_levels} 個
-昨日答題數量：{total_answers} 題
 昨日活躍用戶數：{total_users} 人
 """
 
@@ -1546,3 +1541,125 @@ async def notify_daily_report():
         import traceback
         print(traceback.format_exc())
         return {"status": "error", "message": f"發送每日報告時出錯: {str(e)}"}
+
+@app.post("/get_user_stats")
+async def get_user_stats(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        
+        print(f"收到獲取用戶統計數據請求: user_id={user_id}")
+        
+        if not user_id:
+            print(f"錯誤: 缺少用戶 ID")
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取今天的日期範圍
+                today = datetime.now().date()
+                today_start = datetime.combine(today, datetime.min.time())
+                today_end = datetime.combine(today, datetime.max.time())
+                
+                today_start_str = today_start.strftime('%Y-%m-%d %H:%M:%S')
+                today_end_str = today_end.strftime('%Y-%m-%d %H:%M:%S')
+                
+                # 1. 獲取今日完成的關卡數量
+                cursor.execute("""
+                SELECT COUNT(*) as today_levels
+                FROM user_level
+                WHERE user_id = %s AND answered_at BETWEEN %s AND %s
+                """, (user_id, today_start_str, today_end_str))
+                
+                today_result = cursor.fetchone()
+                today_levels = today_result['today_levels'] if today_result else 0
+                
+                # 2. 獲取各科目完成的關卡數量
+                cursor.execute("""
+                SELECT cl.subject, COUNT(*) as level_count
+                FROM user_level ul
+                JOIN level_info li ON ul.level_id = li.id
+                JOIN chapter_list cl ON li.chapter_id = cl.id
+                WHERE ul.user_id = %s
+                GROUP BY cl.subject
+                """, (user_id,))
+                
+                subject_levels = cursor.fetchall()
+                
+                # 3. 獲取總共完成的關卡數量
+                cursor.execute("""
+                SELECT COUNT(*) as total_levels
+                FROM user_level
+                WHERE user_id = %s
+                """, (user_id,))
+                
+                total_result = cursor.fetchone()
+                total_levels = total_result['total_levels'] if total_result else 0
+                
+                # 4. 獲取總體答對率
+                cursor.execute("""
+                SELECT 
+                    SUM(total_attempts) as total_attempts,
+                    SUM(correct_attempts) as correct_attempts
+                FROM user_question_stats
+                WHERE user_id = %s
+                """, (user_id,))
+                
+                accuracy_result = cursor.fetchone()
+                total_attempts = accuracy_result['total_attempts'] if accuracy_result and accuracy_result['total_attempts'] else 0
+                correct_attempts = accuracy_result['correct_attempts'] if accuracy_result and accuracy_result['correct_attempts'] else 0
+                
+                accuracy = 0
+                if total_attempts > 0:
+                    accuracy = (correct_attempts / total_attempts) * 100
+                
+                # 5. 獲取最近完成的關卡
+                cursor.execute("""
+                SELECT 
+                    ul.level_id, 
+                    ul.stars, 
+                    ul.answered_at,
+                    cl.subject,
+                    cl.chapter_name
+                FROM user_level ul
+                JOIN level_info li ON ul.level_id = li.id
+                JOIN chapter_list cl ON li.chapter_id = cl.id
+                WHERE ul.user_id = %s
+                ORDER BY ul.answered_at DESC
+                LIMIT 5
+                """, (user_id,))
+                
+                recent_levels = cursor.fetchall()
+                
+                # 格式化最近關卡的時間
+                for level in recent_levels:
+                    if 'answered_at' in level and level['answered_at']:
+                        level['answered_at'] = level['answered_at'].strftime('%Y-%m-%d %H:%M:%S')
+                
+                return {
+                    "success": True,
+                    "stats": {
+                        "today_levels": today_levels,
+                        "subject_levels": subject_levels,
+                        "total_levels": total_levels,
+                        "accuracy": round(accuracy, 2),
+                        "recent_levels": recent_levels
+                    }
+                }
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"獲取用戶統計數據時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取用戶統計數據時出錯: {str(e)}"}
