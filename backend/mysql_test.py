@@ -7,7 +7,7 @@ load_dotenv()
 
 db_password = os.getenv("DB_PASSWORD")
 
-sql = "SELECT * FROM knowledge_points;"
+sql = "SELECT * FROM chapter_list;"
 
 csv_file_path = '/Users/bowen/Desktop/NTU/Grade2-2/DOGTOR/junior_civ_chapter.csv'  # 替換為您的 CSV 檔案路徑
 df = pd.read_csv(csv_file_path)

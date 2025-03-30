@@ -39,7 +39,7 @@ client = OpenAI(api_key = api_key)
 
 # 定義數據模型
 class ChatRequest(BaseModel):
-    user_message: str
+    user_message: Optional[str] = None
     image_base64: Optional[str] = None
     subject: Optional[str] = None      # 添加科目
     chapter: Optional[str] = None      # 添加章節
@@ -183,7 +183,7 @@ async def chat_with_openai(request: ChatRequest):
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=messages,
-        max_tokens=500 # why
+        max_tokens=1000 # why
     )
     
     return {"response": response.choices[0].message.content}
