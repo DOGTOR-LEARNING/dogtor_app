@@ -1370,11 +1370,13 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
 # 新增處理每日使用量通知的 API
 @app.get("/notify-daily-report")
 def notify_daily_report():
-    openai_data = get_openai_usage()
-    deepseek_data = get_deepseek_usage()
-    today = datetime.now().strftime("%Y-%m-%d")
-    subject = "【Dogtor 每日報告】"
-    body = f"""OpenAI API 使用報告 ({today})：
+    try:
+        openai_data = get_openai_usage()
+        deepseek_data = get_deepseek_usage()
+        today = datetime.now().strftime("%Y-%m-%d")
+        subject = f"【Dogtor 每日報告】{today}"
+        
+        body = f"""API 使用報告 ({today})：
 
 【OpenAI API】
 昨日使用金額：${openai_data['daily_usage']} USD
@@ -1390,5 +1392,11 @@ def notify_daily_report():
 
 請留意 API 使用量哦！
 """
-    send_email(subject, body)
-    return {"status": "sent"}
+        
+        send_email(subject, body)
+        return {"status": "success", "message": "每日報告已發送"}
+    except Exception as e:
+        print(f"發送每日報告時出錯: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return {"status": "error", "message": f"發送每日報告時出錯: {str(e)}"}
