@@ -20,7 +20,7 @@ def get_db_connection():
     """建立與數據庫的連接"""
     return pymysql.connect(
         host=DB_HOST,
-        port=5433,
+        port=3306,
         user=DB_USER,
         password=DB_PASSWORD,
         database=DB_NAME,
