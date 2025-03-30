@@ -1492,7 +1492,7 @@ async def notify_daily_report():
         # 構建郵件內容
         today_str = today.strftime("%Y-%m-%d")
         yesterday_str = yesterday.strftime("%Y-%m-%d")
-        subject = f"【Dogtor 每日報告】{today_str}"
+        subject = f"【Dogtor 每日系統報告】{today_str}"
         
         print("構建郵件內容...")
         body = f"""Dogtor 每日使用報告 ({yesterday_str})：
@@ -1510,6 +1510,8 @@ async def notify_daily_report():
         
         body += """
 祝您有美好的一天！
+
+（本報告由系統自動生成，請勿直接回覆）
 """
         
         print("郵件內容構建完成，開始發送...")
