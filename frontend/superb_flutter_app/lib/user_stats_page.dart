@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:convert' show utf8;  // 確保導入 utf8
 
 class UserStatsPage extends StatefulWidget {
   const UserStatsPage({Key? key}) : super(key: key);
@@ -16,6 +17,12 @@ class _UserStatsPageState extends State<UserStatsPage> {
   bool _isLoading = true;
   Map<String, dynamic> _stats = {};
   String _errorMessage = '';
+  
+  // 更新主題色彩以匹配 chapter_detail_page_n.dart
+  final Color primaryColor = Color(0xFF1E5B8C);  // 深藍色主題
+  final Color secondaryColor = Color(0xFF2A7AB8); // 較淺的藍色
+  final Color accentColor = Color.fromARGB(255, 238, 159, 41);    // 橙色強調色
+  final Color cardColor = Color(0xFF3A8BC8);      // 淺藍色卡片背景色
 
   @override
   void initState() {
@@ -40,13 +47,17 @@ class _UserStatsPageState extends State<UserStatsPage> {
       }
 
       final response = await http.post(
-        Uri.parse('https://dogtor-backend-gg-ew.onrender.com/get_user_stats'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_user_stats'),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json; charset=utf-8',
+        },
         body: jsonEncode({'user_id': user.uid}),
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final jsonString = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(jsonString);
         if (data['success']) {
           setState(() {
             _stats = data['stats'];
@@ -77,19 +88,33 @@ class _UserStatsPageState extends State<UserStatsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('我的學習統計'),
-        backgroundColor: Colors.blue[700],
+        backgroundColor: primaryColor,
+        elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage, style: TextStyle(color: Colors.red)))
-              : _buildStatsContent(),
+      body: Container(
+        // 添加漸變背景，模擬海洋效果
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [primaryColor, Color(0xFF0D3B69)],
+          ),
+        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color.fromARGB(255, 238, 159, 41)),
+              ))
+            : _errorMessage.isNotEmpty
+                ? Center(child: Text(_errorMessage, style: TextStyle(color: Colors.red)))
+                : _buildStatsContent(),
+      ),
     );
   }
 
   Widget _buildStatsContent() {
     return RefreshIndicator(
       onRefresh: _fetchUserStats,
+      color: accentColor,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16.0),
@@ -112,15 +137,36 @@ class _UserStatsPageState extends State<UserStatsPage> {
   Widget _buildTodayStats() {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '今日學習',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.today,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  '今日學習',
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             Row(
@@ -128,7 +174,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
               children: [
                 _buildStatCard(
                   icon: Icons.star,
-                  color: Colors.amber,
+                  color: accentColor,
                   value: _stats['today_levels'].toString(),
                   label: '今日完成關卡',
                 ),
@@ -160,65 +206,108 @@ class _UserStatsPageState extends State<UserStatsPage> {
 
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '各科目學習統計',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.pie_chart,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  '各科目學習統計',
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             if (subjectLevels.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('尚未完成任何關卡'),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: secondaryColor.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    '尚未完成任何關卡',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               )
             else
-              SizedBox(
-                height: 200,
-                child: PieChart(
-                  PieChartData(
-                    sections: subjectLevels.map((subject) {
-                      final subjectName = subject['subject'] as String;
-                      final levelCount = subject['level_count'] as int;
-                      return PieChartSectionData(
-                        color: subjectColors[subjectName] ?? Colors.grey,
-                        value: levelCount.toDouble(),
-                        title: '$subjectName\n$levelCount',
-                        radius: 80,
-                        titleStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      );
-                    }).toList(),
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 40,
+              Column(
+                children: [
+                  SizedBox(
+                    height: 200,
+                    child: PieChart(
+                      PieChartData(
+                        sections: subjectLevels.map((subject) {
+                          final subjectName = subject['subject'] as String;
+                          final levelCount = subject['level_count'] as int;
+                          return PieChartSectionData(
+                            color: subjectColors[subjectName] ?? Colors.grey,
+                            value: levelCount.toDouble(),
+                            title: '$subjectName\n$levelCount',
+                            radius: 80,
+                            titleStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          );
+                        }).toList(),
+                        sectionsSpace: 2,
+                        centerSpaceRadius: 40,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: secondaryColor.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: subjectLevels.map<Widget>((subject) {
+                        final subjectName = subject['subject'] as String;
+                        final levelCount = subject['level_count'] as int;
+                        return Chip(
+                          backgroundColor: subjectColors[subjectName]?.withOpacity(0.8) ?? Colors.grey,
+                          avatar: CircleAvatar(
+                            backgroundColor: Colors.white,
+                            child: Icon(Icons.book, size: 16, color: subjectColors[subjectName] ?? Colors.grey),
+                          ),
+                          label: Text(
+                            '$subjectName: $levelCount 關',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
               ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: subjectLevels.map<Widget>((subject) {
-                final subjectName = subject['subject'] as String;
-                final levelCount = subject['level_count'] as int;
-                return Chip(
-                  avatar: CircleAvatar(
-                    backgroundColor: subjectColors[subjectName] ?? Colors.grey,
-                    child: const Icon(Icons.book, size: 16, color: Colors.white),
-                  ),
-                  label: Text('$subjectName: $levelCount 關'),
-                );
-              }).toList(),
-            ),
           ],
         ),
       ),
@@ -228,15 +317,36 @@ class _UserStatsPageState extends State<UserStatsPage> {
   Widget _buildTotalStats() {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '總體學習統計',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.bar_chart,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  '總體學習統計',
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             Row(
@@ -244,7 +354,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
               children: [
                 _buildStatCard(
                   icon: Icons.emoji_events,
-                  color: Colors.amber,
+                  color: accentColor,
                   value: _stats['total_levels'].toString(),
                   label: '總完成關卡',
                 ),
@@ -267,49 +377,116 @@ class _UserStatsPageState extends State<UserStatsPage> {
 
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '最近完成的關卡',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.history,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  '最近完成的關卡',
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             if (recentLevels.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('尚未完成任何關卡'),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: secondaryColor.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    '尚未完成任何關卡',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               )
             else
-              ListView.builder(
+              ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: recentLevels.length,
+                separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.white24),
                 itemBuilder: (context, index) {
                   final level = recentLevels[index];
                   final DateTime answeredAt = DateTime.parse(level['answered_at']);
                   final formattedDate = DateFormat('yyyy/MM/dd HH:mm').format(answeredAt);
                   
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.blue[700],
-                      child: Text(level['subject'][0], style: const TextStyle(color: Colors.white)),
+                  final subject = level['subject'] is String ? level['subject'] : '未知科目';
+                  final chapterName = level['chapter_name'] is String ? level['chapter_name'] : '未知章節';
+                  final subjectInitial = subject.isNotEmpty ? subject[0] : '?';
+                  
+                  // 定義科目顏色映射
+                  final subjectColors = {
+                    '數學': Colors.blue,
+                    '國文': Colors.green,
+                    '英文': Colors.purple,
+                    '理化': Colors.orange,
+                    '生物': Colors.red,
+                    '地科': Colors.brown,
+                    '化學': Colors.blueGrey,
+                    '物理': Colors.deepPurple,
+                    '歷史': Colors.deepOrange,
+                    '地理': Colors.teal,
+                    '公民': Colors.pink,
+                  };
+                  
+                  final backgroundColor = subjectColors[subject] ?? Colors.blue[700];
+                  
+                  return Container(
+                    margin: EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: secondaryColor.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    title: Text('${level['subject']} - ${level['chapter_name']}'),
-                    subtitle: Text('完成時間: $formattedDate'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(
-                        3,
-                        (i) => Icon(
-                          Icons.star,
-                          color: i < level['stars'] ? Colors.amber : Colors.grey[300],
-                          size: 20,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      leading: CircleAvatar(
+                        backgroundColor: backgroundColor,
+                        child: Text(subjectInitial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                      title: Text(
+                        '$chapterName',
+                        style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Row(
+                        children: [
+                          const Icon(Icons.access_time, size: 14, color: Colors.white70),
+                          const SizedBox(width: 4),
+                          Text(formattedDate, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                        ],
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(
+                          3,
+                          (i) => Icon(
+                            Icons.star,
+                            color: i < (level['stars'] ?? 0) ? accentColor : Colors.white30,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -332,9 +509,8 @@ class _UserStatsPageState extends State<UserStatsPage> {
       width: 140,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: secondaryColor.withOpacity(0.7),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -346,7 +522,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: color,
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 4),
@@ -354,7 +530,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
             label,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[700],
+              color: Colors.white70,
             ),
             textAlign: TextAlign.center,
           ),
