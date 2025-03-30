@@ -579,10 +579,6 @@ void _onItemTapped(int index) {
 
   final List<Map<String, dynamic>> planets = [
     {
-      'name': '自然',
-      'image': 'assets/pics/home-island1.png',
-    },
-    {
       'name': '理化',
       'image': 'assets/pics/home-island2.png',
     },
@@ -599,18 +595,6 @@ void _onItemTapped(int index) {
       'image': 'assets/pics/home-island5.png',
     },
     {
-      'name': '國文',
-      'image': 'assets/pics/home-island1.png',
-    },
-    {
-      'name': '英文',
-      'image': 'assets/pics/home-island2.png',  // 重複使用圖片
-    },
-    {
-      'name': '社會',
-      'image': 'assets/pics/home-island3.png',
-    },
-    {
       'name': '地科',
       'image': 'assets/pics/home-island4.png',
     },
@@ -619,12 +603,24 @@ void _onItemTapped(int index) {
       'image': 'assets/pics/home-island5.png',
     },
     {
+      'name': '公民',
+      'image': 'assets/pics/home-island3.png',
+    },
+    {
       'name': '歷史',
       'image': 'assets/pics/home-island1.png',
     },
     {
       'name': '地理',
       'image': 'assets/pics/home-island2.png',
+    },
+    {
+      'name': '國文',
+      'image': 'assets/pics/home-island1.png',
+    },
+    {
+      'name': '英文',
+      'image': 'assets/pics/home-island2.png',  // 重複使用圖片
     },
   ];
 }
