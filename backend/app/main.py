@@ -15,7 +15,6 @@ from pydantic import BaseModel
 import io
 from email.mime.text import MIMEText
 from datetime import datetime
-from daily_report import get_openai_usage, get_deepseek_usage, send_email
 
 app = FastAPI()
 
@@ -1369,8 +1368,11 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
 
 # 新增處理每日使用量通知的 API
 @app.get("/notify-daily-report")
-def notify_daily_report():
+async def notify_daily_report():
     try:
+        # 直接導入函數而不是整個模組
+        from app.daily_report import get_openai_usage, get_deepseek_usage, send_email
+        
         openai_data = get_openai_usage()
         deepseek_data = get_deepseek_usage()
         today = datetime.now().strftime("%Y-%m-%d")
