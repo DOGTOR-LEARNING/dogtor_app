@@ -408,8 +408,8 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
 """
 
         # 調用 o3-mini API
-        response = openai_client.chat.completions.create(
-            model="o3-mini",  # 改為使用 o3-mini
+        response = gemini_client.chat.completions.create(
+            model="gemini-2.0-flash",  # 改為使用 o3-mini
             messages=[{"role": "user", "content": prompt}],
         )
         
@@ -571,7 +571,7 @@ def process_question(connection, knowledge_id: int, question_data: Dict[str, Any
             question_data['answer'] = deepseek_answer
             
             # 生成解釋並保存題目
-            print(f"  [生成] 生成解釋")
+            print(f"  [生成] Gemini 生成解釋")
             explanation = generate_explanation_with_o3mini(question_data)
             print(f"  [保存] 保存修正後的題目到數據庫")
             save_question_to_database(connection, knowledge_id, question_data, explanation)
