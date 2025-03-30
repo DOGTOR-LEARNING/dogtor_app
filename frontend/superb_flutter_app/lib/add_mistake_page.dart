@@ -56,11 +56,32 @@ class _AddMistakePageState extends State<AddMistakePage> {
     _tagController.text = mistake['tag'] ?? '';
     _detailedAnswerController.text = mistake['detailed_answer'] ?? '';
     
-    // Set dropdown values
+    // Make sure we have valid default values that exist in our dropdown lists
     setState(() {
-      _selectedTag = mistake['simple_answer'] ?? 'A';
-      _selectedSubject = mistake['subject'] ?? '數學';
-      _selectedDifficulty = mistake['difficulty'] ?? 'Medium';
+      // For the subject dropdown, verify it's in our list
+      final subjectValue = mistake['subject'] ?? '數學';
+      if (["數學", "國文", "理化", "歷史"].contains(subjectValue)) {
+        _selectedSubject = subjectValue;
+      } else {
+        _selectedSubject = "數學"; // Default if invalid
+      }
+      
+      // For the tag dropdown, make sure it's A, B, C, or D
+      final tagValue = mistake['simple_answer'] ?? 'A';
+      if (['A', 'B', 'C', 'D'].contains(tagValue)) {
+        _selectedTag = tagValue;
+      } else {
+        _selectedTag = "A"; // Default if invalid
+      }
+      
+      // For difficulty, validate it's in our list
+      final difficultyValue = mistake['difficulty'] ?? 'Medium';
+      if (['Easy', 'Medium', 'Hard'].contains(difficultyValue)) {
+        _selectedDifficulty = difficultyValue;
+      } else {
+        _selectedDifficulty = "Medium"; // Default if invalid
+      }
+      
       _mistakeId = mistake['q_id'] ?? ''; // Store the ID for the update request
     });
     
@@ -106,25 +127,37 @@ class _AddMistakePageState extends State<AddMistakePage> {
     try {
       // If we have a new image selected, upload it
       if (_selectedImage != null) {
-        final bytes = await _selectedImage!.readAsBytes();
-        final base64Image = base64Encode(bytes);
-        
-        // Add the image to the request if available
-        // You might need to adjust this depending on your API requirements
-        Map<String, dynamic> imageUploadBody = {
-          "q_id": _mistakeId.isNotEmpty ? _mistakeId : "new",
-          "image_base64": base64Image,
-        };
-        
-        // Upload the image first if we have one
-        final imageResponse = await http.post(
-          Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/upload_image"),
-          headers: {"Content-Type": "application/json; charset=UTF-8"},
-          body: jsonEncode(imageUploadBody),
-        );
-        
-        if (imageResponse.statusCode != 200) {
-          throw Exception('Image upload failed: ${imageResponse.statusCode}');
+        try {
+          final bytes = await _selectedImage!.readAsBytes();
+          final base64Image = base64Encode(bytes);
+          
+          // Add the image to the request if available
+          Map<String, dynamic> imageUploadBody = {
+            "q_id": _mistakeId.isNotEmpty ? _mistakeId : "new",
+            "image_base64": base64Image,
+          };
+          
+          // Upload the image first if we have one
+          final imageResponse = await http.post(
+            Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/upload_image"),
+            headers: {"Content-Type": "application/json; charset=UTF-8"},
+            body: jsonEncode(imageUploadBody),
+          );
+          
+          if (imageResponse.statusCode != 200) {
+            print("Image upload error: ${imageResponse.body}");
+            throw Exception('圖片上傳失敗 (${imageResponse.statusCode})');
+          }
+        } catch (e) {
+          print("Image upload exception: $e");
+          // Continue with submission even if image upload fails
+          // But log the error and show a message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('圖片上傳失敗，但仍繼續提交表單'),
+              backgroundColor: Colors.orange,
+            ),
+          );
         }
       }
 
@@ -156,7 +189,8 @@ class _AddMistakePageState extends State<AddMistakePage> {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Server error: ${response.statusCode}\nBody: ${response.body}');
+        print("API error: ${response.body}");
+        throw Exception('伺服器錯誤: ${response.statusCode}');
       }
 
       final responseData = jsonDecode(utf8.decode(response.bodyBytes));
@@ -478,7 +512,9 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                       color: Color(0xFF1E3875),
                                       iconColor: Color(0xFFFFA368),
                                       textColor: Colors.white,
-                                      onPressed: (_selectedImage != null) ? () => _generateAnswer() : null,
+                                      onPressed: _selectedImage != null ? () {
+                                        _generateAnswer();
+                                      } : null,
                                       disabledColor: Colors.grey.shade700,
                                     ),
                                   ),
@@ -575,9 +611,11 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                                       ))
                                                   .toList(),
                                               onChanged: (newValue) {
-                                                setState(() {
-                                                  _selectedSubject = newValue!;
-                                                });
+                                                if (newValue != null) {
+                                                  setState(() {
+                                                    _selectedSubject = newValue;
+                                                  });
+                                                }
                                               },
                                             ),
                                           ),
@@ -682,48 +720,10 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                 ),
                               ),
                               SizedBox(height: 12),
-                              
-                              // Simple answer
-                              Row(
-                                children: [
-                                  Text(
-                                    "選項: ",
-                                    style: TextStyle(color: Colors.white, fontSize: 15),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFF8BB7E0),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: EdgeInsets.symmetric(horizontal: 8),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        value: _selectedTag,
-                                        dropdownColor: Color(0xFF8BB7E0),
-                                        icon: Icon(Icons.arrow_drop_down, color: Color(0xFF102031)),
-                                        style: TextStyle(color: Color(0xFF102031), fontSize: 15),
-                                        items: ['A', 'B', 'C', 'D'].map((String value) {
-                                          return DropdownMenuItem<String>(
-                                            value: value,
-                                            child: Text(value),
-                                          );
-                                        }).toList(),
-                                        onChanged: (newValue) {
-                                          setState(() {
-                                            _selectedTag = newValue!;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 16),
+
                               
                               // Detailed answer
-                              
-                              SizedBox(height: 6),
+                            
                               Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white,

@@ -434,7 +434,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
     return Scaffold(
       backgroundColor: Color(0xFF102031),
       appBar: AppBar(
-        title: Text('錯題詳情', style: TextStyle(fontSize: 18)),
+        title: Text('錯題詳情', style: TextStyle(fontSize: 18, fontFamily: 'Medium')),
         backgroundColor: Color(0xFF102031),
         elevation: 0,
         leading: IconButton(
@@ -444,7 +444,6 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
         actions: [
           TextButton(
             onPressed: () async {
-              // Navigate to the AddMistakePage in edit mode with the current mistake data
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -455,11 +454,9 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                 ),
               );
               
-              // If edit was successful and we got a result back, refresh the page
               if (result == true) {
-                // Reload the page or refresh data
-                // If you have a method to reload the single mistake, call it here
-                Navigator.pop(context, true); // Return to mistake book page with refresh signal
+                // Return to mistake book page with refresh signal
+                Navigator.pop(context, true);
               }
             },
             child: Text(
