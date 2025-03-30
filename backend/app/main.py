@@ -1371,7 +1371,7 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
         import traceback
         print(traceback.format_exc())
 
-# 新增處理每日使用量通知的 API
+# 修改處理每日使用量通知的 API
 @app.get("/notify-daily-report")
 async def notify_daily_report():
     try:
@@ -1379,110 +1379,15 @@ async def notify_daily_report():
         import smtplib
         from email.mime.text import MIMEText
         from datetime import datetime, timedelta, timezone
-        import requests
-        import json
         
         # 獲取環境變數
-        OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-        DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
         GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
         APP_PASSWORD = os.getenv("APP_PASSWORD")
         RECEIVERS = os.getenv("RECEIVERS", "").split(",") if os.getenv("RECEIVERS") else []
         
-        print(f"環境變數檢查: OPENAI_API_KEY={'已設置' if OPENAI_API_KEY else '未設置'}")
         print(f"環境變數檢查: GMAIL_ADDRESS={'已設置' if GMAIL_ADDRESS else '未設置'}")
         print(f"環境變數檢查: APP_PASSWORD={'已設置' if APP_PASSWORD else '未設置'}")
         print(f"環境變數檢查: RECEIVERS={RECEIVERS}")
-        
-        # 獲取 OpenAI 使用量
-        def get_openai_usage():
-            print("開始獲取 OpenAI 使用量...")
-            if not OPENAI_API_KEY:
-                print("警告: OpenAI API 密鑰未設置")
-                return {
-                    "monthly_usage": 0,
-                    "daily_usage": 0,
-                    "total_granted": 0,
-                    "remaining_balance": 0,
-                    "error": "OpenAI API 密鑰未設置"
-                }
-                
-            headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
-            today = datetime.now(timezone.utc).date()
-            yesterday = today - timedelta(days=1)
-            start_of_month = today.replace(day=1)
-            
-            print(f"查詢日期範圍: 月度={start_of_month} 至 {today}, 日度={yesterday} 至 {today}")
-            
-            try:
-                # 獲取當月總使用量
-                monthly_url = f"https://api.openai.com/v1/dashboard/billing/usage?start_date={start_of_month}&end_date={today + timedelta(days=1)}"
-                print(f"請求月度使用量: {monthly_url}")
-                monthly_res = requests.get(monthly_url, headers=headers)
-                print(f"月度使用量響應狀態碼: {monthly_res.status_code}")
-                
-                if monthly_res.status_code != 200:
-                    print(f"月度使用量響應錯誤: {monthly_res.text}")
-                    return {
-                        "monthly_usage": 0,
-                        "daily_usage": 0,
-                        "total_granted": 0,
-                        "remaining_balance": 0,
-                        "error": f"獲取月度使用量失敗: {monthly_res.status_code}"
-                    }
-                
-                monthly_data = json.loads(monthly_res.text)
-                monthly_usage = monthly_data.get("total_usage", 0) / 100
-                print(f"月度使用量: ${monthly_usage}")
-                
-                # 獲取昨天的使用量
-                daily_url = f"https://api.openai.com/v1/dashboard/billing/usage?start_date={yesterday}&end_date={today}"
-                print(f"請求日度使用量: {daily_url}")
-                daily_res = requests.get(daily_url, headers=headers)
-                print(f"日度使用量響應狀態碼: {daily_res.status_code}")
-                
-                if daily_res.status_code != 200:
-                    print(f"日度使用量響應錯誤: {daily_res.text}")
-                    daily_usage = 0
-                else:
-                    daily_data = json.loads(daily_res.text)
-                    daily_usage = daily_data.get("total_usage", 0) / 100
-                    print(f"日度使用量: ${daily_usage}")
-                
-                # 獲取餘額
-                balance_url = "https://api.openai.com/v1/dashboard/billing/subscription"
-                print(f"請求餘額信息: {balance_url}")
-                balance_res = requests.get(balance_url, headers=headers)
-                print(f"餘額信息響應狀態碼: {balance_res.status_code}")
-                
-                if balance_res.status_code != 200:
-                    print(f"餘額信息響應錯誤: {balance_res.text}")
-                    total_granted = 0
-                    remaining_balance = 0
-                else:
-                    balance_data = json.loads(balance_res.text)
-                    total_granted = balance_data.get("hard_limit_usd", 0)
-                    total_used = balance_data.get("total_usage", 0)
-                    remaining_balance = total_granted - total_used
-                    print(f"總額度: ${total_granted}, 剩餘餘額: ${remaining_balance}")
-                
-                return {
-                    "monthly_usage": round(monthly_usage, 2),
-                    "daily_usage": round(daily_usage, 2),
-                    "total_granted": round(total_granted, 2),
-                    "remaining_balance": round(remaining_balance, 2)
-                }
-            except Exception as e:
-                print(f"獲取 OpenAI 使用量時出錯: {e}")
-                import traceback
-                print(traceback.format_exc())
-                return {
-                    "monthly_usage": 0,
-                    "daily_usage": 0,
-                    "total_granted": 0,
-                    "remaining_balance": 0,
-                    "error": str(e)
-                }
         
         # 發送郵件
         def send_email(subject, body):
@@ -1511,28 +1416,100 @@ async def notify_daily_report():
                 print(traceback.format_exc())
                 return False
         
-        # 獲取使用數據
-        print("開始獲取 API 使用數據...")
-        openai_data = get_openai_usage()
+        # 獲取當日關卡數據
+        print("開始獲取當日關卡數據...")
         
-        today = datetime.now().strftime("%Y-%m-%d")
-        subject = f"【Dogtor 每日報告】{today}"
+        # 計算昨天的日期
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        yesterday_start = datetime.combine(yesterday, datetime.min.time())
+        yesterday_end = datetime.combine(yesterday, datetime.max.time())
+        
+        yesterday_start_str = yesterday_start.strftime('%Y-%m-%d %H:%M:%S')
+        yesterday_end_str = yesterday_end.strftime('%Y-%m-%d %H:%M:%S')
+        
+        print(f"查詢日期範圍: {yesterday_start_str} 至 {yesterday_end_str}")
+        
+        # 連接到資料庫
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取昨天完成的關卡數量
+                cursor.execute("""
+                SELECT COUNT(*) as total_levels, COUNT(DISTINCT user_id) as total_users
+                FROM user_level
+                WHERE answered_at BETWEEN %s AND %s
+                """, (yesterday_start_str, yesterday_end_str))
+                
+                level_stats = cursor.fetchone()
+                total_levels = level_stats['total_levels'] if level_stats else 0
+                total_users = level_stats['total_users'] if level_stats else 0
+                
+                # 獲取昨天的答題數量
+                cursor.execute("""
+                SELECT COUNT(*) as total_answers, COUNT(DISTINCT user_id) as answer_users
+                FROM user_question_stats
+                WHERE last_attempted_at BETWEEN %s AND %s
+                """, (yesterday_start_str, yesterday_end_str))
+                
+                answer_stats = cursor.fetchone()
+                total_answers = answer_stats['total_answers'] if answer_stats else 0
+                answer_users = answer_stats['answer_users'] if answer_stats else 0
+                
+                # 獲取昨天活躍的前5名用戶
+                cursor.execute("""
+                SELECT user_id, COUNT(*) as level_count
+                FROM user_level
+                WHERE answered_at BETWEEN %s AND %s
+                GROUP BY user_id
+                ORDER BY level_count DESC
+                LIMIT 5
+                """, (yesterday_start_str, yesterday_end_str))
+                
+                top_users = cursor.fetchall()
+                
+                # 獲取用戶名稱
+                top_user_details = []
+                for user in top_users:
+                    cursor.execute("SELECT name FROM users WHERE user_id = %s", (user['user_id'],))
+                    user_info = cursor.fetchone()
+                    user_name = user_info['name'] if user_info and user_info['name'] else user['user_id']
+                    top_user_details.append({
+                        "name": user_name,
+                        "level_count": user['level_count']
+                    })
+        
+        finally:
+            connection.close()
+        
+        # 構建郵件內容
+        today_str = today.strftime("%Y-%m-%d")
+        yesterday_str = yesterday.strftime("%Y-%m-%d")
+        subject = f"【Dogtor 每日報告】{today_str}"
         
         print("構建郵件內容...")
-        body = f"""API 使用報告 ({today})：
+        body = f"""Dogtor 每日使用報告 ({yesterday_str})：
 
-【OpenAI API】
-昨日使用金額：${openai_data['daily_usage']} USD
-本月累計使用：${openai_data['monthly_usage']} USD
-剩餘餘額：${openai_data['remaining_balance']} USD
-總額度：${openai_data['total_granted']} USD
+【使用統計】
+昨日完成關卡數：{total_levels} 個
+昨日答題數量：{total_answers} 題
+昨日活躍用戶數：{total_users} 人
 """
 
-        if "error" in openai_data:
-            body += f"錯誤信息：{openai_data['error']}\n"
-
+        if top_user_details:
+            body += "\n【昨日最活躍用戶】\n"
+            for i, user in enumerate(top_user_details, 1):
+                body += f"{i}. {user['name']} - 完成 {user['level_count']} 個關卡\n"
+        
         body += """
-請留意 API 使用量哦！
+祝您有美好的一天！
 """
         
         print("郵件內容構建完成，開始發送...")
