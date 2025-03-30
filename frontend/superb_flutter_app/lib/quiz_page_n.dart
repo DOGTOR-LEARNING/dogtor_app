@@ -44,7 +44,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
   // 1. 更新顏色方案
   final Color primaryColor = Colors.white;
-  final Color secondaryColor = Colors.white; 
+  final Color secondaryColor = const Color.fromARGB(255, 34, 40, 63); 
   final Color accentColor = Color.fromARGB(255, 238, 159, 41);    // 橙色強調色，類似小島的顏色
   final Color cardColor = Colors.white;      // 白色卡片背景色
 
@@ -448,7 +448,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               Text(
                 resultMessage,
                 textAlign: TextAlign.center,
-                style: _textStyle(color: Colors.white, fontSize: 16),
+                style: _textStyle(color: const Color.fromARGB(255, 19, 31, 54), fontSize: 16),
               ),
             ],
           ),
