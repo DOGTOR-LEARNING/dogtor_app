@@ -13,7 +13,9 @@ import pymysql.cursors
 from typing import Optional
 from pydantic import BaseModel
 import io
-
+from email.mime.text import MIMEText
+from datetime import datetime
+from daily_report import get_openai_usage, get_deepseek_usage, send_email
 
 app = FastAPI()
 
@@ -1364,3 +1366,29 @@ async def _update_level_knowledge_scores(user_id: str, level_id: str, connection
         print(f"更新關卡知識點分數時出錯: {str(e)}")
         import traceback
         print(traceback.format_exc())
+
+# 新增處理每日使用量通知的 API
+@app.get("/notify-daily-report")
+def notify_daily_report():
+    openai_data = get_openai_usage()
+    deepseek_data = get_deepseek_usage()
+    today = datetime.now().strftime("%Y-%m-%d")
+    subject = "【Dogtor 每日報告】"
+    body = f"""OpenAI API 使用報告 ({today})：
+
+【OpenAI API】
+昨日使用金額：${openai_data['daily_usage']} USD
+本月累計使用：${openai_data['monthly_usage']} USD
+剩餘餘額：${openai_data['remaining_balance']} USD
+總額度：${openai_data['total_granted']} USD
+
+【DeepSeek API】
+昨日使用金額：${deepseek_data['daily_usage']} USD
+本月累計使用：${deepseek_data['monthly_usage']} USD
+剩餘餘額：${deepseek_data['remaining_balance']} USD
+總額度：${deepseek_data['total_granted']} USD
+
+請留意 API 使用量哦！
+"""
+    send_email(subject, body)
+    return {"status": "sent"}
