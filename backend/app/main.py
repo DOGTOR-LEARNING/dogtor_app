@@ -1372,7 +1372,7 @@ async def notify_daily_report():
     try:
         import smtplib
         from email.mime.text import MIMEText
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone  # 添加 timezone 導入
         import requests
         import os
         
@@ -1386,7 +1386,7 @@ async def notify_daily_report():
         # 獲取 OpenAI 使用量
         def get_openai_usage():
             headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
-            today = datetime.now(datetime.UTC).date()
+            today = datetime.now(timezone.utc).date()
             yesterday = today - timedelta(days=1)
             start_of_month = today.replace(day=1)
             
@@ -1429,7 +1429,7 @@ async def notify_daily_report():
                 }
                 
             headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
-            today = datetime.now(datetime.UTC).date()
+            today = datetime.now(timezone.utc).date()
             yesterday = today - timedelta(days=1)
             start_of_month = today.replace(day=1)
             
