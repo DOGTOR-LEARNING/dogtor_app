@@ -1244,6 +1244,7 @@ async def get_user_level_stars(request: Request):
                 
                 # 如果提供了科目，則加入科目過濾條件
                 if subject:
+                    print(f"科目: {subject}")
                     query += """
                     JOIN level_info li ON ul.level_id = li.id
                     JOIN chapter_list cl ON li.chapter_id = cl.id
