@@ -275,6 +275,50 @@ void _onItemTapped(int index) {
                                                   ),
                                                 );
                                               }
+                                              else if (planets[index]['name'] == '化學') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '化學',
+                                                      csvPath: 'assets/edu_data/level_info/high_chemistry_level.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                              else if (planets[index]['name'] == '歷史') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '歷史',
+                                                      csvPath: 'assets/edu_data/level_info/junior_his_level.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                              else if (planets[index]['name'] == '地理') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '地理',
+                                                      csvPath: 'assets/edu_data/level_info/junior_geo_level.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                              else if (planets[index]['name'] == '公民') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '公民',
+                                                      csvPath: 'assets/edu_data/level_info/junior_civ_level.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
                                             },
                                             child: Image.asset(
                                               planets[index]['image'],
@@ -535,10 +579,6 @@ void _onItemTapped(int index) {
 
   final List<Map<String, dynamic>> planets = [
     {
-      'name': '自然',
-      'image': 'assets/pics/home-island1.png',
-    },
-    {
       'name': '理化',
       'image': 'assets/pics/home-island2.png',
     },
@@ -555,18 +595,6 @@ void _onItemTapped(int index) {
       'image': 'assets/pics/home-island5.png',
     },
     {
-      'name': '國文',
-      'image': 'assets/pics/home-island1.png',
-    },
-    {
-      'name': '英文',
-      'image': 'assets/pics/home-island2.png',  // 重複使用圖片
-    },
-    {
-      'name': '社會',
-      'image': 'assets/pics/home-island3.png',
-    },
-    {
       'name': '地科',
       'image': 'assets/pics/home-island4.png',
     },
@@ -575,12 +603,24 @@ void _onItemTapped(int index) {
       'image': 'assets/pics/home-island5.png',
     },
     {
+      'name': '公民',
+      'image': 'assets/pics/home-island3.png',
+    },
+    {
       'name': '歷史',
       'image': 'assets/pics/home-island1.png',
     },
     {
       'name': '地理',
       'image': 'assets/pics/home-island2.png',
+    },
+    {
+      'name': '國文',
+      'image': 'assets/pics/home-island1.png',
+    },
+    {
+      'name': '英文',
+      'image': 'assets/pics/home-island2.png',  // 重複使用圖片
     },
   ];
 }
