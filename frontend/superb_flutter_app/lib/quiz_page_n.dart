@@ -729,9 +729,9 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   // 根據正確率計算星星數
   int _calculateStars(int correctCount, int totalQuestions) {
     final percentage = (correctCount / totalQuestions * 100).round();
-    if (percentage >= 90) return 3;  // 90% 以上獲得 3 星
+    if (percentage >= 100) return 3;  // 90% 以上獲得 3 星
     if (percentage >= 70) return 2;  // 70% 以上獲得 2 星
-    if (percentage >= 50) return 1;  // 50% 以上獲得 1 星
+    if (percentage >= 40) return 1;  // 50% 以上獲得 1 星
     return 0;  // 50% 以下獲得 0 星
   }
 
