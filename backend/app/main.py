@@ -1225,6 +1225,79 @@ async def get_knowledge_scores(user_id: str):
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶知識點分數時出錯: {str(e)}"}
 
+@app.post("/get_user_level_stars")
+async def get_user_level_stars(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        subject = data.get('subject')  # 新增科目參數
+        
+        print(f"收到獲取用戶星星數請求: user_id={user_id}, subject={subject}")
+        
+        if not user_id:
+            print(f"錯誤: 缺少用戶 ID")
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 構建查詢條件
+                query = """
+                SELECT ul.level_id, MAX(ul.stars) as stars
+                FROM user_level ul
+                """
+                
+                params = [user_id]
+                
+                # 如果提供了科目，則加入科目過濾條件
+                if subject:
+                    print(f"科目: {subject}")
+                    query += """
+                    JOIN level_info li ON ul.level_id = li.id
+                    JOIN chapter_list cl ON li.chapter_id = cl.id
+                    WHERE ul.user_id = %s AND cl.subject = %s
+                    """
+                    params.append(subject)
+                else:
+                    query += "WHERE ul.user_id = %s"
+                
+                query += " GROUP BY ul.level_id"
+                
+                print(f"執行查詢: {query}")
+                print(f"參數: {params}")
+                
+                cursor.execute(query, params)
+                results = cursor.fetchall()
+                
+                # 將結果轉換為字典格式
+                level_stars = {}
+                for row in results:
+                    level_stars[row['level_id']] = row['stars']
+                
+                print(f"找到用戶 {user_id} 的星星數記錄: {len(level_stars)} 個關卡")
+                
+                return {
+                    "success": True,
+                    "level_stars": level_stars
+                }
+        
+        finally:
+            connection.close()
+            print(f"資料庫連接已關閉")
+    
+    except Exception as e:
+        print(f"獲取用戶星星數時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取用戶星星數時出錯: {str(e)}"}
+
 @app.get("/get_weekly_stats/{user_id}")
 async def get_weekly_stats(user_id: str):
     try:
