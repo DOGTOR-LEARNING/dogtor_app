@@ -28,6 +28,8 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--add-cloudsql-instances'
+      - 'dogtor-454402:asia-east1:dogtor-dev'
 
 options:
   default_logs_bucket_behavior: REGIONAL_USER_OWNED_BUCKET
