@@ -74,9 +74,16 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             _friendsList = List<Map<String, dynamic>>.from(data['friends']);
             // 處理年級顯示格式
             for (var friend in _friendsList) {
+              // 處理year_grade字段
               if (friend['year_grade'] != null && friend['year_grade'].toString().startsWith('G')) {
                 final gradeNum = friend['year_grade'].toString().substring(1);
                 friend['year_grade'] = '$gradeNum年級';
+              }
+              
+              // 處理grade字段，以防API同時提供或將來提供這個字段
+              if (friend['grade'] != null && friend['grade'].toString().startsWith('G')) {
+                final gradeNum = friend['grade'].toString().substring(1);
+                friend['grade'] = '$gradeNum年級';
               }
             }
             _isLoading = false;
@@ -143,7 +150,14 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                 request['id'] = request['id'].toString();
               }
               
-              print('處理後的請求 #$i: ${request['id']}, ${request['requester_name']}');
+              // 處理年級格式，將G7轉換為7年級
+              if (request['requester_grade'] != null && 
+                  request['requester_grade'].toString().startsWith('G')) {
+                String grade = request['requester_grade'].toString().substring(1);
+                request['requester_grade'] = '$grade年級';
+              }
+              
+              print('處理後的請求 #$i: ${request['id']}, ${request['requester_name']}, 年級: ${request['requester_grade']}');
             }
           });
         } else {
@@ -275,15 +289,22 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
     try {
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/send_friend_request'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json; charset=utf-8',
+        },
         body: json.encode({
           'requester_id': _userId,
           'addressee_id': friendId,
         }),
       );
 
+      print('發送好友請求響應狀態碼: ${response.statusCode}');
+      print('發送好友請求響應內容: ${response.body}');
+
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        // 使用utf8.decode解碼回應內容
+        final data = json.decode(utf8.decode(response.bodyBytes));
         if (data['status'] == 'success') {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -310,6 +331,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         );
       }
     } catch (e) {
+      print('發送好友請求時出錯: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('發送好友請求時出錯: $e'),
@@ -339,7 +361,10 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       if (requestId != null && requestId.isNotEmpty) {
         final response = await http.post(
           Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/respond_friend_request'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Accept': 'application/json; charset=utf-8',
+          },
           body: json.encode({
             'request_id': requestId,
             'status': 'canceled',
@@ -350,7 +375,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         print('收回請求響應內容: ${response.body}');
 
         if (response.statusCode == 200) {
-          final data = json.decode(response.body);
+          final data = json.decode(utf8.decode(response.bodyBytes));
           if (data['status'] == 'success') {
             _showSuccessMessage();
             return;
@@ -361,7 +386,10 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       // 如果請求ID方法失敗，嘗試使用用戶ID
       final cancelByUserResponse = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/cancel_friend_request'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json; charset=utf-8',
+        },
         body: json.encode({
           'requester_id': _userId,
           'addressee_id': userId,
@@ -372,7 +400,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       print('通過用戶ID取消的內容: ${cancelByUserResponse.body}');
       
       if (cancelByUserResponse.statusCode == 200) {
-        final data = json.decode(cancelByUserResponse.body);
+        final data = json.decode(utf8.decode(cancelByUserResponse.bodyBytes));
         if (data['status'] == 'success') {
           _showSuccessMessage();
           return;
@@ -425,7 +453,10 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
     try {
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/respond_friend_request'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json; charset=utf-8',
+        },
         body: json.encode({
           'request_id': requestId,
           'status': status,
@@ -436,7 +467,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       print('回應好友請求響應內容: ${response.body}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(utf8.decode(response.bodyBytes));
         if (data['status'] == 'success') {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -589,7 +620,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             child: ListTile(
               contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               leading: CircleAvatar(
-                radius: 28,
+                radius: 25,
                 backgroundImage: friend['photo_url'] != null && friend['photo_url'].isNotEmpty
                     ? NetworkImage(friend['photo_url'])
                     : null,
@@ -616,19 +647,24 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 4),
-                  Text(
-                    friend['email'] ?? '',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
-                  ),
-                  if (friend['year_grade'] != null || friend['introduction'] != null)
+                  if (friend['introduction'] != null && friend['introduction'].toString().isNotEmpty)
                     Padding(
                       padding: EdgeInsets.only(top: 4),
                       child: Text(
-                        '${friend['year_grade'] ?? ''} ${friend['introduction'] ?? ''}',
+                        friend['introduction'].toString(),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  if (friend['year_grade'] != null && friend['year_grade'].toString().isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        friend['year_grade'].toString(),
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 14,
@@ -707,9 +743,9 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
               ),
             ),
             child: ListTile(
-              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               leading: CircleAvatar(
-                radius: 28,
+                radius: 25,
                 backgroundImage: request['requester_photo'] != null && request['requester_photo'].isNotEmpty
                     ? NetworkImage(request['requester_photo'])
                     : null,
@@ -726,17 +762,36 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                   fontSize: 16,
                 ),
               ),
-              subtitle: Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  '${request['requester_grade'] ?? ''} ${request['requester_intro'] ?? ''}',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (request['requester_intro'] != null && request['requester_intro'].toString().isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        request['requester_intro'].toString(),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  if (request['requester_grade'] != null && request['requester_grade'].toString().isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        request['requester_grade'].toString(),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -930,7 +985,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                             child: ListTile(
                               contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                               leading: CircleAvatar(
-                                radius: 28,
+                                radius: 25,
                                 backgroundImage: user['photo_url'] != null && user['photo_url'].isNotEmpty
                                     ? NetworkImage(user['photo_url'])
                                     : null,
@@ -957,11 +1012,24 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (user['year_grade'] != null || user['introduction'] != null)
+                                  if (user['introduction'] != null && user['introduction'].toString().isNotEmpty)
                                     Padding(
                                       padding: EdgeInsets.only(top: 4),
                                       child: Text(
-                                        '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
+                                        user['introduction'].toString(),
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  if (user['year_grade'] != null && user['year_grade'].toString().isNotEmpty)
+                                    Padding(
+                                      padding: EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        user['year_grade'].toString(),
                                         style: TextStyle(
                                           color: Colors.grey[600],
                                           fontSize: 14,
@@ -1126,11 +1194,6 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(Icons.schedule, color: Colors.white, size: 20),
-                                                SizedBox(width: 4),
-                                                Text(
-                                                  '已發送',
-                                                  style: TextStyle(color: Colors.white),
-                                                ),
                                                 SizedBox(width: 2),
                                                 Icon(Icons.cancel_outlined, color: Colors.white, size: 18),
                                               ],
