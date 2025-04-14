@@ -509,30 +509,60 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
               ),
             ],
           ),
-          child: TextField(
-            controller: _searchController,
-            style: TextStyle(color: darkBlue),
-            decoration: InputDecoration(
-              hintText: '搜尋用戶電子郵件',
-              hintStyle: TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: BorderSide.none,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  style: TextStyle(color: darkBlue),
+                  decoration: InputDecoration(
+                    hintText: '搜尋用戶電子郵件',
+                    hintStyle: TextStyle(color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Icon(Icons.search, color: primaryBlue),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear, color: primaryBlue),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchResults = [];
+                                _isSearching = false;
+                              });
+                            },
+                          )
+                        : null,
+                  ),
+                  onSubmitted: (value) {
+                    if (value.isNotEmpty) {
+                      _searchFriends(value);
+                    }
+                  },
+                ),
               ),
-              prefixIcon: Icon(Icons.search, color: primaryBlue),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: Icon(Icons.clear, color: primaryBlue),
-                      onPressed: () {
-                        _searchController.clear();
-                        _searchFriends('');
-                      },
-                    )
-                  : null,
-            ),
-            onChanged: _searchFriends,
+              Container(
+                margin: EdgeInsets.only(right: 8),
+                child: IconButton(
+                  icon: Icon(Icons.search, color: Colors.white),
+                  onPressed: () {
+                    if (_searchController.text.isNotEmpty) {
+                      _searchFriends(_searchController.text);
+                    }
+                  },
+                  style: IconButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -555,7 +585,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                           SizedBox(height: 24),
                           Text(
                             _searchController.text.isEmpty
-                                ? '輸入電子郵件搜尋好友'
+                                ? '輸入電子郵件並按下搜尋'
                                 : '沒有找到符合的用戶',
                             style: TextStyle(
                               color: darkBlue,
@@ -610,13 +640,14 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                     fontSize: 14,
                                   ),
                                 ),
-                                Text(
-                                  '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
+                                if (user['year_grade'] != null || user['introduction'] != null)
+                                  Text(
+                                    '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
                             trailing: isFriend
