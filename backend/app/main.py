@@ -2002,99 +2002,73 @@ async def get_user_stats(request: Request):
 async def get_friends(user_id: str):
     try:
         connection = get_db_connection()
-        connection.charset = 'utf8mb4'
+        cursor = connection.cursor(dictionary=True)
         
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute("SET NAMES utf8mb4")
-                cursor.execute("SET CHARACTER SET utf8mb4")
-                cursor.execute("SET character_set_connection=utf8mb4")
-                
-                # 查找好友關係
-                sql = """
-                SELECT f.id, f.requester_id, f.addressee_id, f.status, f.created_at
-                FROM friendships f
-                WHERE (f.requester_id = %s OR f.addressee_id = %s) AND f.status = 'accepted'
-                """
-                cursor.execute(sql, (user_id, user_id))
-                friendships = cursor.fetchall()
-                
-                friends = []
-                for friendship in friendships:
-                    # 確定好友的 ID（不是當前用戶的那個）
-                    friend_id = friendship['requester_id'] if friendship['addressee_id'] == user_id else friendship['addressee_id']
-                    
-                    # 獲取好友資訊
-                    cursor.execute("SELECT user_id, name, nickname, photo_url, year_grade, introduction FROM users WHERE user_id = %s", (friend_id,))
-                    friend_info = cursor.fetchone()
-                    
-                    if friend_info:
-                        friends.append(friend_info)
-                
-                return {"success": True, "friends": friends}
-                
-        finally:
-            connection.close()
-            
+        # 獲取好友列表（包括雙向的好友關係）
+        query = """
+        SELECT u.user_id, u.name, u.nickname, u.photo_url, u.year_grade, u.introduction
+        FROM users u
+        INNER JOIN friendships f ON (f.user_id1 = %s AND f.user_id2 = u.user_id)
+            OR (f.user_id2 = %s AND f.user_id1 = u.user_id)
+        WHERE f.status = 'accepted'
+        ORDER BY u.name
+        """
+        cursor.execute(query, (user_id, user_id))
+        friends = cursor.fetchall()
+        
+        cursor.close()
+        connection.close()
+        
+        return {
+            "status": "success",
+            "friends": friends
+        }
+        
     except Exception as e:
         print(f"獲取好友列表時出錯: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return {"success": False, "message": f"獲取好友列表時出錯: {str(e)}"}
+        return {
+            "status": "error",
+            "message": "無法獲取好友列表"
+        }
 
 # 獲取好友請求
 @app.get("/get_friend_requests/{user_id}")
 async def get_friend_requests(user_id: str):
     try:
         connection = get_db_connection()
-        connection.charset = 'utf8mb4'
+        cursor = connection.cursor(dictionary=True)
         
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute("SET NAMES utf8mb4")
-                cursor.execute("SET CHARACTER SET utf8mb4")
-                cursor.execute("SET character_set_connection=utf8mb4")
-                
-                # 查找待處理的好友請求（發給當前用戶的）
-                sql = """
-                SELECT f.id, f.requester_id, f.created_at
-                FROM friendships f
-                WHERE f.addressee_id = %s AND f.status = 'pending'
-                """
-                cursor.execute(sql, (user_id,))
-                requests = cursor.fetchall()
-                
-                friend_requests = []
-                for req in requests:
-                    # 獲取請求者資訊
-                    cursor.execute("""
-                    SELECT user_id, name, nickname, photo_url, year_grade, introduction 
-                    FROM users WHERE user_id = %s
-                    """, (req['requester_id'],))
-                    requester_info = cursor.fetchone()
-                    
-                    if requester_info:
-                        request_data = {
-                            "id": req['id'],
-                            "requester_id": req['requester_id'],
-                            "created_at": req['created_at'].strftime('%Y-%m-%d %H:%M:%S') if req['created_at'] else None,
-                            "requester_name": requester_info['name'] or requester_info['nickname'],
-                            "requester_photo": requester_info['photo_url'],
-                            "requester_grade": requester_info['year_grade'],
-                            "requester_intro": requester_info['introduction']
-                        }
-                        friend_requests.append(request_data)
-                
-                return {"success": True, "requests": friend_requests}
-                
-        finally:
-            connection.close()
-            
+        # 獲取待處理的好友請求
+        query = """
+        SELECT 
+            fr.request_id as id,
+            u.user_id as requester_id,
+            u.name as requester_name,
+            u.photo_url as requester_photo,
+            u.year_grade as requester_grade,
+            u.introduction as requester_intro
+        FROM friend_requests fr
+        INNER JOIN users u ON fr.requester_id = u.user_id
+        WHERE fr.addressee_id = %s AND fr.status = 'pending'
+        ORDER BY fr.created_at DESC
+        """
+        cursor.execute(query, (user_id,))
+        requests = cursor.fetchall()
+        
+        cursor.close()
+        connection.close()
+        
+        return {
+            "status": "success",
+            "requests": requests
+        }
+        
     except Exception as e:
         print(f"獲取好友請求時出錯: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return {"success": False, "message": f"獲取好友請求時出錯: {str(e)}"}
+        return {
+            "status": "error",
+            "message": "無法獲取好友請求"
+        }
 
 # 發送好友請求
 @app.post("/send_friend_request")

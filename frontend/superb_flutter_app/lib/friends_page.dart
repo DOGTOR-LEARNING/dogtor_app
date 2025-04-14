@@ -19,6 +19,12 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   bool _isSearching = false;
   bool _isLoading = true;
 
+  // 定義主題顏色
+  final Color primaryBlue = Color(0xFF1E88E5);
+  final Color accentOrange = Color(0xFFFF9800);
+  final Color backgroundBlue = Color(0xFFE3F2FD);
+  final Color darkBlue = Color(0xFF1565C0);
+
   @override
   void initState() {
     super.initState();
@@ -52,27 +58,39 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       final response = await http.get(
-        Uri.parse('http://your-backend-url.com/get_friends/$_userId'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_friends/$_userId'),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        setState(() {
-          _friendsList = List<Map<String, dynamic>>.from(data['friends']);
-          _isLoading = false;
-        });
+        if (data['status'] == 'success') {
+          setState(() {
+            _friendsList = List<Map<String, dynamic>>.from(data['friends']);
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? '載入好友列表失敗')),
+          );
+        }
       } else {
         setState(() {
           _isLoading = false;
         });
-        // 處理錯誤
-        print('無法載入好友列表: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('無法載入好友列表: ${response.statusCode}')),
+        );
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      print('加載好友列表時出錯: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('加載好友列表時出錯: $e')),
+      );
     }
   }
 
@@ -81,20 +99,29 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       final response = await http.get(
-        Uri.parse('http://your-backend-url.com/get_friend_requests/$_userId'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_friend_requests/$_userId'),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        setState(() {
-          _pendingRequests = List<Map<String, dynamic>>.from(data['requests']);
-        });
+        if (data['status'] == 'success') {
+          setState(() {
+            _pendingRequests = List<Map<String, dynamic>>.from(data['requests']);
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? '載入好友請求失敗')),
+          );
+        }
       } else {
-        // 處理錯誤
-        print('無法載入好友請求: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('無法載入好友請求: ${response.statusCode}')),
+        );
       }
     } catch (e) {
-      print('加載好友請求時出錯: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('加載好友請求時出錯: $e')),
+      );
     }
   }
 
@@ -210,11 +237,21 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('好友'),
-        backgroundColor: Color(0xFF101F30),
+        title: Text(
+          '好友',
+          style: TextStyle(
+            color: darkBlue,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: darkBlue),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
+          indicatorColor: accentOrange,
+          labelColor: darkBlue,
+          unselectedLabelColor: Colors.grey,
           tabs: [
             Tab(text: '好友列表'),
             Tab(text: '好友請求'),
@@ -224,21 +261,20 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       ),
       body: Container(
         decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/home-background.png'),
-            fit: BoxFit.cover,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              backgroundBlue,
+            ],
           ),
         ),
         child: TabBarView(
           controller: _tabController,
           children: [
-            // 好友列表頁面
             _buildFriendsListTab(),
-            
-            // 好友請求頁面
             _buildFriendRequestsTab(),
-            
-            // 查詢好友頁面
             _buildSearchFriendsTab(),
           ],
         ),
@@ -248,7 +284,9 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
   Widget _buildFriendsListTab() {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(primaryBlue),
+      ));
     }
     
     if (_friendsList.isEmpty) {
@@ -258,19 +296,26 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
           children: [
             SvgPicture.asset(
               'assets/images/dogtor_eng_logo.svg',
-              width: 100,
-              height: 100,
-              color: Colors.white.withOpacity(0.5),
+              width: 120,
+              height: 120,
+              color: primaryBlue.withOpacity(0.5),
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 24),
             Text(
               '還沒有好友',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              style: TextStyle(
+                color: darkBlue,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 12),
             Text(
               '在「查詢好友」頁面尋找新朋友',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
             ),
           ],
         ),
@@ -283,34 +328,48 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       itemBuilder: (context, index) {
         final friend = _friendsList[index];
         return Card(
-          color: Colors.white.withOpacity(0.1),
+          elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(15),
           ),
-          margin: EdgeInsets.only(bottom: 10),
           child: ListTile(
+            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             leading: CircleAvatar(
+              radius: 25,
               backgroundImage: friend['photo_url'] != null && friend['photo_url'].isNotEmpty
                   ? NetworkImage(friend['photo_url'])
                   : null,
               child: friend['photo_url'] == null || friend['photo_url'].isEmpty
-                  ? Icon(Icons.person, color: Colors.white)
+                  ? Icon(Icons.person, color: Colors.white, size: 30)
                   : null,
-              backgroundColor: Colors.blue.shade700,
+              backgroundColor: primaryBlue,
             ),
             title: Text(
               friend['name'] ?? friend['nickname'] ?? '未知用戶',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: darkBlue,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
             subtitle: Text(
               '${friend['year_grade'] ?? ''} ${friend['introduction'] ?? ''}',
-              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
             ),
-            trailing: IconButton(
-              icon: Icon(Icons.message, color: Colors.white),
-              onPressed: () {
-                // 實現聊天功能
-              },
+            trailing: Container(
+              decoration: BoxDecoration(
+                color: accentOrange,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: IconButton(
+                icon: Icon(Icons.message, color: Colors.white),
+                onPressed: () {
+                  // 實現聊天功能
+                },
+              ),
             ),
           ),
         );
@@ -326,14 +385,18 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
           children: [
             SvgPicture.asset(
               'assets/images/dogtor_eng_logo.svg',
-              width: 100,
-              height: 100,
-              color: Colors.white.withOpacity(0.5),
+              width: 120,
+              height: 120,
+              color: primaryBlue.withOpacity(0.5),
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 24),
             Text(
               '沒有待處理的好友請求',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              style: TextStyle(
+                color: darkBlue,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -346,39 +409,60 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       itemBuilder: (context, index) {
         final request = _pendingRequests[index];
         return Card(
-          color: Colors.white.withOpacity(0.1),
+          elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(15),
           ),
-          margin: EdgeInsets.only(bottom: 10),
           child: ListTile(
+            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             leading: CircleAvatar(
+              radius: 25,
               backgroundImage: request['requester_photo'] != null && request['requester_photo'].isNotEmpty
                   ? NetworkImage(request['requester_photo'])
                   : null,
               child: request['requester_photo'] == null || request['requester_photo'].isEmpty
-                  ? Icon(Icons.person, color: Colors.white)
+                  ? Icon(Icons.person, color: Colors.white, size: 30)
                   : null,
-              backgroundColor: Colors.blue.shade700,
+              backgroundColor: primaryBlue,
             ),
             title: Text(
               request['requester_name'] ?? '未知用戶',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: darkBlue,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
             subtitle: Text(
               '${request['requester_grade'] ?? ''} ${request['requester_intro'] ?? ''}',
-              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: Icon(Icons.check, color: Colors.green),
-                  onPressed: () => _respondToFriendRequest(request['id'], 'accepted'),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.check, color: Colors.white),
+                    onPressed: () => _respondToFriendRequest(request['id'], 'accepted'),
+                  ),
                 ),
-                IconButton(
-                  icon: Icon(Icons.close, color: Colors.red),
-                  onPressed: () => _respondToFriendRequest(request['id'], 'rejected'),
+                SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.close, color: Colors.white),
+                    onPressed: () => _respondToFriendRequest(request['id'], 'rejected'),
+                  ),
                 ),
               ],
             ),
@@ -391,24 +475,35 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   Widget _buildSearchFriendsTab() {
     return Column(
       children: [
-        Padding(
-          padding: EdgeInsets.all(16),
+        Container(
+          margin: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
           child: TextField(
             controller: _searchController,
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: darkBlue),
             decoration: InputDecoration(
               hintText: '搜尋用戶名稱或暱稱',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              hintStyle: TextStyle(color: Colors.grey),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.1),
+              fillColor: Colors.white,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(15),
                 borderSide: BorderSide.none,
               ),
-              prefixIcon: Icon(Icons.search, color: Colors.white),
+              prefixIcon: Icon(Icons.search, color: primaryBlue),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: Icon(Icons.clear, color: Colors.white),
+                      icon: Icon(Icons.clear, color: primaryBlue),
                       onPressed: () {
                         _searchController.clear();
                         _searchFriends('');
@@ -421,14 +516,19 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         ),
         Expanded(
           child: _isSearching
-              ? Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryBlue),
+                ))
               : _searchResults.isEmpty
                   ? Center(
                       child: Text(
                         _searchController.text.isEmpty
                             ? '輸入名稱或暱稱搜尋好友'
                             : '沒有找到符合的用戶',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(
+                          color: darkBlue,
+                          fontSize: 16,
+                        ),
                       ),
                     )
                   : ListView.builder(
@@ -440,36 +540,67 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                         final bool requestSent = user['friend_status'] == 'pending';
                         
                         return Card(
-                          color: Colors.white.withOpacity(0.1),
+                          elevation: 2,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(15),
                           ),
-                          margin: EdgeInsets.only(bottom: 10),
                           child: ListTile(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                             leading: CircleAvatar(
+                              radius: 25,
                               backgroundImage: user['photo_url'] != null && user['photo_url'].isNotEmpty
                                   ? NetworkImage(user['photo_url'])
                                   : null,
                               child: user['photo_url'] == null || user['photo_url'].isEmpty
-                                  ? Icon(Icons.person, color: Colors.white)
+                                  ? Icon(Icons.person, color: Colors.white, size: 30)
                                   : null,
-                              backgroundColor: Colors.blue.shade700,
+                              backgroundColor: primaryBlue,
                             ),
                             title: Text(
                               user['name'] ?? user['nickname'] ?? '未知用戶',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(
+                                color: darkBlue,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                             subtitle: Text(
                               '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
-                              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
                             ),
                             trailing: isFriend
-                                ? Icon(Icons.check_circle, color: Colors.green)
+                                ? Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Icon(Icons.check_circle, color: Colors.white),
+                                  )
                                 : requestSent
-                                    ? Text('已發送請求', style: TextStyle(color: Colors.yellow))
-                                    : IconButton(
-                                        icon: Icon(Icons.person_add, color: Colors.white),
-                                        onPressed: () => _sendFriendRequest(user['user_id']),
+                                    ? Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: accentOrange,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          '已發送請求',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      )
+                                    : Container(
+                                        decoration: BoxDecoration(
+                                          color: primaryBlue,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: IconButton(
+                                          icon: Icon(Icons.person_add, color: Colors.white),
+                                          onPressed: () => _sendFriendRequest(user['user_id']),
+                                        ),
                                       ),
                           ),
                         );
