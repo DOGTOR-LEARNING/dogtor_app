@@ -2223,3 +2223,17 @@ async def search_users(request: Request):
     except Exception as e:
         print(f"搜尋用戶時出錯: {str(e)}")  # 錯誤日誌
         return {"status": "error", "message": f"搜尋用戶時出錯: {str(e)}"}
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    # 從環境變數獲取端口，如果沒有則默認使用 8080
+    port = int(os.getenv("PORT", 8080))
+    
+    # 啟動服務器，監聽所有網絡接口
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=False  # 在生產環境中禁用重載
+    )

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_svg/flutter_svg.dart';
+import 'friend_profile_page.dart';
 
 class FriendsPage extends StatefulWidget {
   @override
@@ -434,18 +435,14 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                     ),
                 ],
               ),
-              trailing: Container(
-                decoration: BoxDecoration(
-                  color: accentOrange,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.message, color: Colors.white),
-                  onPressed: () {
-                    // 實現聊天功能
-                  },
-                ),
-              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FriendProfilePage(friend: friend),
+                  ),
+                );
+              },
             ),
           ),
         );
