@@ -1,6 +1,6 @@
 # 🐶 Dogtor — Your Smart Study Buddy
 
-Dogtor is a cross-platform AI-powered learning app designed for junior and senior high school students.  
+Dogtor is a cross-platform AI-powered learning app designed for junior and senior high school students!
 It generates personalized quizzes, tracks student progress, and sends smart reminders to optimize learning efficiency.
 
 📱 Available on **iOS & Android** | 🧠 Built with **Flutter + FastAPI**
