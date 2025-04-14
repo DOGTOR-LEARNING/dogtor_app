@@ -47,6 +47,16 @@ class ChatRequest(BaseModel):
     user_introduction: Optional[str] = None  # 用戶自我介紹
     year_grade: Optional[str] = None   # 用戶年級
 
+# 好友請求模型
+class FriendRequest(BaseModel):
+    requester_id: str
+    addressee_id: str
+
+# 回應好友請求模型
+class FriendResponse(BaseModel):
+    request_id: str
+    status: str  # accepted, rejected, blocked
+
 # 用途可以是釐清概念或是問題目
 @app.post("/chat")
 async def chat_with_openai(request: ChatRequest):
@@ -1986,3 +1996,256 @@ async def get_user_stats(request: Request):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶統計數據時出錯: {str(e)}"}
+
+# 獲取好友列表
+@app.get("/get_friends/{user_id}")
+async def get_friends(user_id: str):
+    try:
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 查找好友關係
+                sql = """
+                SELECT f.id, f.requester_id, f.addressee_id, f.status, f.created_at
+                FROM friendships f
+                WHERE (f.requester_id = %s OR f.addressee_id = %s) AND f.status = 'accepted'
+                """
+                cursor.execute(sql, (user_id, user_id))
+                friendships = cursor.fetchall()
+                
+                friends = []
+                for friendship in friendships:
+                    # 確定好友的 ID（不是當前用戶的那個）
+                    friend_id = friendship['requester_id'] if friendship['addressee_id'] == user_id else friendship['addressee_id']
+                    
+                    # 獲取好友資訊
+                    cursor.execute("SELECT user_id, name, nickname, photo_url, year_grade, introduction FROM users WHERE user_id = %s", (friend_id,))
+                    friend_info = cursor.fetchone()
+                    
+                    if friend_info:
+                        friends.append(friend_info)
+                
+                return {"success": True, "friends": friends}
+                
+        finally:
+            connection.close()
+            
+    except Exception as e:
+        print(f"獲取好友列表時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取好友列表時出錯: {str(e)}"}
+
+# 獲取好友請求
+@app.get("/get_friend_requests/{user_id}")
+async def get_friend_requests(user_id: str):
+    try:
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 查找待處理的好友請求（發給當前用戶的）
+                sql = """
+                SELECT f.id, f.requester_id, f.created_at
+                FROM friendships f
+                WHERE f.addressee_id = %s AND f.status = 'pending'
+                """
+                cursor.execute(sql, (user_id,))
+                requests = cursor.fetchall()
+                
+                friend_requests = []
+                for req in requests:
+                    # 獲取請求者資訊
+                    cursor.execute("""
+                    SELECT user_id, name, nickname, photo_url, year_grade, introduction 
+                    FROM users WHERE user_id = %s
+                    """, (req['requester_id'],))
+                    requester_info = cursor.fetchone()
+                    
+                    if requester_info:
+                        request_data = {
+                            "id": req['id'],
+                            "requester_id": req['requester_id'],
+                            "created_at": req['created_at'].strftime('%Y-%m-%d %H:%M:%S') if req['created_at'] else None,
+                            "requester_name": requester_info['name'] or requester_info['nickname'],
+                            "requester_photo": requester_info['photo_url'],
+                            "requester_grade": requester_info['year_grade'],
+                            "requester_intro": requester_info['introduction']
+                        }
+                        friend_requests.append(request_data)
+                
+                return {"success": True, "requests": friend_requests}
+                
+        finally:
+            connection.close()
+            
+    except Exception as e:
+        print(f"獲取好友請求時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取好友請求時出錯: {str(e)}"}
+
+# 發送好友請求
+@app.post("/send_friend_request")
+async def send_friend_request(request: FriendRequest):
+    try:
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 檢查是否已存在好友關係
+                sql = """
+                SELECT id, status FROM friendships 
+                WHERE (requester_id = %s AND addressee_id = %s) 
+                OR (requester_id = %s AND addressee_id = %s)
+                """
+                cursor.execute(sql, (request.requester_id, request.addressee_id, request.addressee_id, request.requester_id))
+                existing = cursor.fetchone()
+                
+                if existing:
+                    status = existing['status']
+                    if status == 'accepted':
+                        return {"success": False, "message": "已經是好友了"}
+                    elif status == 'blocked':
+                        return {"success": False, "message": "無法發送好友請求"}
+                    elif status == 'pending':
+                        return {"success": False, "message": "好友請求已存在，等待對方回應"}
+                    else:
+                        # 如果是被拒絕狀態，可以重新發送請求
+                        sql = """
+                        UPDATE friendships SET status = 'pending', created_at = NOW()
+                        WHERE id = %s
+                        """
+                        cursor.execute(sql, (existing['id'],))
+                        connection.commit()
+                        return {"success": True, "message": "好友請求已重新發送"}
+                
+                # 創建新的好友請求
+                sql = """
+                INSERT INTO friendships (requester_id, addressee_id, status)
+                VALUES (%s, %s, 'pending')
+                """
+                cursor.execute(sql, (request.requester_id, request.addressee_id))
+                connection.commit()
+                
+                return {"success": True, "message": "好友請求已發送"}
+                
+        finally:
+            connection.close()
+            
+    except Exception as e:
+        print(f"發送好友請求時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"發送好友請求時出錯: {str(e)}"}
+
+# 回應好友請求
+@app.post("/respond_friend_request")
+async def respond_friend_request(request: FriendResponse):
+    try:
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 檢查請求是否存在
+                cursor.execute("SELECT id, requester_id, addressee_id FROM friendships WHERE id = %s", (request.request_id,))
+                friend_request = cursor.fetchone()
+                
+                if not friend_request:
+                    return {"success": False, "message": "好友請求不存在"}
+                
+                # 更新請求狀態
+                sql = "UPDATE friendships SET status = %s, updated_at = NOW() WHERE id = %s"
+                cursor.execute(sql, (request.status, request.request_id))
+                connection.commit()
+                
+                return {"success": True, "message": "已處理好友請求"}
+                
+        finally:
+            connection.close()
+            
+    except Exception as e:
+        print(f"回應好友請求時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"回應好友請求時出錯: {str(e)}"}
+
+# 搜尋用戶
+@app.post("/search_users")
+async def search_users(request: Request):
+    try:
+        data = await request.json()
+        query = data.get('query', '')
+        current_user_id = data.get('user_id', '')
+        
+        if not query:
+            return {"success": False, "message": "搜尋關鍵字不能為空"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 搜尋用戶
+                search_term = f"%{query}%"
+                sql = """
+                SELECT user_id, name, nickname, photo_url, year_grade, introduction
+                FROM users
+                WHERE (name LIKE %s OR nickname LIKE %s) AND user_id != %s
+                LIMIT 20
+                """
+                cursor.execute(sql, (search_term, search_term, current_user_id))
+                users = cursor.fetchall()
+                
+                # 如果有當前用戶ID，檢查好友狀態
+                if current_user_id and users:
+                    for user in users:
+                        # 檢查好友狀態
+                        sql = """
+                        SELECT id, status FROM friendships 
+                        WHERE (requester_id = %s AND addressee_id = %s) 
+                        OR (requester_id = %s AND addressee_id = %s)
+                        """
+                        cursor.execute(sql, (current_user_id, user['user_id'], user['user_id'], current_user_id))
+                        friendship = cursor.fetchone()
+                        
+                        if friendship:
+                            user['friend_status'] = friendship['status']
+                        else:
+                            user['friend_status'] = 'none'
+                
+                return {"success": True, "users": users}
+                
+        finally:
+            connection.close()
+            
+    except Exception as e:
+        print(f"搜尋用戶時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"搜尋用戶時出錯: {str(e)}"}

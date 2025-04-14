@@ -124,3 +124,19 @@ CREATE TABLE `user_level` (
   CONSTRAINT `user_level_ibfk_2` FOREIGN KEY (`level_id`) REFERENCES `level_info` (`id`) ON DELETE CASCADE,
   CONSTRAINT `user_level_chk_1` CHECK ((`stars` between 0 and 3))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- dogtor.friendships definition
+
+CREATE TABLE `friendships` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `requester_id` VARCHAR(100) NOT NULL,   -- 發出好友邀請的人
+  `addressee_id` VARCHAR(100) NOT NULL,   -- 收到好友邀請的人
+  `status` ENUM('pending', 'accepted', 'rejected', 'blocked') DEFAULT 'pending',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_friendship` (`requester_id`, `addressee_id`),
+  CONSTRAINT `fk_friend_requester` FOREIGN KEY (`requester_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_friend_addressee` FOREIGN KEY (`addressee_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

@@ -12,6 +12,7 @@ import 'user_profile_page.dart';  // 引入新的用戶中心頁面
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/rendering.dart';
 import 'user_stats_page.dart';  // Import the UserStatsPage
+import 'friends_page.dart';  // 引入新的好友頁面
 
 class HomePage extends StatefulWidget {
   @override
@@ -160,57 +161,106 @@ void _onItemTapped(int index) {
                               1,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                PageRouteBuilder(
-                                  pageBuilder: (context, animation, secondaryAnimation) => UserProfilePage(),
-                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                    const begin = Offset(1.0, 0.0);
-                                    const end = Offset.zero;
-                                    const curve = Curves.easeInOut;
-                                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                                    var offsetAnimation = animation.drive(tween);
-                                    return SlideTransition(
-                                      position: offsetAnimation,
-                                      child: child,
-                                    );
-                                  },
-                                ),
-                              ).then((_) {
-                                _loadUserPhoto();
-                              });
-                            },
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    spreadRadius: 1,
-                                    blurRadius: 3,
-                                    offset: Offset(0, 2),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    PageRouteBuilder(
+                                      pageBuilder: (context, animation, secondaryAnimation) => UserProfilePage(),
+                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                        const begin = Offset(1.0, 0.0);
+                                        const end = Offset.zero;
+                                        const curve = Curves.easeInOut;
+                                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                        var offsetAnimation = animation.drive(tween);
+                                        return SlideTransition(
+                                          position: offsetAnimation,
+                                          child: child,
+                                        );
+                                      },
+                                    ),
+                                  ).then((_) {
+                                    _loadUserPhoto();
+                                  });
+                                },
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                    image: _userPhotoUrl != null && _userPhotoUrl!.isNotEmpty
+                                        ? DecorationImage(
+                                            image: NetworkImage(_userPhotoUrl!),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
                                   ),
-                                ],
-                                image: _userPhotoUrl != null && _userPhotoUrl!.isNotEmpty
-                                    ? DecorationImage(
-                                        image: NetworkImage(_userPhotoUrl!),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : null,
+                                  child: _userPhotoUrl == null || _userPhotoUrl!.isEmpty
+                                      ? Icon(
+                                          Icons.person,
+                                          color: Colors.blue.shade700,
+                                          size: 24,
+                                        )
+                                      : null,
+                                ),
                               ),
-                              child: _userPhotoUrl == null || _userPhotoUrl!.isEmpty
-                                  ? Icon(
-                                      Icons.person,
-                                      color: Colors.blue.shade700,
-                                      size: 24,
-                                    )
-                                  : null,
-                            ),
+                              // 添加好友按鈕
+                              SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    PageRouteBuilder(
+                                      pageBuilder: (context, animation, secondaryAnimation) => FriendsPage(),
+                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                        const begin = Offset(1.0, 0.0);
+                                        const end = Offset.zero;
+                                        const curve = Curves.easeInOut;
+                                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                        var offsetAnimation = animation.drive(tween);
+                                        return SlideTransition(
+                                          position: offsetAnimation,
+                                          child: child,
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.people,
+                                    color: Colors.blue.shade700,
+                                    size: 24,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
