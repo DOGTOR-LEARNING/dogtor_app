@@ -360,46 +360,81 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         final friend = _friendsList[index];
         return Card(
           elevation: 2,
+          margin: EdgeInsets.only(bottom: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
-          child: ListTile(
-            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            leading: CircleAvatar(
-              radius: 25,
-              backgroundImage: friend['photo_url'] != null && friend['photo_url'].isNotEmpty
-                  ? NetworkImage(friend['photo_url'])
-                  : null,
-              child: friend['photo_url'] == null || friend['photo_url'].isEmpty
-                  ? Icon(Icons.person, color: Colors.white, size: 30)
-                  : null,
-              backgroundColor: primaryBlue,
-            ),
-            title: Text(
-              friend['name'] ?? friend['nickname'] ?? '未知用戶',
-              style: TextStyle(
-                color: darkBlue,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+          color: Colors.white,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  backgroundBlue.withOpacity(0.3),
+                ],
               ),
             ),
-            subtitle: Text(
-              '${friend['year_grade'] ?? ''} ${friend['introduction'] ?? ''}',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
+            child: ListTile(
+              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              leading: CircleAvatar(
+                radius: 25,
+                backgroundImage: friend['photo_url'] != null && friend['photo_url'].isNotEmpty
+                    ? NetworkImage(friend['photo_url'])
+                    : null,
+                child: friend['photo_url'] == null || friend['photo_url'].isEmpty
+                    ? Text(
+                        (friend['name'] ?? friend['nickname'] ?? '?')[0].toUpperCase(),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
+                backgroundColor: primaryBlue,
               ),
-            ),
-            trailing: Container(
-              decoration: BoxDecoration(
-                color: accentOrange,
-                borderRadius: BorderRadius.circular(20),
+              title: Text(
+                friend['name'] ?? friend['nickname'] ?? '未知用戶',
+                style: TextStyle(
+                  color: darkBlue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-              child: IconButton(
-                icon: Icon(Icons.message, color: Colors.white),
-                onPressed: () {
-                  // 實現聊天功能
-                },
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    friend['email'] ?? '',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (friend['year_grade'] != null || friend['introduction'] != null)
+                    Text(
+                      '${friend['year_grade'] ?? ''} ${friend['introduction'] ?? ''}',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                ],
+              ),
+              trailing: Container(
+                decoration: BoxDecoration(
+                  color: accentOrange,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.message, color: Colors.white),
+                  onPressed: () {
+                    // 實現聊天功能
+                  },
+                ),
               ),
             ),
           ),
