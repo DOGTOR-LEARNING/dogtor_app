@@ -2269,7 +2269,7 @@ async def search_users(request: Request):
         if current_user_id and users:
             for user in users:
                 cursor.execute("""
-                    SELECT status 
+                    SELECT id, status 
                     FROM friendships 
                     WHERE (requester_id = %s AND addressee_id = %s)
                     OR (requester_id = %s AND addressee_id = %s)
@@ -2277,6 +2277,18 @@ async def search_users(request: Request):
                 
                 friendship = cursor.fetchone()
                 user['friend_status'] = friendship['status'] if friendship else 'none'
+                
+                # 如果狀態是pending，還需要添加請求ID
+                if friendship and friendship['status'] == 'pending':
+                    user['request_id'] = friendship['id']
+                    # 檢查是發送請求的人還是接收請求的人
+                    cursor.execute("""
+                        SELECT requester_id
+                        FROM friendships
+                        WHERE id = %s
+                    """, (friendship['id'],))
+                    requester = cursor.fetchone()
+                    user['is_requester'] = requester['requester_id'] == current_user_id
         
         connection.close()
         return {"status": "success", "users": users}
