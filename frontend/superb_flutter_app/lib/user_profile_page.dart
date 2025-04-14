@@ -190,6 +190,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
       builder: (BuildContext context) {
         return Container(
           padding: EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.blue.shade100, Colors.white],
+            ),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -198,7 +205,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 child: Text(
                   '選擇年級',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.blue.shade800,
                   ),
@@ -211,19 +218,39 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   itemBuilder: (context, index) {
                     final grade = _gradeOptions[index];
                     final displayName = _gradeDisplayNames[grade] ?? grade;
+                    final isSelected = _yearGrade == grade;
                     
-                    return ListTile(
-                      title: Text(displayName),
-                      selected: _yearGrade == grade,
-                      selectedTileColor: Colors.blue.shade50,
-                      onTap: () {
-                        setState(() {
-                          _yearGrade = grade;
-                          _isEditingYearGrade = false;
-                        });
-                        Navigator.pop(context);
-                        _saveUserData();
-                      },
+                    return Container(
+                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.blue.shade400 : Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: isSelected ? [
+                          BoxShadow(
+                            color: Colors.blue.shade200.withOpacity(0.5),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ] : null,
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          displayName,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.blue.shade800,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onTap: () {
+                          setState(() {
+                            _yearGrade = grade;
+                            _isEditingYearGrade = false;
+                          });
+                          Navigator.pop(context);
+                          _saveUserData();
+                        },
+                      ),
                     );
                   },
                 ),
@@ -261,184 +288,232 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 用戶頭像
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey.shade200,
-                      image: _photoUrl.isNotEmpty
-                          ? DecorationImage(
-                              image: NetworkImage(_photoUrl),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: _photoUrl.isEmpty
-                        ? Icon(Icons.person, size: 80, color: Colors.grey.shade400)
-                        : null,
-                  ),
-                  SizedBox(height: 20),
-                  
-                  // 用戶名稱
-                  Text(
-                    _displayName.isNotEmpty ? _displayName : '未知用戶',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  
-                  // 用戶身份標籤
-                  Row(
+          : Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // 用戶頭像
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                        width: 120,
+                        height: 120,
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade100,
-                          borderRadius: BorderRadius.circular(20),
+                          shape: BoxShape.circle,
+                          color: Colors.grey.shade200,
+                          image: _photoUrl.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(_photoUrl),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
                         ),
-                        child: Text(
-                          _gradeDisplayNames[_yearGrade] ?? _yearGrade,
-                          style: TextStyle(
-                            color: Colors.blue.shade800,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: _photoUrl.isEmpty
+                            ? Icon(Icons.person, size: 80, color: Colors.grey.shade400)
+                            : null,
+                      ),
+                      SizedBox(height: 20),
+                      
+                      // 用戶名稱
+                      Text(
+                        _displayName.isNotEmpty ? _displayName : '未知用戶',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
                         ),
                       ),
-                      if (_nickname.isNotEmpty) SizedBox(width: 8),
-                      if (_nickname.isNotEmpty)
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade100,
-                            borderRadius: BorderRadius.circular(20),
+                      SizedBox(height: 10),
+                      
+                      // 用戶身份標籤
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              _gradeDisplayNames[_yearGrade] ?? _yearGrade,
+                              style: TextStyle(
+                                color: Colors.blue.shade800,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (_nickname.isNotEmpty) SizedBox(width: 8),
+                          if (_nickname.isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade100,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                _nickname,
+                                style: TextStyle(
+                                  color: Colors.blue.shade800,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      SizedBox(height: 30),
+                      
+                      // 用戶信息卡片
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 5,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 電子郵件
+                            _buildInfoRow(Icons.email, '電子郵件', _email),
+                            Divider(),
+                            
+                            // 年級
+                            _buildInfoRow(
+                              Icons.school, 
+                              '年級', 
+                              _gradeDisplayNames[_yearGrade] ?? _yearGrade,
+                              isEditable: true,
+                              onEdit: () {
+                                setState(() {
+                                  _isEditingYearGrade = true;
+                                });
+                                _showGradeSelector();
+                              },
+                            ),
+                            Divider(),
+                            
+                            // 暱稱
+                            _buildInfoRow(
+                              Icons.person_pin, 
+                              '暱稱', 
+                              _nickname.isEmpty ? '尚未設置暱稱' : _nickname,
+                              isEditable: true,
+                              isEditingState: _isEditingNickname,
+                              textController: _nicknameController,
+                              onEdit: () {
+                                setState(() {
+                                  _isEditingNickname = !_isEditingNickname;
+                                  if (!_isEditingNickname) {
+                                    _saveUserData();
+                                  }
+                                });
+                              },
+                            ),
+                            Divider(),
+                            
+                            // 自我介紹
+                            _buildInfoRow(
+                              Icons.person_outline, 
+                              '自我介紹 (50字內)', 
+                              _introduction,
+                              isEditable: true,
+                              isEditingState: _isEditingIntroduction,
+                              textController: _introductionController,
+                              onEdit: () {
+                                setState(() {
+                                  _isEditingIntroduction = !_isEditingIntroduction;
+                                  if (!_isEditingIntroduction) {
+                                    _saveUserData();
+                                  }
+                                });
+                              },
+                              maxLength: 50,
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 100), // 增加底部高度，避免被保存按鈕遮擋
+                      
+                      // 登出按鈕
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: () => _logout(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade400,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
                           ),
                           child: Text(
-                            _nickname,
+                            '登出',
                             style: TextStyle(
-                              color: Colors.blue.shade800,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
+                      ),
+                      SizedBox(height: 20),
                     ],
                   ),
-                  SizedBox(height: 30),
-                  
-                  // 用戶信息卡片
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 5,
-                          offset: Offset(0, 3),
+                ),
+                
+                // 懸浮的保存按鈕（當正在編輯時顯示）
+                if (_isEditingNickname || _isEditingIntroduction)
+                  Positioned(
+                    bottom: 20,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              spreadRadius: 1,
+                              blurRadius: 10,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 電子郵件
-                        _buildInfoRow(Icons.email, '電子郵件', _email),
-                        Divider(),
-                        
-                        // 用戶 ID
-                        _buildInfoRow(Icons.fingerprint, '用戶 ID', _userId),
-                        Divider(),
-                        
-                        // 年級
-                        _buildInfoRow(
-                          Icons.school, 
-                          '年級', 
-                          _gradeDisplayNames[_yearGrade] ?? _yearGrade,
-                          isEditable: true,
-                          onEdit: () {
+                        child: ElevatedButton.icon(
+                          icon: Icon(Icons.save),
+                          label: Text('保存更改'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade600,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            textStyle: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onPressed: () {
                             setState(() {
-                              _isEditingYearGrade = true;
+                              _isEditingNickname = false;
+                              _isEditingIntroduction = false;
                             });
-                            _showGradeSelector();
+                            _saveUserData();
                           },
                         ),
-                        Divider(),
-                        
-                        // 暱稱
-                        _buildInfoRow(
-                          Icons.person_pin, 
-                          '暱稱', 
-                          _nickname.isEmpty ? '尚未設置暱稱' : _nickname,
-                          isEditable: true,
-                          isEditingState: _isEditingNickname,
-                          textController: _nicknameController,
-                          onEdit: () {
-                            setState(() {
-                              _isEditingNickname = !_isEditingNickname;
-                              if (!_isEditingNickname) {
-                                _saveUserData();
-                              }
-                            });
-                          },
-                        ),
-                        Divider(),
-                        
-                        // 自我介紹
-                        _buildInfoRow(
-                          Icons.person_outline, 
-                          '自我介紹 (50字內)', 
-                          _introduction,
-                          isEditable: true,
-                          isEditingState: _isEditingIntroduction,
-                          textController: _introductionController,
-                          onEdit: () {
-                            setState(() {
-                              _isEditingIntroduction = !_isEditingIntroduction;
-                              if (!_isEditingIntroduction) {
-                                _saveUserData();
-                              }
-                            });
-                          },
-                          maxLength: 50,
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 40),
-                  
-                  // 登出按鈕
-                  ElevatedButton(
-                    onPressed: () => _logout(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade400,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: Text(
-                      '登出',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
     );
   }
@@ -462,10 +537,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 24,
-            height: 24,
-            padding: EdgeInsets.only(top: 3),
-            child: Icon(icon, color: Colors.blue.shade700, size: 22),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.blue.shade700, size: 18),
+            alignment: Alignment.center,
           ),
           SizedBox(width: 12),
           Expanded(
@@ -479,25 +558,31 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     Text(
                       label,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
                         color: Colors.black87,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     if (isEditable && onEdit != null)
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
-                        icon: Icon(
-                          isEditingState ? Icons.save : Icons.edit,
-                          size: 20,
-                          color: Colors.blue.shade700,
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isEditingState ? Colors.green.shade100 : Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        onPressed: onEdit,
+                        child: IconButton(
+                          padding: EdgeInsets.all(8),
+                          constraints: BoxConstraints(),
+                          icon: Icon(
+                            isEditingState ? Icons.check : Icons.edit,
+                            size: 20,
+                            color: isEditingState ? Colors.green.shade700 : Colors.blue.shade700,
+                          ),
+                          onPressed: onEdit,
+                        ),
                       ),
                   ],
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: 8),
                 if (isEditable && isEditingState && textController != null)
                   Container(
                     margin: EdgeInsets.only(top: 4),
@@ -507,17 +592,24 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       maxLength: maxLength,
                       style: TextStyle(
                         color: Colors.black87,
-                        fontSize: 14,
+                        fontSize: 16,
                       ),
                       decoration: InputDecoration(
                         hintText: label.contains('暱稱') ? '請輸入暱稱' : '請輸入自我介紹（50字內）',
                         hintStyle: TextStyle(
                           color: Colors.grey,
-                          fontSize: 14,
+                          fontSize: 16,
                         ),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blue.shade200),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blue.shade400, width: 2),
                         ),
                       ),
                     ),
@@ -526,7 +618,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   Text(
                     value,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       color: Colors.black87,
                       fontWeight: FontWeight.w500,
                     ),

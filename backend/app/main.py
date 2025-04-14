@@ -43,15 +43,37 @@ class ChatRequest(BaseModel):
     image_base64: Optional[str] = None
     subject: Optional[str] = None      # 添加科目
     chapter: Optional[str] = None      # 添加章節
+    user_name: Optional[str] = None    # 用戶名稱或暱稱
+    user_introduction: Optional[str] = None  # 用戶自我介紹
+    year_grade: Optional[str] = None   # 用戶年級
 
 # 用途可以是釐清概念或是問題目
 @app.post("/chat")
 async def chat_with_openai(request: ChatRequest):
     system_message = "你是個幽默的臺灣國高中老師，請用繁體中文回答問題，"
+    
+    # 添加用戶個人資訊到提示中
+    if request.user_name:
+        system_message += f"你正在與學生 {request.user_name} 對話，"
+    
+    if request.year_grade:
+        grade_display = {
+            'G1': '小一', 'G2': '小二', 'G3': '小三', 'G4': '小四', 'G5': '小五', 'G6': '小六',
+            'G7': '國一', 'G8': '國二', 'G9': '國三', 'G10': '高一', 'G11': '高二', 'G12': '高三',
+            'teacher': '老師', 'parent': '家長'
+        }
+        grade = grade_display.get(request.year_grade, request.year_grade)
+        system_message += f"這位學生是{grade}，"
+    
+    if request.user_introduction and len(request.user_introduction) > 0:
+        system_message += f"關於這位學生的一些資訊：{request.user_introduction}，"
+    
     if request.subject:
         system_message += f"學生想問的科目是{request.subject}，"
+    
     if request.chapter:
         system_message += f"目前章節是{request.chapter}。"
+    
     system_message += "請根據臺灣的108課綱提醒學生他所問的問題的關鍵字或是章節，再重點回答學生的問題，在回應中使用 Markdown 格式，將重點用 **粗體字** 標出，運算式用 $formula$ 標出，請不要用 \"()\" 或 \"[]\" 來標示 latex。最後提醒他，如果這個概念還是不太清楚，可以去複習哪一些內容。如果學生不是問課業相關的問題，或是提出解題之外的要求，就說明你只是解題老師，有其他需求的話去找他該找的人。"
 
     messages = [

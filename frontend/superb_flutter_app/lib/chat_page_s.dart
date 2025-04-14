@@ -7,6 +7,7 @@ import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatPage extends StatefulWidget {
   @override
@@ -31,21 +32,51 @@ class _ChatPageState extends State<ChatPage> {
   List<dynamic> _items = [];
   String? _selectedItem;
   
+  // 用戶資料
+  String _userId = '';
+  String _displayName = '';
+  String _nickname = '';
+  String _yearGrade = '';
+  String _introduction = '';
+  
   // Filter tags with placeholder text
-  final List<String> _filterTags = ['選擇教育階段', '選擇科目', '選擇章節'];
+  final List<String> _filterTags = ['選擇年級', '選擇科目', '選擇章節'];
   List<String> _activeFilters = [];
 
-  // Add these filter options maps
-  final Map<String, List<String>> _filterOptions = {
-    '教育階段': ['國中', '高中'],
-    '科目': ['國文', '英文', '數學', '理化', '物理', '化學', '地科', '生物', '社會', '歷史', '地理', '公民'],
-    '章節': ['憲政體制的分權制衡', '民主政治', '人權保障', '法治國家'],
+  // 年級選項和顯示名稱
+  final List<String> _gradeOptions = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'teacher', 'parent'];
+  final Map<String, String> _gradeDisplayNames = {
+    'G1': '小一', 'G2': '小二', 'G3': '小三', 'G4': '小四', 'G5': '小五', 'G6': '小六',
+    'G7': '國一', 'G8': '國二', 'G9': '國三', 'G10': '高一', 'G11': '高二', 'G12': '高三',
+    'teacher': '老師', 'parent': '家長'
   };
 
   @override
   void initState() {
     super.initState();
+    _loadUserData();
     _fetchSubjectsAndChapters();
+  }
+
+  // 加載用戶數據
+  Future<void> _loadUserData() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _userId = prefs.getString('user_id') ?? '';
+        _displayName = prefs.getString('display_name') ?? '同學';
+        _nickname = prefs.getString('nickname') ?? '';
+        _yearGrade = prefs.getString('year_grade') ?? 'G10'; // 預設高一
+        _introduction = prefs.getString('introduction') ?? '';
+        
+        // 根據用戶年級設置默認過濾器
+        if (_yearGrade.isNotEmpty) {
+          _filterTags[0] = _gradeDisplayNames[_yearGrade] ?? _yearGrade;
+        }
+      });
+    } catch (e) {
+      print('加載用戶數據時出錯: $e');
+    }
   }
 
   // 從後端獲取科目和章節數據
@@ -175,9 +206,9 @@ class _ChatPageState extends State<ChatPage> {
     List<dynamic> options = [];
     String title = '';
     
-    if (filterTag == '選擇教育階段' || filterTag == '國中' || filterTag == '高中') {
-      options = _filterOptions['教育階段']!;
-      title = '選擇教育階段';
+    if (filterTag == '選擇年級' || _gradeDisplayNames.values.contains(filterTag)) {
+      options = _gradeOptions.map((grade) => _gradeDisplayNames[grade] ?? grade).toList();
+      title = '選擇年級';
     } else if (filterTag == '選擇科目' || filterTag.contains('文') || filterTag.contains('數') || 
               filterTag.contains('理') || filterTag.contains('化') || filterTag.contains('物') || 
               filterTag.contains('生') || filterTag.contains('社') || filterTag.contains('史') || 
@@ -261,9 +292,16 @@ class _ChatPageState extends State<ChatPage> {
                       optionText = options[index]['chapter_name'];
                       optionValue = options[index];
                     } else {
-                      // 教育階段選項是一個字符串
+                      // 年級選項
                       optionText = options[index];
-                      optionValue = options[index];
+                      // 找到年級代碼
+                      String? gradeCode;
+                      _gradeDisplayNames.forEach((code, displayName) {
+                        if (displayName == optionText) {
+                          gradeCode = code;
+                        }
+                      });
+                      optionValue = gradeCode ?? optionText;
                     }
                     
                     return ListTile(
@@ -291,7 +329,9 @@ class _ChatPageState extends State<ChatPage> {
                               // 保存選擇的章節ID
                               _selectedItem = optionValue['chapter_name'];
                             } else {
+                              // 更新年級顯示和內部存儲
                               _filterTags[tagIndex] = optionText;
+                              _yearGrade = optionValue;
                             }
                           }
                         });
@@ -308,7 +348,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  // Modify sendMessage method to handle single response
+  // Modify sendMessage method to handle single response and include user info
   void sendMessage() async {
     if (_controller.text.isEmpty && _selectedImage == null || _hasSubmittedQuestion) return;
     
@@ -319,10 +359,16 @@ class _ChatPageState extends State<ChatPage> {
     });
     
     try {
+      // 使用暱稱或顯示名稱
+      String userDisplayName = _nickname.isNotEmpty ? _nickname : _displayName;
+      
       Map<String, dynamic> requestBody = {
         "user_message": _controller.text,
         "subject": _selectedSubject,
         "chapter": _selectedItem,
+        "user_name": userDisplayName,
+        "user_introduction": _introduction,
+        "year_grade": _yearGrade,
       };
 
       if (_selectedImage != null) {
