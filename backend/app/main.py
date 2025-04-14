@@ -2232,7 +2232,7 @@ if __name__ == "__main__":
     
     # 啟動服務器，監聽所有網絡接口
     uvicorn.run(
-        "main:app",
+        "app.main:app",  # 修改為 "app.main:app"，因為檔案在 app 資料夾中
         host="0.0.0.0",
         port=port,
         reload=False  # 在生產環境中禁用重載

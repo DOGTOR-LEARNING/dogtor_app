@@ -14,7 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN mkdir -p /app/Qpics
 
 # 設定容器執行時的 Port
-EXPOSE 8080
+ENV PORT=8080
+EXPOSE ${PORT}
 
-# 使用 Uvicorn 啟動 FastAPI 應用
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# 使用 uvicorn 啟動應用
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --timeout-keep-alive 75
