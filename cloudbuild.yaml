@@ -1,5 +1,14 @@
 # cloudbuild.yaml
 steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if ! grep -q "pytz" backend/requirements.txt; then
+          echo "pytz" >> backend/requirements.txt
+        fi
+
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/superb-backend', '-f', 'backend/Dockerfile', 'backend']
 

@@ -4,11 +4,14 @@ FROM python:3.10-slim
 # 設定工作目錄
 WORKDIR /app
 
+# 首先複製 requirements.txt 以利用 Docker 的緩存機制
+COPY requirements.txt .
+
+# 安裝 pip 套件
+RUN pip install --no-cache-dir -r requirements.txt
+
 # 複製所有專案檔案到容器內
 COPY . .
-
-# 安裝 pip 套件（需要你等一下有 requirements.txt）
-RUN pip install --no-cache-dir -r requirements.txt
 
 # 建立 Qpics 資料夾（避免容器啟動出錯）
 RUN mkdir -p /app/Qpics
