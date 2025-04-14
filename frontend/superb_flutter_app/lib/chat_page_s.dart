@@ -8,6 +8,7 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 class ChatPage extends StatefulWidget {
   @override
@@ -20,7 +21,7 @@ class _ChatPageState extends State<ChatPage> {
   final ImagePicker _picker = ImagePicker();
   XFile? _selectedImage;
   bool _isKeyboardVisible = false;
-  bool _hasSubmittedQuestion = false;  // Add this line to track if a question has been submitted
+  bool _hasSubmittedQuestion = false;
   
   // 用於存儲從API獲取的所有科目
   List<String> _subjects = [];
@@ -51,11 +52,15 @@ class _ChatPageState extends State<ChatPage> {
     'teacher': '老師', 'parent': '家長'
   };
 
+  // 聊天歷史記錄
+  List<Map<String, dynamic>> _chatHistory = [];
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _fetchSubjectsAndChapters();
+    _loadChatHistory();
   }
 
   // 加載用戶數據
@@ -348,6 +353,76 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  // 加載聊天歷史記錄
+  Future<void> _loadChatHistory() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('user_id');
+      if (userId == null) return;
+
+      // 修改為本地開發服務器 URL 進行測試
+      final response = await http.get(
+        Uri.parse('http://localhost:8000/get_chat_history/$userId'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data['success']) {
+          setState(() {
+            _chatHistory = List<Map<String, dynamic>>.from(data['history']);
+          });
+          print('load chat history success!');
+        }
+      }
+    } catch (e) {
+      print('加載聊天歷史記錄時出錯: $e');
+    }
+  }
+
+  // 保存聊天記錄
+  Future<void> _saveChatHistory(String question, String answer) async {
+    try {
+      print('! saving chat history...');
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('user_id');
+      if (userId == null) {
+        print('! Error: userId is null, cannot save chat history');
+        return;
+      }
+      print('! User ID: $userId, Year Grade: $_yearGrade');
+
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/save_chat_history'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'question': question,
+          'answer': answer,
+          'subject': _selectedSubject,
+          'chapter': _selectedItem,
+          'year_grade': _yearGrade,  // 添加年級參數
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
+      print('! Request sent, status code: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        print('! decode chat history...');
+        print('! Response: ${response.body}');
+        if (data['success']) {
+          await _loadChatHistory(); // 重新加載歷史記錄
+          print('save chat history success!');
+        } else {
+          print('! Error from server: ${data['message']}');
+        }
+      } else {
+        print('! HTTP error: ${response.statusCode}, Body: ${response.body}');
+      }
+    } catch (e) {
+      print('保存聊天記錄時出錯: $e');
+    }
+  }
+
   // Modify sendMessage method to handle single response and include user info
   void sendMessage() async {
     if (_controller.text.isEmpty && _selectedImage == null || _hasSubmittedQuestion) return;
@@ -393,6 +468,10 @@ class _ChatPageState extends State<ChatPage> {
         _isLoading = false;
         _hasSubmittedQuestion = true;
       });
+      print('response data');
+
+      // 保存聊天記錄
+      await _saveChatHistory(_controller.text, _response);
     } catch (e) {
       setState(() {
         _response = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.";
@@ -542,46 +621,61 @@ class _ChatPageState extends State<ChatPage> {
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.4,
                 ),
-                child: ListView(
+                child: ListView.builder(
                   shrinkWrap: true,
-                  children: [
-                    ListTile(
-                      title: Text(
-                        'Previous question 1',
-                        style: TextStyle(
-                          color: Color(0xFF1E3875),
-                          fontSize: 16,
-                        ),
+                  itemCount: _chatHistory.length,
+                  itemBuilder: (context, index) {
+                    final chat = _chatHistory[index];
+                    final question = chat['question'] as String;
+                    final answer = chat['answer'] as String;
+                    final timestamp = DateTime.parse(chat['timestamp'] as String);
+                    final formattedTime = DateFormat('yyyy/MM/dd HH:mm').format(timestamp);
+
+                    return ListTile(
+                      title: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            question,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E3875),
+                              fontSize: 16,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            answer,
+                            style: TextStyle(
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            formattedTime,
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                       onTap: () {
                         Navigator.pop(context);
+                        setState(() {
+                          _controller.text = question;
+                          _response = answer;
+                          _hasSubmittedQuestion = true;
+                        });
                       },
-                    ),
-                    ListTile(
-                      title: Text(
-                        'Previous question 2',
-                        style: TextStyle(
-                          color: Color(0xFF1E3875),
-                          fontSize: 16,
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                    ),
-                    ListTile(
-                      title: Text(
-                        'Previous question 3',
-                        style: TextStyle(
-                          color: Color(0xFF1E3875),
-                          fontSize: 16,
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-              },
-            ),
-          ],
+                    );
+                  },
                 ),
               ),
             ],

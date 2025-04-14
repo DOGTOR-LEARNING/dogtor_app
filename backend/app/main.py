@@ -2237,3 +2237,92 @@ if __name__ == "__main__":
         port=port,
         reload=False  # 在生產環境中禁用重載
     )
+# 創建聊天歷史記錄表
+@app.post("/create_chat_history_table")
+async def create_chat_history_table():
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS chat_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id VARCHAR(255) NOT NULL,
+                question TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                year_grade VARCHAR(255),
+                subject VARCHAR(255),
+                chapter VARCHAR(255),
+                timestamp DATETIME NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            )
+            """)
+        connection.commit()
+        return {"success": True, "message": "聊天歷史記錄表創建成功"}
+    except Exception as e:
+        print(f"創建聊天歷史記錄表時出錯: {str(e)}")
+        return {"success": False, "message": f"創建聊天歷史記錄表時出錯: {str(e)}"}
+    finally:
+        connection.close()
+
+# 保存聊天記錄
+@app.post("/save_chat_history")
+async def save_chat_history(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        question = data.get('question')
+        answer = data.get('answer')
+        subject = data.get('subject')
+        chapter = data.get('chapter')
+        year_grade = data.get('year_grade')  # 獲取年級信息
+        timestamp = data.get('timestamp')
+
+        if not user_id or not question or not answer:
+            return {"success": False, "message": "缺少必要參數"}
+
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            sql = """
+            INSERT INTO chat_history (user_id, question, answer, subject, chapter, year_grade, timestamp)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (user_id, question, answer, subject, chapter, year_grade, timestamp))
+        connection.commit()
+        print(f"聊天記錄保存成功: user_id={user_id}, question={question[:20]}..., year_grade={year_grade}")
+        return {"success": True, "message": "聊天記錄保存成功"}
+    except Exception as e:
+        print(f"保存聊天記錄時出錯: {str(e)}")
+        return {"success": False, "message": f"保存聊天記錄時出錯: {str(e)}"}
+    finally:
+        connection.close()
+
+# 獲取聊天歷史記錄
+@app.get("/get_chat_history/{user_id}")
+async def get_chat_history(user_id: str):
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            sql = """
+            SELECT question, answer, subject, chapter, year_grade, timestamp
+            FROM chat_history
+            WHERE user_id = %s
+            ORDER BY timestamp DESC
+            LIMIT 50
+            """
+            cursor.execute(sql, (user_id,))
+            history = cursor.fetchall()
+            
+            # 格式化時間戳
+            for record in history:
+                if 'timestamp' in record and record['timestamp']:
+                    record['timestamp'] = record['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+            
+            return {
+                "success": True,
+                "history": history
+            }
+    except Exception as e:
+        print(f"獲取聊天歷史記錄時出錯: {str(e)}")
+        return {"success": False, "message": f"獲取聊天歷史記錄時出錯: {str(e)}"}
+    finally:
+        connection.close()
