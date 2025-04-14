@@ -2171,8 +2171,8 @@ async def search_users(request: Request):
         cursor.execute("""
             SELECT user_id, email, name, photo_url, nickname, year_grade, introduction
             FROM users
-            WHERE LOWER(email) LIKE ?
-            AND user_id != ?
+            WHERE LOWER(email) LIKE %s
+            AND user_id != %s
         """, (f"%{query}%", data.get('current_user_id')))
         
         users = []
