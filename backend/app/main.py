@@ -1435,7 +1435,7 @@ async def get_learning_suggestions(user_id: str):
                 cursor.execute("SET CHARACTER SET utf8mb4")
                 cursor.execute("SET character_set_connection=utf8mb4")
                 
-                # 獲取弱點知識點（分數低於5分的）
+                # 獲取弱點知識點（分數 > 0 但 < 5 的）
                 cursor.execute("""
                 SELECT 
                     uks.knowledge_id,
@@ -1451,7 +1451,7 @@ async def get_learning_suggestions(user_id: str):
                 JOIN 
                     chapter_list cl ON kp.chapter_id = cl.id
                 WHERE 
-                    uks.user_id = %s AND uks.score < 5
+                    uks.user_id = %s AND uks.score > 0 AND uks.score < 5
                 ORDER BY 
                     uks.score ASC
                 LIMIT 10

@@ -1,0 +1,13 @@
+.weekly-chart-point {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chart-value {
+  position: absolute;
+  top: -20px;
+  font-size: 12px;
+  font-weight: bold;
+} 
