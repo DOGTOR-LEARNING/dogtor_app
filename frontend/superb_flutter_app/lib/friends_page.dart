@@ -594,7 +594,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                           SizedBox(height: 24),
                           Text(
                             _searchController.text.isEmpty
-                                ? '輸入電子郵件並按下搜尋'
+                                ? '輸入完整電子郵件帳號搜尋'
                                 : '沒有找到符合的用戶',
                             style: TextStyle(
                               color: darkBlue,
@@ -619,94 +619,115 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
-                          child: ListTile(
-                            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                            leading: CircleAvatar(
-                              radius: 25,
-                              backgroundImage: user['photo_url'] != null && user['photo_url'].isNotEmpty
-                                  ? NetworkImage(user['photo_url'])
-                                  : null,
-                              child: user['photo_url'] == null || user['photo_url'].isEmpty
-                                  ? Icon(Icons.person, color: Colors.white, size: 30)
-                                  : null,
-                              backgroundColor: primaryBlue,
-                            ),
-                            title: Text(
-                              user['name'] ?? user['nickname'] ?? '未知用戶',
-                              style: TextStyle(
-                                color: darkBlue,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                          color: Colors.white,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.white,
+                                  backgroundBlue.withOpacity(0.3),
+                                ],
                               ),
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user['email'] ?? '',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
-                                  ),
+                            child: ListTile(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                              leading: CircleAvatar(
+                                radius: 25,
+                                backgroundImage: user['photo_url'] != null && user['photo_url'].isNotEmpty
+                                    ? NetworkImage(user['photo_url'])
+                                    : null,
+                                child: user['photo_url'] == null || user['photo_url'].isEmpty
+                                    ? Text(
+                                        (user['name'] ?? user['nickname'] ?? '?')[0].toUpperCase(),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      )
+                                    : null,
+                                backgroundColor: primaryBlue,
+                              ),
+                              title: Text(
+                                user['name'] ?? user['nickname'] ?? '未知用戶',
+                                style: TextStyle(
+                                  color: darkBlue,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                 ),
-                                if (user['year_grade'] != null || user['introduction'] != null)
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
+                                    user['email'] ?? '',
                                     style: TextStyle(
                                       color: Colors.grey[600],
                                       fontSize: 14,
                                     ),
                                   ),
-                              ],
-                            ),
-                            trailing: isFriend
-                                ? Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.check_circle, color: Colors.white, size: 20),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          '已是好友',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : requestSent
-                                    ? Container(
-                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: accentOrange,
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.schedule, color: Colors.white, size: 20),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              '等待回應',
-                                              style: TextStyle(color: Colors.white),
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    : Container(
-                                        decoration: BoxDecoration(
-                                          color: primaryBlue,
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: IconButton(
-                                          icon: Icon(Icons.person_add, color: Colors.white),
-                                          onPressed: () => _sendFriendRequest(user['user_id']),
-                                        ),
+                                  if (user['year_grade'] != null || user['introduction'] != null)
+                                    Text(
+                                      '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 14,
                                       ),
+                                    ),
+                                ],
+                              ),
+                              trailing: isFriend
+                                  ? Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            '已是好友',
+                                            style: TextStyle(color: Colors.white),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : requestSent
+                                      ? Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: accentOrange,
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.schedule, color: Colors.white, size: 20),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                '等待回應',
+                                                style: TextStyle(color: Colors.white),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : Container(
+                                          decoration: BoxDecoration(
+                                            color: primaryBlue,
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: IconButton(
+                                            icon: Icon(Icons.person_add, color: Colors.white),
+                                            onPressed: () => _sendFriendRequest(user['user_id']),
+                                          ),
+                                        ),
+                            ),
                           ),
                         );
                       },

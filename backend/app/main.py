@@ -2173,13 +2173,14 @@ async def search_users(request: Request):
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)  # 使用字典游標
         
-        # 使用 email 進行搜尋
+        # 使用 email 進行搜尋，只搜尋 @ 前的部分
+        email_prefix = query.split('@')[0] if '@' in query else query
         search_query = """
             SELECT user_id, email, name, photo_url, nickname, year_grade, introduction
             FROM users
-            WHERE LOWER(email) LIKE %s
+            WHERE LOWER(email) LIKE CONCAT(%s, '%%@%%')
         """
-        params = [f"%{query}%"]
+        params = [email_prefix]
         
         if current_user_id:
             search_query += " AND user_id != %s"
@@ -2191,10 +2192,18 @@ async def search_users(request: Request):
         users = cursor.fetchall()
         print(f"查詢結果: 找到 {len(users)} 個用戶")  # 調試日誌
         
+        # 處理年級顯示格式
+        for user in users:
+            if user['year_grade'] and user['year_grade'].startswith('G'):
+                grade_num = user['year_grade'][1:]
+                try:
+                    user['year_grade'] = f"{grade_num}年級"
+                except ValueError:
+                    pass  # 如果轉換失敗，保持原樣
+        
         # 檢查好友狀態
         if current_user_id and users:
             for user in users:
-                # 檢查是否已經是好友
                 cursor.execute("""
                     SELECT status 
                     FROM friendships 
