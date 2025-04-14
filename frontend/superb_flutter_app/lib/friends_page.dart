@@ -140,7 +140,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       final response = await http.post(
-        Uri.parse('http://your-backend-url.com/search_users'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/search_users'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'query': query,
@@ -149,22 +149,34 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        setState(() {
-          _searchResults = List<Map<String, dynamic>>.from(data['users']);
-          _isSearching = false;
-        });
+        if (data['status'] == 'success') {
+          setState(() {
+            _searchResults = List<Map<String, dynamic>>.from(data['users']);
+            _isSearching = false;
+          });
+        } else {
+          setState(() {
+            _isSearching = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? '搜尋用戶失敗')),
+          );
+        }
       } else {
         setState(() {
           _isSearching = false;
         });
-        // 處理錯誤
-        print('搜尋用戶時發生錯誤: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('搜尋用戶時發生錯誤: ${response.statusCode}')),
+        );
       }
     } catch (e) {
       setState(() {
         _isSearching = false;
       });
-      print('搜尋用戶時出錯: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('搜尋用戶時出錯: $e')),
+      );
     }
   }
 
@@ -173,7 +185,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       final response = await http.post(
-        Uri.parse('http://your-backend-url.com/send_friend_request'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/send_friend_request'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'requester_id': _userId,
@@ -182,21 +194,26 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('好友請求已發送')),
-        );
-        // 重新載入搜尋結果
-        _searchFriends(_searchController.text);
+        final data = json.decode(response.body);
+        if (data['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? '好友請求已發送')),
+          );
+          // 重新載入搜尋結果
+          _searchFriends(_searchController.text);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? '無法發送好友請求')),
+          );
+        }
       } else {
-        // 處理錯誤
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('無法發送好友請求')),
+          SnackBar(content: Text('發送好友請求失敗: ${response.statusCode}')),
         );
       }
     } catch (e) {
-      print('發送好友請求時出錯: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('發送好友請求失敗: $e')),
+        SnackBar(content: Text('發送好友請求時出錯: $e')),
       );
     }
   }
@@ -204,7 +221,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   Future<void> _respondToFriendRequest(String requestId, String status) async {
     try {
       final response = await http.post(
-        Uri.parse('http://your-backend-url.com/respond_friend_request'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/respond_friend_request'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'request_id': requestId,
@@ -213,22 +230,27 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(status == 'accepted' ? '已接受好友請求' : '已拒絕好友請求')),
-        );
-        // 重新載入好友和請求列表
-        _loadFriends();
-        _loadPendingRequests();
+        final data = json.decode(response.body);
+        if (data['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(status == 'accepted' ? '已接受好友請求' : '已拒絕好友請求')),
+          );
+          // 重新載入好友和請求列表
+          _loadFriends();
+          _loadPendingRequests();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? '處理好友請求失敗')),
+          );
+        }
       } else {
-        // 處理錯誤
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('處理好友請求時發生錯誤')),
+          SnackBar(content: Text('處理好友請求失敗: ${response.statusCode}')),
         );
       }
     } catch (e) {
-      print('處理好友請求時出錯: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('處理好友請求失敗: $e')),
+        SnackBar(content: Text('處理好友請求時出錯: $e')),
       );
     }
   }
