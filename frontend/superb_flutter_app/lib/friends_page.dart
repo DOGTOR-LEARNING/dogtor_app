@@ -21,10 +21,10 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   bool _isLoading = true;
 
   // 定義主題顏色
-  final Color primaryBlue = Color(0xFF1E88E5);
-  final Color accentOrange = Color(0xFFFF9800);
-  final Color backgroundBlue = Color(0xFFE3F2FD);
-  final Color darkBlue = Color(0xFF1565C0);
+  final Color primaryBlue = Color(0xFF319cb6);  // 新的主藍色
+  final Color accentOrange = Color(0xFFf59b03);  // 新的強調橙色
+  final Color backgroundWhite = Color(0xFFFFF9F7);  // 新的背景白色
+  final Color darkBlue = Color(0xFF0777B1);  // 新的深藍色
 
   @override
   void initState() {
@@ -218,23 +218,35 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         final data = json.decode(response.body);
         if (data['status'] == 'success') {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? '好友請求已發送')),
+            SnackBar(
+              content: Text(data['message'] ?? '好友請求已發送'),
+              backgroundColor: primaryBlue,
+            ),
           );
           // 重新載入搜尋結果
           _searchFriends(_searchController.text);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? '無法發送好友請求')),
+            SnackBar(
+              content: Text(data['message'] ?? '無法發送好友請求'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('發送好友請求失敗: ${response.statusCode}')),
+          SnackBar(
+            content: Text('發送好友請求失敗: ${response.statusCode}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('發送好友請求時出錯: $e')),
+        SnackBar(
+          content: Text('發送好友請求時出錯: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -254,24 +266,36 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         final data = json.decode(response.body);
         if (data['status'] == 'success') {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(status == 'accepted' ? '已接受好友請求' : '已拒絕好友請求')),
+            SnackBar(
+              content: Text(status == 'accepted' ? '已接受好友請求' : '已拒絕好友請求'),
+              backgroundColor: status == 'accepted' ? Colors.green : Colors.orange,
+            ),
           );
           // 重新載入好友和請求列表
           _loadFriends();
           _loadPendingRequests();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? '處理好友請求失敗')),
+            SnackBar(
+              content: Text(data['message'] ?? '處理好友請求失敗'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('處理好友請求失敗: ${response.statusCode}')),
+          SnackBar(
+            content: Text('處理好友請求失敗: ${response.statusCode}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('處理好友請求時出錯: $e')),
+        SnackBar(
+          content: Text('處理好友請求時出錯: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -287,14 +311,14 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: backgroundWhite,
         elevation: 0,
         iconTheme: IconThemeData(color: darkBlue),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: accentOrange,
           labelColor: darkBlue,
-          unselectedLabelColor: Colors.grey,
+          unselectedLabelColor: Colors.grey.shade600,
           tabs: [
             Tab(text: '好友列表'),
             Tab(text: '好友請求'),
@@ -308,8 +332,8 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.white,
-              backgroundBlue,
+              backgroundWhite,
+              Color(0xFFE8F6F8), // 淡藍色漸變效果
             ],
           ),
         ),
@@ -371,7 +395,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         final friend = _friendsList[index];
         return Card(
           elevation: 2,
-          margin: EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
@@ -383,15 +407,15 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white,
-                  backgroundBlue.withOpacity(0.3),
+                  backgroundWhite,
+                  Color(0xFFECF6F9), // 淡藍色漸變效果
                 ],
               ),
             ),
             child: ListTile(
-              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               leading: CircleAvatar(
-                radius: 25,
+                radius: 28,
                 backgroundImage: friend['photo_url'] != null && friend['photo_url'].isNotEmpty
                     ? NetworkImage(friend['photo_url'])
                     : null,
@@ -418,6 +442,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SizedBox(height: 4),
                   Text(
                     friend['email'] ?? '',
                     style: TextStyle(
@@ -426,11 +451,16 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                     ),
                   ),
                   if (friend['year_grade'] != null || friend['introduction'] != null)
-                    Text(
-                      '${friend['year_grade'] ?? ''} ${friend['introduction'] ?? ''}',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
+                    Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        '${friend['year_grade'] ?? ''} ${friend['introduction'] ?? ''}',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                 ],
@@ -482,61 +512,82 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         final request = _pendingRequests[index];
         return Card(
           elevation: 2,
+          margin: EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
-          child: ListTile(
-            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            leading: CircleAvatar(
-              radius: 25,
-              backgroundImage: request['requester_photo'] != null && request['requester_photo'].isNotEmpty
-                  ? NetworkImage(request['requester_photo'])
-                  : null,
-              child: request['requester_photo'] == null || request['requester_photo'].isEmpty
-                  ? Icon(Icons.person, color: Colors.white, size: 30)
-                  : null,
-              backgroundColor: primaryBlue,
-            ),
-            title: Text(
-              request['requester_name'] ?? '未知用戶',
-              style: TextStyle(
-                color: darkBlue,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  backgroundWhite,
+                  Color(0xFFECF6F9), // 淡藍色漸變效果
+                ],
               ),
             ),
-            subtitle: Text(
-              '${request['requester_grade'] ?? ''} ${request['requester_intro'] ?? ''}',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
+            child: ListTile(
+              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              leading: CircleAvatar(
+                radius: 28,
+                backgroundImage: request['requester_photo'] != null && request['requester_photo'].isNotEmpty
+                    ? NetworkImage(request['requester_photo'])
+                    : null,
+                child: request['requester_photo'] == null || request['requester_photo'].isEmpty
+                    ? Icon(Icons.person, color: Colors.white, size: 30)
+                    : null,
+                backgroundColor: primaryBlue,
               ),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: IconButton(
-                    icon: Icon(Icons.check, color: Colors.white),
-                    onPressed: () => _respondToFriendRequest(request['id'], 'accepted'),
-                  ),
+              title: Text(
+                request['requester_name'] ?? '未知用戶',
+                style: TextStyle(
+                  color: darkBlue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
-                SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(20),
+              ),
+              subtitle: Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  '${request['requester_grade'] ?? ''} ${request['requester_intro'] ?? ''}',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
                   ),
-                  child: IconButton(
-                    icon: Icon(Icons.close, color: Colors.white),
-                    onPressed: () => _respondToFriendRequest(request['id'], 'rejected'),
-                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: primaryBlue,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.check, color: Colors.white),
+                      onPressed: () => _respondToFriendRequest(request['id'], 'accepted'),
+                      tooltip: '接受',
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: accentOrange,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.close, color: Colors.white),
+                      onPressed: () => _respondToFriendRequest(request['id'], 'rejected'),
+                      tooltip: '拒絕',
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -554,7 +605,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withOpacity(0.08),
                 blurRadius: 8,
                 offset: Offset(0, 2),
               ),
@@ -657,7 +708,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                         
                         return Card(
                           elevation: 2,
-                          margin: EdgeInsets.only(bottom: 8),
+                          margin: EdgeInsets.only(bottom: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
@@ -669,15 +720,15 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: [
-                                  Colors.white,
-                                  backgroundBlue.withOpacity(0.3),
+                                  backgroundWhite,
+                                  Color(0xFFECF6F9), // 淡藍色漸變效果
                                 ],
                               ),
                             ),
                             child: ListTile(
-                              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                               leading: CircleAvatar(
-                                radius: 25,
+                                radius: 28,
                                 backgroundImage: user['photo_url'] != null && user['photo_url'].isNotEmpty
                                     ? NetworkImage(user['photo_url'])
                                     : null,
@@ -705,11 +756,16 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   if (user['year_grade'] != null || user['introduction'] != null)
-                                    Text(
-                                      '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 14,
+                                    Padding(
+                                      padding: EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                 ],
@@ -718,7 +774,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                   ? Container(
                                       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: Colors.green,
+                                        color: primaryBlue,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Row(

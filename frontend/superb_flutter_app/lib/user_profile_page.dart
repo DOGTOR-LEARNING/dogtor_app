@@ -25,6 +25,19 @@ class _UserProfilePageState extends State<UserProfilePage> {
   final TextEditingController _introductionController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController();
   
+  // 頭像選項
+  final List<String> _avatarOptions = [
+    "https://storage.googleapis.com/dogtor_asset/a-cute-capybara-.png",
+    "https://storage.googleapis.com/dogtor_asset/a-cute-dinosaur.png",
+    "https://storage.googleapis.com/dogtor_asset/a-cute-jelly-fish-in-the-ocean.png",
+    "https://storage.googleapis.com/dogtor_asset/a-cute-scallop.png",
+    "https://storage.googleapis.com/dogtor_asset/a-cute-white-fox--berries-in-the-background.png",
+    "https://storage.googleapis.com/dogtor_asset/a-jelly-fish-in-the-ocean.png",
+    "https://storage.googleapis.com/dogtor_asset/a-pig-in-the-mud.png",
+    "https://storage.googleapis.com/dogtor_asset/a-pigwit.png",
+    "https://storage.googleapis.com/dogtor_asset/a-sea-otter.png"
+  ];
+  
   // 年級選項
   final List<String> _gradeOptions = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'teacher', 'parent'];
   // 年級顯示名稱
@@ -111,6 +124,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
       await prefs.setString('introduction', _introductionController.text);
       await prefs.setString('nickname', _nicknameController.text);
       await prefs.setString('year_grade', _yearGrade);
+      if (_photoUrl.isNotEmpty) {
+        await prefs.setString('photo_url', _photoUrl);
+      }
       
       // 更新 UI
       setState(() {
@@ -262,6 +278,91 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
+  // 顯示頭像選擇對話框
+  void _showAvatarSelector() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.blue.shade100, Colors.white],
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: 20),
+                child: Text(
+                  '選擇頭像',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GridView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 1,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: _avatarOptions.length,
+                  itemBuilder: (context, index) {
+                    final avatarUrl = _avatarOptions[index];
+                    final isSelected = _photoUrl == avatarUrl;
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _photoUrl = avatarUrl;
+                        });
+                        Navigator.pop(context);
+                        _saveUserData();
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected ? Colors.blue.shade600 : Colors.transparent,
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.3),
+                              spreadRadius: 1,
+                              blurRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.white,
+                          backgroundImage: NetworkImage(avatarUrl),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     print("Building UserProfilePage with data:");
@@ -296,55 +397,69 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // 用戶頭像
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey.shade200,
-                          image: _photoUrl.isNotEmpty
-                              ? DecorationImage(
-                                  image: NetworkImage(_photoUrl),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
+                      Center(
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey.shade200,
+                                image: _photoUrl.isNotEmpty
+                                    ? DecorationImage(
+                                        image: NetworkImage(_photoUrl),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                              ),
+                              child: _photoUrl.isEmpty
+                                  ? Icon(Icons.person, size: 80, color: Colors.grey.shade400)
+                                  : null,
+                            ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade500,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: GestureDetector(
+                                  onTap: _showAvatarSelector,
+                                  child: Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: _photoUrl.isEmpty
-                            ? Icon(Icons.person, size: 80, color: Colors.grey.shade400)
-                            : null,
                       ),
                       SizedBox(height: 20),
                       
                       // 用戶名稱
-                      Text(
-                        _displayName.isNotEmpty ? _displayName : '未知用戶',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                      Center(
+                        child: Text(
+                          _displayName.isNotEmpty ? _displayName : '未知用戶',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       SizedBox(height: 10),
                       
                       // 用戶身份標籤
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade100,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              _gradeDisplayNames[_yearGrade] ?? _yearGrade,
-                              style: TextStyle(
-                                color: Colors.blue.shade800,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          if (_nickname.isNotEmpty) SizedBox(width: 8),
-                          if (_nickname.isNotEmpty)
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
                               decoration: BoxDecoration(
@@ -352,14 +467,31 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                _nickname,
+                                _gradeDisplayNames[_yearGrade] ?? _yearGrade,
                                 style: TextStyle(
                                   color: Colors.blue.shade800,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                        ],
+                            if (_nickname.isNotEmpty) SizedBox(width: 8),
+                            if (_nickname.isNotEmpty)
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  _nickname,
+                                  style: TextStyle(
+                                    color: Colors.blue.shade800,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                       SizedBox(height: 30),
                       
