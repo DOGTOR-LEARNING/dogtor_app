@@ -144,6 +144,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'query': query,
+          'current_user_id': _userId,
         }),
       );
 
@@ -512,7 +513,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             controller: _searchController,
             style: TextStyle(color: darkBlue),
             decoration: InputDecoration(
-              hintText: '搜尋用戶名稱或暱稱',
+              hintText: '搜尋用戶電子郵件',
               hintStyle: TextStyle(color: Colors.grey),
               filled: true,
               fillColor: Colors.white,
@@ -554,7 +555,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                           SizedBox(height: 24),
                           Text(
                             _searchController.text.isEmpty
-                                ? '輸入名稱或暱稱搜尋好友'
+                                ? '輸入電子郵件搜尋好友'
                                 : '沒有找到符合的用戶',
                             style: TextStyle(
                               color: darkBlue,
@@ -599,12 +600,24 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                 fontSize: 16,
                               ),
                             ),
-                            subtitle: Text(
-                              '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user['email'] ?? '',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
                             trailing: isFriend
                                 ? Container(

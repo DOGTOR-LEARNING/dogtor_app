@@ -2162,56 +2162,33 @@ async def respond_friend_request(request: FriendResponse):
 async def search_users(request: Request):
     try:
         data = await request.json()
-        query = data.get('query', '')
-        current_user_id = data.get('user_id', '')
-        
-        if not query:
-            return {"success": False, "message": "搜尋關鍵字不能為空"}
+        query = data.get('query', '').lower()
         
         connection = get_db_connection()
-        connection.charset = 'utf8mb4'
+        cursor = connection.cursor()
         
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute("SET NAMES utf8mb4")
-                cursor.execute("SET CHARACTER SET utf8mb4")
-                cursor.execute("SET character_set_connection=utf8mb4")
-                
-                # 搜尋用戶
-                search_term = f"%{query}%"
-                sql = """
-                SELECT user_id, name, nickname, photo_url, year_grade, introduction
-                FROM users
-                WHERE (name LIKE %s OR nickname LIKE %s) AND user_id != %s
-                LIMIT 20
-                """
-                cursor.execute(sql, (search_term, search_term, current_user_id))
-                users = cursor.fetchall()
-                
-                # 如果有當前用戶ID，檢查好友狀態
-                if current_user_id and users:
-                    for user in users:
-                        # 檢查好友狀態
-                        sql = """
-                        SELECT id, status FROM friendships 
-                        WHERE (requester_id = %s AND addressee_id = %s) 
-                        OR (requester_id = %s AND addressee_id = %s)
-                        """
-                        cursor.execute(sql, (current_user_id, user['user_id'], user['user_id'], current_user_id))
-                        friendship = cursor.fetchone()
-                        
-                        if friendship:
-                            user['friend_status'] = friendship['status']
-                        else:
-                            user['friend_status'] = 'none'
-                
-                return {"success": True, "users": users}
-                
-        finally:
-            connection.close()
-            
+        # 使用 email 進行搜尋
+        cursor.execute("""
+            SELECT user_id, email, name, photo_url, nickname, year_grade, introduction
+            FROM users
+            WHERE LOWER(email) LIKE ?
+            AND user_id != ?
+        """, (f"%{query}%", data.get('current_user_id')))
+        
+        users = []
+        for row in cursor.fetchall():
+            user = {
+                'user_id': row[0],
+                'email': row[1],
+                'name': row[2],
+                'photo_url': row[3],
+                'nickname': row[4],
+                'year_grade': row[5],
+                'introduction': row[6]
+            }
+            users.append(user)
+        
+        connection.close()
+        return {"status": "success", "users": users}
     except Exception as e:
-        print(f"搜尋用戶時出錯: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return {"success": False, "message": f"搜尋用戶時出錯: {str(e)}"}
+        return {"status": "error", "message": str(e)}
