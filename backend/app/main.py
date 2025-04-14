@@ -49,7 +49,7 @@ class ChatRequest(BaseModel):
 async def chat_with_openai(request: ChatRequest):
     system_message = "你是個幽默的臺灣國高中老師，請用繁體中文回答問題，"
     if request.subject:
-        system_message += f"學生想問的科目是{request.subject or ''}，"
+        system_message += f"學生想問的科目是{request.subject}，"
     if request.chapter:
         system_message += f"目前章節是{request.chapter}。"
     system_message += "請根據臺灣的108課綱提醒學生他所問的問題的關鍵字或是章節，再重點回答學生的問題，在回應中使用 Markdown 格式，將重點用 **粗體字** 標出，運算式用 $formula$ 標出，請不要用 \"()\" 或 \"[]\" 來標示 latex。最後提醒他，如果這個概念還是不太清楚，可以去複習哪一些內容。如果學生不是問課業相關的問題，或是提出解題之外的要求，就說明你只是解題老師，有其他需求的話去找他該找的人。"
@@ -217,6 +217,9 @@ class User(BaseModel):
     name: Optional[str] = None
     photo_url: Optional[str] = None
     created_at: Optional[str] = None
+    nickname: Optional[str] = None
+    year_grade: Optional[str] = None
+    introduction: Optional[str] = None
 
 # 檢查用戶是否存在
 @app.get("/users/check")
@@ -438,16 +441,19 @@ async def update_user(user_id: str, user: User):
             if not existing_user:
                 raise HTTPException(status_code=404, detail="User not found")
             
-            # 更新用戶信息
+            # 更新用戶信息，添加對nickname、year_grade和introduction的支持
             sql = """
             UPDATE users
-            SET email = %s, name = %s, photo_url = %s
+            SET email = %s, name = %s, photo_url = %s, nickname = %s, year_grade = %s, introduction = %s
             WHERE user_id = %s
             """
             cursor.execute(sql, (
                 user.email,
-                user.display_name,
+                user.name,
                 user.photo_url,
+                user.nickname,
+                user.year_grade,
+                user.introduction,
                 user_id
             ))
             connection.commit()

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class UserProfilePage extends StatefulWidget {
   @override
@@ -12,11 +14,25 @@ class _UserProfilePageState extends State<UserProfilePage> {
   String _email = '';
   String _displayName = '';
   String _photoUrl = '';
-  String _role = '學生'; // 預設身份
-  String _bio = '這個人很懶，什麼都沒有留下...'; // 預設自我介紹
-  bool _isLoading = true; // 添加加載狀態
-  bool _isEditingBio = false;
-  final TextEditingController _bioController = TextEditingController();
+  String _yearGrade = ''; // 用戶年級
+  String _nickname = ''; // 用戶暱稱
+  String _introduction = '這個人很懶，什麼都沒有留下...'; // 自我介紹
+  bool _isLoading = true; // 加載狀態
+  bool _isEditingIntroduction = false;
+  bool _isEditingNickname = false;
+  bool _isEditingYearGrade = false;
+
+  final TextEditingController _introductionController = TextEditingController();
+  final TextEditingController _nicknameController = TextEditingController();
+  
+  // 年級選項
+  final List<String> _gradeOptions = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'teacher', 'parent'];
+  // 年級顯示名稱
+  final Map<String, String> _gradeDisplayNames = {
+    'G1': '小一', 'G2': '小二', 'G3': '小三', 'G4': '小四', 'G5': '小五', 'G6': '小六',
+    'G7': '國一', 'G8': '國二', 'G9': '國三', 'G10': '高一', 'G11': '高二', 'G12': '高三',
+    'teacher': '老師', 'parent': '家長'
+  };
 
   @override
   void initState() {
@@ -26,22 +42,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   @override
   void dispose() {
-    _bioController.dispose();
+    _introductionController.dispose();
+    _nicknameController.dispose();
     super.dispose();
-  }
-
-  // 保存自我介紹
-  Future<void> _saveBio() async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('bio', _bioController.text);
-      setState(() {
-        _bio = _bioController.text;
-        _isEditingBio = false;
-      });
-    } catch (e) {
-      print("保存自我介紹時出錯: $e");
-    }
   }
 
   // 從 SharedPreferences 加載用戶數據
@@ -61,8 +64,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _email = prefs.getString('email') ?? 'example@email.com';
         _displayName = prefs.getString('display_name') ?? '未知用戶';
         _photoUrl = prefs.getString('photo_url') ?? '';
-        _bio = prefs.getString('bio') ?? '這個人很懶，什麼都沒有留下...';
-        _bioController.text = _bio;
+        _introduction = prefs.getString('introduction') ?? '這個人很懶，什麼都沒有留下...';
+        _nickname = prefs.getString('nickname') ?? '';
+        _yearGrade = prefs.getString('year_grade') ?? 'G10'; // 預設高一
+        
+        _introductionController.text = _introduction;
+        _nicknameController.text = _nickname;
+        
         _isLoading = false;
         
         print("加載的用戶數據：");
@@ -70,7 +78,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
         print("電子郵件: $_email");
         print("顯示名稱: $_displayName");
         print("頭像 URL: $_photoUrl");
-        print("自我介紹: $_bio");
+        print("自我介紹: $_introduction");
+        print("暱稱: $_nickname");
+        print("年級: $_yearGrade");
       });
       print("用戶數據加載完成");
     } catch (e) {
@@ -80,10 +90,75 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _email = 'test@example.com';
         _displayName = '測試用戶';
         _photoUrl = '';
-        _bio = '這是一個測試用戶的自我介紹...';
-        _bioController.text = _bio;
+        _introduction = '這是一個測試用戶的自我介紹...';
+        _nickname = '測試暱稱';
+        _yearGrade = 'G10';
+        
+        _introductionController.text = _introduction;
+        _nicknameController.text = _nickname;
+        
         _isLoading = false;
       });
+    }
+  }
+
+  // 保存用戶資料到本地和後端
+  Future<void> _saveUserData() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      
+      // 保存到本地
+      await prefs.setString('introduction', _introductionController.text);
+      await prefs.setString('nickname', _nicknameController.text);
+      await prefs.setString('year_grade', _yearGrade);
+      
+      // 更新 UI
+      setState(() {
+        _introduction = _introductionController.text;
+        _nickname = _nicknameController.text;
+        _isEditingIntroduction = false;
+        _isEditingNickname = false;
+        _isEditingYearGrade = false;
+      });
+      
+      // 保存到後端
+      await _updateUserInBackend();
+      
+    } catch (e) {
+      print("保存用戶數據時出錯: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存失敗，請稍後再試')),
+      );
+    }
+  }
+
+  // 更新後端數據
+  Future<void> _updateUserInBackend() async {
+    try {
+      final response = await http.put(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/users/$_userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': _userId,
+          'email': _email,
+          'name': _displayName,
+          'photo_url': _photoUrl,
+          'nickname': _nickname,
+          'year_grade': _yearGrade,
+          'introduction': _introduction
+        }),
+      );
+      
+      if (response.statusCode != 200) {
+        print('更新用戶數據失敗: ${response.statusCode}');
+        print('響應內容: ${response.body}');
+        throw Exception('更新用戶數據失敗');
+      }
+      
+      print('用戶數據更新成功');
+    } catch (e) {
+      print('更新用戶數據時出錯: $e');
+      throw e;
     }
   }
 
@@ -105,11 +180,66 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
+  // 顯示年級選擇對話框
+  void _showGradeSelector() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: 20),
+                child: Text(
+                  '選擇年級',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _gradeOptions.length,
+                  itemBuilder: (context, index) {
+                    final grade = _gradeOptions[index];
+                    final displayName = _gradeDisplayNames[grade] ?? grade;
+                    
+                    return ListTile(
+                      title: Text(displayName),
+                      selected: _yearGrade == grade,
+                      selectedTileColor: Colors.blue.shade50,
+                      onTap: () {
+                        setState(() {
+                          _yearGrade = grade;
+                          _isEditingYearGrade = false;
+                        });
+                        Navigator.pop(context);
+                        _saveUserData();
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     print("Building UserProfilePage with data:");
     print("Email: $_email");
-    print("Bio: $_bio");
+    print("Introduction: $_introduction");
     print("User ID: $_userId");
     
     return Scaffold(
@@ -167,7 +297,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   ),
                   SizedBox(height: 10),
                   
-                  // 用戶身份
+                  // 用戶身份標籤
                   Row(
                     children: [
                       Container(
@@ -177,43 +307,29 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          _role,
+                          _gradeDisplayNames[_yearGrade] ?? _yearGrade,
                           style: TextStyle(
                             color: Colors.blue.shade800,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                      SizedBox(width: 8),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade100,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '高中生',
-                          style: TextStyle(
-                            color: Colors.blue.shade800,
-                            fontWeight: FontWeight.bold,
+                      if (_nickname.isNotEmpty) SizedBox(width: 8),
+                      if (_nickname.isNotEmpty)
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            _nickname,
+                            style: TextStyle(
+                              color: Colors.blue.shade800,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade100,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '文組',
-                          style: TextStyle(
-                            color: Colors.blue.shade800,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   SizedBox(height: 30),
@@ -245,8 +361,58 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         _buildInfoRow(Icons.fingerprint, '用戶 ID', _userId),
                         Divider(),
                         
+                        // 年級
+                        _buildInfoRow(
+                          Icons.school, 
+                          '年級', 
+                          _gradeDisplayNames[_yearGrade] ?? _yearGrade,
+                          isEditable: true,
+                          onEdit: () {
+                            setState(() {
+                              _isEditingYearGrade = true;
+                            });
+                            _showGradeSelector();
+                          },
+                        ),
+                        Divider(),
+                        
+                        // 暱稱
+                        _buildInfoRow(
+                          Icons.person_pin, 
+                          '暱稱', 
+                          _nickname.isEmpty ? '尚未設置暱稱' : _nickname,
+                          isEditable: true,
+                          isEditingState: _isEditingNickname,
+                          textController: _nicknameController,
+                          onEdit: () {
+                            setState(() {
+                              _isEditingNickname = !_isEditingNickname;
+                              if (!_isEditingNickname) {
+                                _saveUserData();
+                              }
+                            });
+                          },
+                        ),
+                        Divider(),
+                        
                         // 自我介紹
-                        _buildInfoRow(Icons.person_outline, '自我介紹', _bio, isEditable: true),
+                        _buildInfoRow(
+                          Icons.person_outline, 
+                          '自我介紹 (50字內)', 
+                          _introduction,
+                          isEditable: true,
+                          isEditingState: _isEditingIntroduction,
+                          textController: _introductionController,
+                          onEdit: () {
+                            setState(() {
+                              _isEditingIntroduction = !_isEditingIntroduction;
+                              if (!_isEditingIntroduction) {
+                                _saveUserData();
+                              }
+                            });
+                          },
+                          maxLength: 50,
+                        ),
                       ],
                     ),
                   ),
@@ -278,7 +444,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   // 構建信息行的輔助方法
-  Widget _buildInfoRow(IconData icon, String label, String value, {bool isEditable = false}) {
+  Widget _buildInfoRow(
+    IconData icon, 
+    String label, 
+    String value, 
+    {
+      bool isEditable = false,
+      bool isEditingState = false,
+      TextEditingController? textController,
+      VoidCallback? onEdit,
+      int? maxLength,
+    }
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -287,7 +464,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           Container(
             width: 24,
             height: 24,
-            padding: icon == Icons.person_outline ? EdgeInsets.only(top: 13) : null,
+            padding: EdgeInsets.only(top: 3),
             child: Icon(icon, color: Colors.blue.shade700, size: 22),
           ),
           SizedBox(width: 12),
@@ -307,40 +484,33 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    if (isEditable)
+                    if (isEditable && onEdit != null)
                       IconButton(
                         padding: EdgeInsets.zero,
                         constraints: BoxConstraints(),
                         icon: Icon(
-                          _isEditingBio ? Icons.save : Icons.edit,
+                          isEditingState ? Icons.save : Icons.edit,
                           size: 20,
                           color: Colors.blue.shade700,
                         ),
-                        onPressed: () {
-                          if (_isEditingBio) {
-                            _saveBio();
-                          } else {
-                            setState(() {
-                              _isEditingBio = true;
-                            });
-                          }
-                        },
+                        onPressed: onEdit,
                       ),
                   ],
                 ),
                 SizedBox(height: 4),
-                if (isEditable && _isEditingBio)
+                if (isEditable && isEditingState && textController != null)
                   Container(
                     margin: EdgeInsets.only(top: 4),
                     child: TextField(
-                      controller: _bioController,
-                      maxLines: 3,
+                      controller: textController,
+                      maxLines: maxLength != null ? null : 3,
+                      maxLength: maxLength,
                       style: TextStyle(
                         color: Colors.black87,
                         fontSize: 14,
                       ),
                       decoration: InputDecoration(
-                        hintText: '請輸入自我介紹',
+                        hintText: label.contains('暱稱') ? '請輸入暱稱' : '請輸入自我介紹（50字內）',
                         hintStyle: TextStyle(
                           color: Colors.grey,
                           fontSize: 14,
