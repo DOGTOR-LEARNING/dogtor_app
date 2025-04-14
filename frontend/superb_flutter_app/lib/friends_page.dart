@@ -316,10 +316,9 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              'assets/images/dogtor_eng_logo.svg',
-              width: 120,
-              height: 120,
+            Icon(
+              Icons.people_outline,
+              size: 120,
               color: primaryBlue.withOpacity(0.5),
             ),
             SizedBox(height: 24),
@@ -405,10 +404,9 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              'assets/images/dogtor_eng_logo.svg',
-              width: 120,
-              height: 120,
+            Icon(
+              Icons.person_add_disabled,
+              size: 120,
               color: primaryBlue.withOpacity(0.5),
             ),
             SizedBox(height: 24),
@@ -543,14 +541,28 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                 ))
               : _searchResults.isEmpty
                   ? Center(
-                      child: Text(
-                        _searchController.text.isEmpty
-                            ? '輸入名稱或暱稱搜尋好友'
-                            : '沒有找到符合的用戶',
-                        style: TextStyle(
-                          color: darkBlue,
-                          fontSize: 16,
-                        ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _searchController.text.isEmpty
+                                ? Icons.person_search
+                                : Icons.person_off,
+                            size: 120,
+                            color: primaryBlue.withOpacity(0.5),
+                          ),
+                          SizedBox(height: 24),
+                          Text(
+                            _searchController.text.isEmpty
+                                ? '輸入名稱或暱稱搜尋好友'
+                                : '沒有找到符合的用戶',
+                            style: TextStyle(
+                              color: darkBlue,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     )
                   : ListView.builder(
@@ -563,6 +575,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                         
                         return Card(
                           elevation: 2,
+                          margin: EdgeInsets.only(bottom: 8),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
@@ -600,7 +613,17 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                       color: Colors.green,
                                       borderRadius: BorderRadius.circular(20),
                                     ),
-                                    child: Icon(Icons.check_circle, color: Colors.white),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          '已是好友',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ],
+                                    ),
                                   )
                                 : requestSent
                                     ? Container(
@@ -609,9 +632,16 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                           color: accentOrange,
                                           borderRadius: BorderRadius.circular(20),
                                         ),
-                                        child: Text(
-                                          '已發送請求',
-                                          style: TextStyle(color: Colors.white),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.schedule, color: Colors.white, size: 20),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              '等待回應',
+                                              style: TextStyle(color: Colors.white),
+                                            ),
+                                          ],
                                         ),
                                       )
                                     : Container(

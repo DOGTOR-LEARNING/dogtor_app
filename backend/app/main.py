@@ -2002,7 +2002,7 @@ async def get_user_stats(request: Request):
 async def get_friends(user_id: str):
     try:
         connection = get_db_connection()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
         
         # 獲取好友列表（包括雙向的好友關係）
         query = """
@@ -2035,7 +2035,7 @@ async def get_friends(user_id: str):
 async def get_friend_requests(user_id: str):
     try:
         connection = get_db_connection()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
         
         # 獲取待處理的好友請求
         query = """
@@ -2073,7 +2073,7 @@ async def get_friend_requests(user_id: str):
 async def send_friend_request(request: FriendRequest):
     try:
         connection = get_db_connection()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
         
         # 檢查是否已存在好友關係
         check_query = """
@@ -2130,7 +2130,7 @@ async def send_friend_request(request: FriendRequest):
 async def respond_friend_request(request: FriendResponse):
     try:
         connection = get_db_connection()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
         
         # 更新好友請求狀態
         update_query = """
