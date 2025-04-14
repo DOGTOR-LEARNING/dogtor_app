@@ -21,30 +21,79 @@ class _ChatPageState extends State<ChatPage> {
   bool _isKeyboardVisible = false;
   bool _hasSubmittedQuestion = false;  // Add this line to track if a question has been submitted
   
-  final List<String> _subjects = [
-    '國文', '英文', '數學', '理化', '物理', '化學', '地科', '生物', '社會', '歷史', '地理', '公民'
-  ];
+  // 用於存儲從API獲取的所有科目
+  List<String> _subjects = [];
+  // 用於存儲從API獲取的所有章節，按科目分類
+  Map<String, List<Map<String, dynamic>>> _chaptersMap = {};
   
   String? _selectedSubject;
   bool _isLoading = false;
-  List<String> _items = [];
+  List<dynamic> _items = [];
   String? _selectedItem;
   
   // Filter tags with placeholder text
-  final List<String> _filterTags = ['選擇教育階段', '選擇科目', '選擇知識'];
+  final List<String> _filterTags = ['選擇教育階段', '選擇科目', '選擇章節'];
   List<String> _activeFilters = [];
 
   // Add these filter options maps
   final Map<String, List<String>> _filterOptions = {
     '教育階段': ['國中', '高中'],
     '科目': ['國文', '英文', '數學', '理化', '物理', '化學', '地科', '生物', '社會', '歷史', '地理', '公民'],
-    '知識': ['憲政體制的分權制衡', '民主政治', '人權保障', '法治國家'],
+    '章節': ['憲政體制的分權制衡', '民主政治', '人權保障', '法治國家'],
   };
 
   @override
   void initState() {
     super.initState();
-    _loadItems();
+    _fetchSubjectsAndChapters();
+  }
+
+  // 從後端獲取科目和章節數據
+  Future<void> _fetchSubjectsAndChapters() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_subjects_and_chapters'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        
+        if (data['success']) {
+          setState(() {
+            _subjects = List<String>.from(data['subjects']);
+            
+            // 轉換章節數據結構
+            final Map<String, dynamic> chaptersData = data['chapters_by_subject'];
+            _chaptersMap = {};
+            
+            chaptersData.forEach((subject, chapters) {
+              _chaptersMap[subject] = List<Map<String, dynamic>>.from(chapters);
+            });
+            
+            _isLoading = false;
+          });
+        } else {
+          print('獲取科目和章節數據失敗: ${data['message']}');
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      } else {
+        print('API請求失敗: ${response.statusCode}');
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('獲取科目和章節時出錯: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadItems() async {
@@ -56,43 +105,23 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     try {
-      String csvPath = '';
-      switch (_selectedSubject) {
-        case '化學':
-          csvPath = 'assets/edu_data/high_chemistry_chapter.csv';
-          break;
-        case '理化':
-          csvPath = 'assets/edu_data/junior_science_chapter.csv';
-          break;
-        default:
-          csvPath = ''; // Other subjects not handled yet
-      }
-
-      if (csvPath.isEmpty) {
+      // 從緩存中獲取選定科目的章節列表
+      if (_chaptersMap.containsKey(_selectedSubject)) {
+        setState(() {
+          _items = _chaptersMap[_selectedSubject]!;
+        });
+      } else {
         setState(() {
           _items = [
-            '當前科目讀取章節失敗',
+            {'id': '-1', 'chapter_name': '當前科目讀取章節失敗'},
           ];
         });
-        return;
       }
-
-      final String data = await DefaultAssetBundle.of(context).loadString(csvPath);
-      final List<String> rows = data.split('\n');
-      
-      setState(() {
-        _items = rows
-            .skip(1)
-            .where((row) => row.trim().isNotEmpty)
-            .map((row) => row.split(',')[4].trim())
-            .toSet()
-            .toList();
-      });
     } catch (e) {
       print('Error loading chapters: $e');
       setState(() {
         _items = [
-          '發生錯誤',
+          {'id': '-1', 'chapter_name': '發生錯誤'},
         ];
       });
     }
@@ -143,7 +172,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _showFilterOptions(String filterTag) {
-    List<String> options = [];
+    List<dynamic> options = [];
     String title = '';
     
     if (filterTag == '選擇教育階段' || filterTag == '國中' || filterTag == '高中') {
@@ -153,11 +182,28 @@ class _ChatPageState extends State<ChatPage> {
               filterTag.contains('理') || filterTag.contains('化') || filterTag.contains('物') || 
               filterTag.contains('生') || filterTag.contains('社') || filterTag.contains('史') || 
               filterTag.contains('地') || filterTag == '公民') {
-      options = _filterOptions['科目']!;
+      // 使用API獲取的科目列表
+      options = _subjects;
       title = '選擇科目';
     } else {
-      options = _filterOptions['知識點']!;
-      title = '選擇知識';
+      // 如果選擇了科目，則顯示該科目的章節列表
+      if (_selectedSubject != null && _chaptersMap.containsKey(_selectedSubject)) {
+        options = _chaptersMap[_selectedSubject]!;
+      } else {
+        options = [];
+      }
+      title = '選擇章節';
+    }
+
+    // 如果沒有選項可供選擇，提示用戶先選擇其他選項
+    if (options.isEmpty && title == '選擇章節') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('請先選擇科目'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
     }
 
     showModalBottomSheet(
@@ -203,10 +249,26 @@ class _ChatPageState extends State<ChatPage> {
                   shrinkWrap: true,
                   itemCount: options.length,
                   itemBuilder: (context, index) {
-                    final option = options[index];
+                    // 根據選項類型顯示不同內容
+                    String optionText;
+                    dynamic optionValue;
+                    
+                    if (title == '選擇科目') {
+                      optionText = options[index];
+                      optionValue = options[index];
+                    } else if (title == '選擇章節') {
+                      // 章節選項是一個包含id和chapter_name的Map
+                      optionText = options[index]['chapter_name'];
+                      optionValue = options[index];
+                    } else {
+                      // 教育階段選項是一個字符串
+                      optionText = options[index];
+                      optionValue = options[index];
+                    }
+                    
                     return ListTile(
                       title: Text(
-                        option,
+                        optionText,
                         style: TextStyle(
                           color: Color(0xFF1E3875),
                           fontSize: 16,
@@ -216,7 +278,21 @@ class _ChatPageState extends State<ChatPage> {
                         setState(() {
                           int tagIndex = _filterTags.indexOf(filterTag);
                           if (tagIndex != -1) {
-                            _filterTags[tagIndex] = option;
+                            if (title == '選擇科目') {
+                              _filterTags[tagIndex] = optionText;
+                              _selectedSubject = optionText;
+                              // 選擇科目後重設章節
+                              _filterTags[2] = '選擇章節';
+                              _selectedItem = null;
+                              // 重新加載該科目的章節
+                              _loadItems();
+                            } else if (title == '選擇章節') {
+                              _filterTags[tagIndex] = optionText;
+                              // 保存選擇的章節ID
+                              _selectedItem = optionValue['chapter_name'];
+                            } else {
+                              _filterTags[tagIndex] = optionText;
+                            }
                           }
                         });
                         Navigator.pop(context);
@@ -572,17 +648,17 @@ class _ChatPageState extends State<ChatPage> {
                               SizedBox(width: 4),
                               Text(
                                 "返回",
-                                  style: TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 15,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
                 
                   // Main content area (scrollable)
                   Expanded(
@@ -676,8 +752,8 @@ class _ChatPageState extends State<ChatPage> {
                         ),
 
                       // White input container
-                Container(
-                  decoration: BoxDecoration(
+                      Container(
+                        decoration: BoxDecoration(
                           color: Colors.white, // 稍微調整透明度，讓柯基若隱若現
                           borderRadius: BorderRadius.only(
                             topLeft: Radius.circular(24),
@@ -697,9 +773,9 @@ class _ChatPageState extends State<ChatPage> {
                             // Input field and send button
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
+                              child: Row(
+                                children: [
+                                  Expanded(
                                     child: Container(
                                       constraints: BoxConstraints(
                                         minHeight: 40,
@@ -709,8 +785,8 @@ class _ChatPageState extends State<ChatPage> {
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
-                        child: TextField(
-                          controller: _controller,
+                                      child: TextField(
+                                        controller: _controller,
                                         enabled: !_hasSubmittedQuestion,
                                         minLines: 1,
                                         maxLines: 5,
@@ -718,20 +794,20 @@ class _ChatPageState extends State<ChatPage> {
                                           color: Color(0xFF1E3875),
                                           fontSize: 16,
                                         ),
-                          decoration: InputDecoration(
-                            hintText: "輸入或拍照⋯⋯",
-                            hintStyle: TextStyle(
-                              color: Color(0xFF1E3875).withOpacity(0.6),
+                                        decoration: InputDecoration(
+                                          hintText: "輸入或拍照⋯⋯",
+                                          hintStyle: TextStyle(
+                                            color: Color(0xFF1E3875).withOpacity(0.6),
                                             fontSize: 16,
-                            ),
+                                          ),
                                           border: InputBorder.none,
                                           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            ),
-                          ),
-                        ),
-                      ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                   SizedBox(width: 8),
-                      Container(
+                                  Container(
                                     decoration: BoxDecoration(
                                       color: Color(0xFF1E3875),
                                       borderRadius: BorderRadius.circular(20),
@@ -741,13 +817,13 @@ class _ChatPageState extends State<ChatPage> {
                                       onPressed: !_hasSubmittedQuestion ? sendMessage : null,
                                       style: IconButton.styleFrom(
                                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
                             // Filter chips (fixed at input field below)
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -813,31 +889,31 @@ class _ChatPageState extends State<ChatPage> {
                                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 child: Stack(
                                   children: [
-                  GestureDetector(
-                    onTap: _showFullImage,
+                                    GestureDetector(
+                                      onTap: _showFullImage,
                                       child: Container(
                                         height: 120,
                                         width: double.infinity,
-                          decoration: BoxDecoration(
+                                        decoration: BoxDecoration(
                                           border: Border.all(color: Colors.grey[300]!, width: 1),
                                           borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ClipRRect(
+                                        ),
+                                        child: ClipRRect(
                                           borderRadius: BorderRadius.circular(11),
-                            child: FutureBuilder<Uint8List>(
-                              future: _selectedImage!.readAsBytes(),
-                              builder: (context, snapshot) {
-                                if (snapshot.hasData) {
-                                  return Image.memory(
-                                    snapshot.data!,
-                                    fit: BoxFit.cover,
-                                  );
-                                }
-                                return Center(child: CircularProgressIndicator());
-                              },
-                            ),
-                          ),
-                        ),
+                                          child: FutureBuilder<Uint8List>(
+                                            future: _selectedImage!.readAsBytes(),
+                                            builder: (context, snapshot) {
+                                              if (snapshot.hasData) {
+                                                return Image.memory(
+                                                  snapshot.data!,
+                                                  fit: BoxFit.cover,
+                                                );
+                                              }
+                                              return Center(child: CircularProgressIndicator());
+                                            },
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                     // Close button
                                     Positioned(
@@ -845,10 +921,10 @@ class _ChatPageState extends State<ChatPage> {
                                       right: 8,
                                       child: GestureDetector(
                                         onTap: () {
-                            setState(() {
-                              _selectedImage = null;
-                            });
-                          },
+                                          setState(() {
+                                            _selectedImage = null;
+                                          });
+                                        },
                                         child: Container(
                                           padding: EdgeInsets.all(4),
                                           decoration: BoxDecoration(
@@ -862,10 +938,10 @@ class _ChatPageState extends State<ChatPage> {
                                           ),
                                         ),
                                       ),
-                        ),
-                      ],
-                    ),
-                  ),
+                                    ),
+                                  ],
+                                ),
+                              ),
 
                             // Response container (only show if there's a response)
                             if (_response.isNotEmpty)
@@ -886,7 +962,7 @@ class _ChatPageState extends State<ChatPage> {
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                                    children: [
                                       // Question display
                                       Padding(
                                         padding: EdgeInsets.all(16),
@@ -905,10 +981,10 @@ class _ChatPageState extends State<ChatPage> {
                                       Padding(
                                         padding: EdgeInsets.all(16),
                                         child: _buildResponse(_response),
-                            ),
-                          ],
-                        ),
-                      ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
 
                             // Bottom padding

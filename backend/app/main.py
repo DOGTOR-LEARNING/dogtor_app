@@ -1523,6 +1523,49 @@ async def get_learning_suggestions(user_id: str):
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶學習建議時出錯: {str(e)}"}
 
+# 添加新的API端點用於獲取科目和章節列表
+@app.get("/get_subjects_and_chapters")
+async def get_subjects_and_chapters():
+    try:
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取所有科目
+                cursor.execute("SELECT DISTINCT subject FROM chapter_list ORDER BY subject")
+                subjects = [item['subject'] for item in cursor.fetchall()]
+                
+                # 獲取每個科目的章節
+                chapters_by_subject = {}
+                for subject in subjects:
+                    cursor.execute(
+                        "SELECT id, chapter_name FROM chapter_list WHERE subject = %s ORDER BY chapter_num", 
+                        (subject,)
+                    )
+                    chapters = cursor.fetchall()
+                    chapters_by_subject[subject] = chapters
+                
+                return {
+                    "success": True,
+                    "subjects": subjects,
+                    "chapters_by_subject": chapters_by_subject
+                }
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"獲取科目和章節列表時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取科目和章節列表時出錯: {str(e)}"}
+
 # 新增輔助函數：更新特定關卡相關的知識點分數
 async def _update_level_knowledge_scores(user_id: str, level_id: str, connection):
     try:
