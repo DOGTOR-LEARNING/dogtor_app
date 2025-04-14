@@ -2163,32 +2163,50 @@ async def search_users(request: Request):
     try:
         data = await request.json()
         query = data.get('query', '').lower()
+        current_user_id = data.get('current_user_id')
         
+        print(f"搜尋參數: query={query}, current_user_id={current_user_id}")  # 調試日誌
+        
+        if not query:
+            return {"status": "error", "message": "搜尋關鍵字不能為空"}
+            
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)  # 使用字典游標
         
         # 使用 email 進行搜尋
-        cursor.execute("""
+        search_query = """
             SELECT user_id, email, name, photo_url, nickname, year_grade, introduction
             FROM users
             WHERE LOWER(email) LIKE %s
-            AND user_id != %s
-        """, (f"%{query}%", data.get('current_user_id')))
+        """
+        params = [f"%{query}%"]
         
-        users = []
-        for row in cursor.fetchall():
-            user = {
-                'user_id': row[0],
-                'email': row[1],
-                'name': row[2],
-                'photo_url': row[3],
-                'nickname': row[4],
-                'year_grade': row[5],
-                'introduction': row[6]
-            }
-            users.append(user)
+        if current_user_id:
+            search_query += " AND user_id != %s"
+            params.append(current_user_id)
+            
+        print(f"SQL 查詢: {search_query}")  # 調試日誌
+        cursor.execute(search_query, params)
+        
+        users = cursor.fetchall()
+        print(f"查詢結果: 找到 {len(users)} 個用戶")  # 調試日誌
+        
+        # 檢查好友狀態
+        if current_user_id and users:
+            for user in users:
+                # 檢查是否已經是好友
+                cursor.execute("""
+                    SELECT status 
+                    FROM friendships 
+                    WHERE (requester_id = %s AND addressee_id = %s)
+                    OR (requester_id = %s AND addressee_id = %s)
+                """, (current_user_id, user['user_id'], user['user_id'], current_user_id))
+                
+                friendship = cursor.fetchone()
+                user['friend_status'] = friendship['status'] if friendship else 'none'
         
         connection.close()
         return {"status": "success", "users": users}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        print(f"搜尋用戶時出錯: {str(e)}")  # 錯誤日誌
+        return {"status": "error", "message": f"搜尋用戶時出錯: {str(e)}"}

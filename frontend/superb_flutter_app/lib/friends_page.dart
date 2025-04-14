@@ -139,6 +139,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
     });
 
     try {
+      print('發送搜尋請求: $query'); // 調試日誌
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/search_users'),
         headers: {'Content-Type': 'application/json'},
@@ -148,6 +149,9 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         }),
       );
 
+      print('收到回應: ${response.statusCode}'); // 調試日誌
+      print('回應內容: ${response.body}'); // 調試日誌
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'success') {
@@ -155,9 +159,11 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             _searchResults = List<Map<String, dynamic>>.from(data['users']);
             _isSearching = false;
           });
+          print('搜尋結果數量: ${_searchResults.length}'); // 調試日誌
         } else {
           setState(() {
             _isSearching = false;
+            _searchResults = [];
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(data['message'] ?? '搜尋用戶失敗')),
@@ -166,14 +172,17 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       } else {
         setState(() {
           _isSearching = false;
+          _searchResults = [];
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('搜尋用戶時發生錯誤: ${response.statusCode}')),
         );
       }
     } catch (e) {
+      print('搜尋出錯: $e'); // 調試日誌
       setState(() {
         _isSearching = false;
+        _searchResults = [];
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('搜尋用戶時出錯: $e')),
