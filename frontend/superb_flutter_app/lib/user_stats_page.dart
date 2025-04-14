@@ -532,23 +532,19 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                           show: true,
                           bottomTitles: AxisTitles(
                             sideTitles: SideTitles(
-                              showTitles: true, // 顯示週一、週二等標籤
+                              showTitles: true,
                               getTitlesWidget: (double value, TitleMeta meta) {
-                                String text = '';
-                                switch (value.toInt()) {
-                                  case 0: text = '一'; break;
-                                  case 1: text = '二'; break;
-                                  case 2: text = '三'; break;
-                                  case 3: text = '四'; break;
-                                  case 4: text = '五'; break;
-                                  case 5: text = '六'; break;
-                                  case 6: text = '日'; break;
-                                }
-                                return Text(text, style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ));
+                                final now = DateTime.now();
+                                final today = DateTime(now.year, now.month, now.day);
+                                final date = today.subtract(Duration(days: 6 - value.toInt()));
+                                return Text(
+                                  '${date.month}/${date.day}',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                );
                               },
                               reservedSize: 30,
                             ),
@@ -580,15 +576,15 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                         lineBarsData: [
                           LineChartBarData(
                             spots: _getLineSpots('本週'),
-                            isCurved: true,
+                            isCurved: false,
                             color: Colors.blue,
-                            barWidth: 4,
+                            barWidth: 2,
                             isStrokeCapRound: true,
                             dotData: FlDotData(
                               show: true,
                               getDotPainter: (spot, percent, barData, index) {
                                 return FlDotCirclePainter(
-                                  radius: 6,
+                                  radius: 4,
                                   color: Colors.blue,
                                   strokeWidth: 0,
                                 );
@@ -597,7 +593,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                             ),
                             belowBarData: BarAreaData(
                               show: true,
-                              color: Colors.blue.withOpacity(0.2),
+                              color: Colors.blue.withOpacity(0.1),
                             ),
                           ),
                         ],
@@ -620,14 +616,31 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     if (!_weeklyStats.containsKey(week)) return [];
     
     List<FlSpot> spots = [];
-    for (int i = 0; i < (_weeklyStats[week]?.length ?? 0); i++) {
-      spots.add(
-        FlSpot(
-          i.toDouble(),
-          (_weeklyStats[week]?[i]['levels'] as int? ?? 0).toDouble(),
-        ),
+    final weekData = _weeklyStats[week] ?? [];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    // 創建過去7天的日期列表（包含今天）
+    List<DateTime> last7Days = List.generate(7, (index) {
+      return today.subtract(Duration(days: 6 - index));
+    });
+    
+    // 為每一天創建數據點
+    for (int i = 0; i < 7; i++) {
+      final targetDate = last7Days[i];
+      final dayData = weekData.firstWhere(
+        (data) {
+          final dataDate = DateTime.parse(data['date']);
+          return dataDate.year == targetDate.year &&
+                 dataDate.month == targetDate.month &&
+                 dataDate.day == targetDate.day;
+        },
+        orElse: () => {'levels': 0},
       );
+      
+      spots.add(FlSpot(i.toDouble(), (dayData['levels'] as int? ?? 0).toDouble()));
     }
+    
     return spots;
   }
 
@@ -636,8 +649,29 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     if (!_weeklyStats.containsKey(week)) return [];
     
     List<VerticalLine> lines = [];
-    for (int i = 0; i < (_weeklyStats[week]?.length ?? 0); i++) {
-      final value = (_weeklyStats[week]?[i]['levels'] as int? ?? 0);
+    final weekData = _weeklyStats[week] ?? [];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    // 創建過去7天的日期列表（包含今天）
+    List<DateTime> last7Days = List.generate(7, (index) {
+      return today.subtract(Duration(days: 6 - index));
+    });
+    
+    // 為每一天創建垂直線
+    for (int i = 0; i < 7; i++) {
+      final targetDate = last7Days[i];
+      final dayData = weekData.firstWhere(
+        (data) {
+          final dataDate = DateTime.parse(data['date']);
+          return dataDate.year == targetDate.year &&
+                 dataDate.month == targetDate.month &&
+                 dataDate.day == targetDate.day;
+        },
+        orElse: () => {'levels': 0},
+      );
+      
+      final value = dayData['levels'] as int? ?? 0;
       if (value > 0) {
         lines.add(
           VerticalLine(
@@ -657,6 +691,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         );
       }
     }
+    
     return lines;
   }
 
@@ -1343,15 +1378,6 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '篩選選項',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(

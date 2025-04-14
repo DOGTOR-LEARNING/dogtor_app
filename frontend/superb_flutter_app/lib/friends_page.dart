@@ -66,6 +66,13 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         if (data['status'] == 'success') {
           setState(() {
             _friendsList = List<Map<String, dynamic>>.from(data['friends']);
+            // 處理年級顯示格式
+            for (var friend in _friendsList) {
+              if (friend['year_grade'] != null && friend['year_grade'].toString().startsWith('G')) {
+                final gradeNum = friend['year_grade'].toString().substring(1);
+                friend['year_grade'] = '$gradeNum年級';
+              }
+            }
             _isLoading = false;
           });
         } else {
@@ -397,7 +404,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                 backgroundColor: primaryBlue,
               ),
               title: Text(
-                friend['name'] ?? friend['nickname'] ?? '未知用戶',
+                '${friend['nickname'] ?? ''}${friend['nickname'] != null && friend['name'] != null ? ' (' : ''}${friend['name'] ?? ''}${friend['nickname'] != null && friend['name'] != null ? ')' : ''}',
                 style: TextStyle(
                   color: darkBlue,
                   fontWeight: FontWeight.bold,
@@ -687,7 +694,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                 backgroundColor: primaryBlue,
                               ),
                               title: Text(
-                                user['name'] ?? user['nickname'] ?? '未知用戶',
+                                '${user['nickname'] ?? ''}${user['nickname'] != null && user['name'] != null ? ' (' : ''}${user['name'] ?? ''}${user['nickname'] != null && user['name'] != null ? ')' : ''}',
                                 style: TextStyle(
                                   color: darkBlue,
                                   fontWeight: FontWeight.bold,
@@ -697,13 +704,6 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    user['email'] ?? '',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 14,
-                                    ),
-                                  ),
                                   if (user['year_grade'] != null || user['introduction'] != null)
                                     Text(
                                       '${user['year_grade'] ?? ''} ${user['introduction'] ?? ''}',

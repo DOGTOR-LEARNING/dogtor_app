@@ -15,6 +15,7 @@ from pydantic import BaseModel
 import io
 from email.mime.text import MIMEText
 from datetime import datetime
+from pytz import timezone
 
 app = FastAPI()
 
@@ -229,18 +230,14 @@ async def chat_with_openai(request: ChatRequest):
 
 # 連接到 Google Cloud SQL
 def get_db_connection():
-    try:
-        connection = pymysql.connect(
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_NAME'),
-            unix_socket=f"/cloudsql/{os.getenv('INSTANCE_CONNECTION_NAME')}",
-            cursorclass=pymysql.cursors.DictCursor
-        )
-        return connection
-    except Exception as e:
-        print(f"Database connection error: {str(e)}")
-        raise
+    return pymysql.connect(
+        host=os.getenv('DB_HOST'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        db=os.getenv('DB_NAME'),
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
 
 # 用戶模型.
 class User(BaseModel):
@@ -1758,15 +1755,20 @@ async def notify_daily_report():
         # 獲取當日關卡數據
         print("開始獲取當日關卡數據...")
         
-        # 計算昨天的日期
-        today = datetime.now().date()
+        # 設置時區為台北時間
+        taipei_tz = timezone(timedelta(hours=8))
+        now = datetime.now(taipei_tz)
+        
+        # 計算昨天的日期（台北時間）
+        today = now.date()
         yesterday = today - timedelta(days=1)
-        yesterday_start = datetime.combine(yesterday, datetime.min.time())
-        yesterday_end = datetime.combine(yesterday, datetime.max.time())
+        yesterday_start = datetime.combine(yesterday, datetime.min.time(), tzinfo=taipei_tz)
+        yesterday_end = datetime.combine(yesterday, datetime.max.time(), tzinfo=taipei_tz)
         
         yesterday_start_str = yesterday_start.strftime('%Y-%m-%d %H:%M:%S')
         yesterday_end_str = yesterday_end.strftime('%Y-%m-%d %H:%M:%S')
         
+        print(f"當前時間（台北）: {now.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"查詢日期範圍: {yesterday_start_str} 至 {yesterday_end_str}")
         
         # 連接到資料庫
