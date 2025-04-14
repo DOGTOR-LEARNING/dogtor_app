@@ -113,29 +113,81 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
     try {
       final response = await http.get(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_friend_requests/$_userId'),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json; charset=utf-8',
+        },
       );
 
+      print('載入好友請求響應狀態碼: ${response.statusCode}');
+      print('載入好友請求響應內容: ${response.body}');
+
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(utf8.decode(response.bodyBytes));
         if (data['status'] == 'success') {
           setState(() {
-            _pendingRequests = List<Map<String, dynamic>>.from(data['requests']);
+            _pendingRequests = List<Map<String, dynamic>>.from(data['requests'] ?? []);
+            
+            // 確保每個請求都有id屬性
+            for (var i = 0; i < _pendingRequests.length; i++) {
+              var request = _pendingRequests[i];
+              // 確保id欄位存在且為字符串格式
+              if (request['id'] == null) {
+                print('警告: 請求 #$i 沒有id欄位, 嘗試使用request_id');
+                if (request['request_id'] != null) {
+                  request['id'] = request['request_id'].toString();
+                } else {
+                  print('錯誤: 請求 #$i 既沒有id欄位也沒有request_id欄位');
+                }
+              } else if (request['id'] is! String) {
+                request['id'] = request['id'].toString();
+              }
+              
+              print('處理後的請求 #$i: ${request['id']}, ${request['requester_name']}');
+            }
           });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? '載入好友請求失敗')),
+            SnackBar(
+              content: Text(data['message'] ?? '載入好友請求失敗'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('無法載入好友請求: ${response.statusCode}')),
+          SnackBar(
+            content: Text('無法載入好友請求: ${response.statusCode}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
+      print('加載好友請求時出錯: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('加載好友請求時出錯: $e')),
+        SnackBar(
+          content: Text('加載好友請求時出錯: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
+  }
+
+  // 新增一個輔助函數來處理API返回的ID格式問題
+  String _getRequestId(Map<String, dynamic> request) {
+    // 檢查是否有id字段
+    if (request.containsKey('id') && request['id'] != null) {
+      return request['id'].toString();
+    }
+    
+    // 檢查是否有request_id字段
+    if (request.containsKey('request_id') && request['request_id'] != null) {
+      return request['request_id'].toString();
+    }
+    
+    // 都沒有，返回空字符串
+    print('警告: 無法找到請求ID: $request');
+    return '';
   }
 
   Future<void> _searchFriends(String query) async {
@@ -358,6 +410,18 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   }
 
   Future<void> _respondToFriendRequest(String requestId, String status) async {
+    print('處理好友請求，請求ID: $requestId, 狀態: $status');
+    
+    if (requestId == null || requestId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('無效的請求ID'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/respond_friend_request'),
@@ -367,6 +431,9 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
           'status': status,
         }),
       );
+
+      print('回應好友請求響應狀態碼: ${response.statusCode}');
+      print('回應好友請求響應內容: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -397,6 +464,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         );
       }
     } catch (e) {
+      print('處理好友請求時出錯: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('處理好友請求時出錯: $e'),
@@ -616,6 +684,10 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       itemCount: _pendingRequests.length,
       itemBuilder: (context, index) {
         final request = _pendingRequests[index];
+        // 使用輔助函數獲取請求ID
+        final requestId = _getRequestId(request);
+        print('請求#$index - ID: $requestId, 請求者: ${request['requester_name']}');
+        
         return Card(
           elevation: 2,
           margin: EdgeInsets.only(bottom: 12),
@@ -676,7 +748,19 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                     ),
                     child: IconButton(
                       icon: Icon(Icons.check, color: Colors.white),
-                      onPressed: () => _respondToFriendRequest(request['id'], 'accepted'),
+                      onPressed: () {
+                        print('接受按鈕點擊 - 請求ID: $requestId');
+                        if (requestId.isNotEmpty) {
+                          _respondToFriendRequest(requestId, 'accepted');
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('無效的請求ID'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
                       tooltip: '接受',
                     ),
                   ),
@@ -688,7 +772,19 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                     ),
                     child: IconButton(
                       icon: Icon(Icons.close, color: Colors.white),
-                      onPressed: () => _respondToFriendRequest(request['id'], 'rejected'),
+                      onPressed: () {
+                        print('拒絕按鈕點擊 - 請求ID: $requestId');
+                        if (requestId.isNotEmpty) {
+                          _respondToFriendRequest(requestId, 'rejected');
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('無效的請求ID'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
                       tooltip: '拒絕',
                     ),
                   ),
@@ -896,7 +992,62 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                       ),
                                     )
                                   : requestSent
-                                      ? Container(
+                                      ? user['is_requester'] == false
+                                          ? Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Container(
+                                                  decoration: BoxDecoration(
+                                                    color: primaryBlue,
+                                                    borderRadius: BorderRadius.circular(20),
+                                                  ),
+                                                  child: IconButton(
+                                                    icon: Icon(Icons.check, color: Colors.white),
+                                                    onPressed: () {
+                                                      final requestId = _getRequestId(user);
+                                                      print('接受好友申請按鈕點擊 - ID: $requestId');
+                                                      if (requestId.isNotEmpty) {
+                                                        _respondToFriendRequest(requestId, 'accepted');
+                                                      } else {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text('無效的請求ID'),
+                                                            backgroundColor: Colors.red,
+                                                          ),
+                                                        );
+                                                      }
+                                                    },
+                                                    tooltip: '接受',
+                                                  ),
+                                                ),
+                                                SizedBox(width: 8),
+                                                Container(
+                                                  decoration: BoxDecoration(
+                                                    color: accentOrange,
+                                                    borderRadius: BorderRadius.circular(20),
+                                                  ),
+                                                  child: IconButton(
+                                                    icon: Icon(Icons.close, color: Colors.white),
+                                                    onPressed: () {
+                                                      final requestId = _getRequestId(user);
+                                                      print('拒絕好友申請按鈕點擊 - ID: $requestId');
+                                                      if (requestId.isNotEmpty) {
+                                                        _respondToFriendRequest(requestId, 'rejected');
+                                                      } else {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text('無效的請求ID'),
+                                                            backgroundColor: Colors.red,
+                                                          ),
+                                                        );
+                                                      }
+                                                    },
+                                                    tooltip: '拒絕',
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : Container(
                                           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                           decoration: BoxDecoration(
                                             color: accentOrange,
@@ -904,11 +1055,15 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                           ),
                                           child: InkWell(
                                             onTap: () {
+                                              // 使用輔助函數獲取請求ID
+                                              final requestId = _getRequestId(user);
+                                              print('收回好友請求點擊 - 請求ID: $requestId, 用戶ID: ${user['user_id']}');
+                                              
                                               // 檢查請求ID是否存在
-                                              if (user['request_id'] == null) {
+                                              if (requestId.isEmpty && (user['user_id'] == null || user['user_id'].isEmpty)) {
                                                 ScaffoldMessenger.of(context).showSnackBar(
                                                   SnackBar(
-                                                    content: Text('無法收回請求：請求ID不存在'),
+                                                    content: Text('無法收回請求：請求ID和用戶ID均不存在'),
                                                     backgroundColor: Colors.red,
                                                   ),
                                                 );
@@ -950,11 +1105,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                                       onPressed: () {
                                                         Navigator.pop(context);
                                                         // 收回好友請求
-                                                        print('嘗試收回請求，ID: ${user['request_id']}，用戶ID: ${user['user_id']}');
-                                                        _cancelFriendRequest(
-                                                          user['request_id'] != null ? user['request_id'].toString() : '', 
-                                                          user['user_id']
-                                                        );
+                                                        _cancelFriendRequest(requestId, user['user_id']);
                                                       },
                                                       child: Text(
                                                         '確定',
