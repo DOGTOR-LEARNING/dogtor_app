@@ -2177,6 +2177,50 @@ async def respond_friend_request(request: FriendResponse):
             "message": "無法處理好友請求"
         }
 
+# 取消好友請求
+@app.post("/cancel_friend_request")
+async def cancel_friend_request(request: Request):
+    try:
+        data = await request.json()
+        requester_id = data.get('requester_id')
+        addressee_id = data.get('addressee_id')
+        
+        if not requester_id or not addressee_id:
+            return {"status": "error", "message": "請求者ID和接收者ID不能為空"}
+            
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        
+        # 查找並刪除待處理的好友請求
+        query = """
+        DELETE FROM friendships 
+        WHERE requester_id = %s AND addressee_id = %s AND status = 'pending'
+        """
+        cursor.execute(query, (requester_id, addressee_id))
+        affected_rows = cursor.rowcount
+        connection.commit()
+        
+        cursor.close()
+        connection.close()
+        
+        if affected_rows > 0:
+            return {
+                "status": "success",
+                "message": "好友請求已取消"
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "找不到相符的好友請求"
+            }
+        
+    except Exception as e:
+        print(f"取消好友請求時出錯: {str(e)}")
+        return {
+            "status": "error",
+            "message": "無法取消好友請求"
+        }
+
 # 搜尋用戶
 @app.post("/search_users")
 async def search_users(request: Request):

@@ -170,6 +170,13 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         if (data['status'] == 'success') {
           setState(() {
             _searchResults = List<Map<String, dynamic>>.from(data['users']);
+            // 打印搜索結果以進行調試
+            for (var user in _searchResults) {
+              print('用戶 ID: ${user['user_id']}, 姓名: ${user['name']}, 好友狀態: ${user['friend_status']}');
+              if (user['friend_status'] == 'pending') {
+                print('請求 ID: ${user['request_id']}');
+              }
+            }
             _isSearching = false;
           });
         } else {
@@ -178,7 +185,10 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             _searchResults = [];
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? '搜尋用戶失敗')),
+            SnackBar(
+              content: Text(data['message'] ?? '搜尋用戶失敗'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } else {
@@ -187,7 +197,10 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
           _searchResults = [];
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('搜尋用戶時發生錯誤: ${response.statusCode}')),
+          SnackBar(
+            content: Text('搜尋用戶時發生錯誤: ${response.statusCode}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
@@ -196,7 +209,10 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         _searchResults = [];
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('搜尋用戶時出錯: $e')),
+        SnackBar(
+          content: Text('搜尋用戶時出錯: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -249,6 +265,96 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         ),
       );
     }
+  }
+
+  // 添加收回好友請求的功能
+  Future<void> _cancelFriendRequest(String requestId, String userId) async {
+    if (_userId == null) {
+      print('無法收回請求：用戶ID為空');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('無法收回請求：用戶資訊不完整'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    print('正在嘗試收回請求，請求ID: $requestId, 用戶ID: $userId');
+
+    try {
+      // 首先嘗試使用請求ID
+      if (requestId != null && requestId.isNotEmpty) {
+        final response = await http.post(
+          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/respond_friend_request'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'request_id': requestId,
+            'status': 'canceled',
+          }),
+        );
+
+        print('收回請求響應狀態碼: ${response.statusCode}');
+        print('收回請求響應內容: ${response.body}');
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['status'] == 'success') {
+            _showSuccessMessage();
+            return;
+          }
+        }
+      }
+      
+      // 如果請求ID方法失敗，嘗試使用用戶ID
+      final cancelByUserResponse = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/cancel_friend_request'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'requester_id': _userId,
+          'addressee_id': userId,
+        }),
+      );
+      
+      print('通過用戶ID取消的響應: ${cancelByUserResponse.statusCode}');
+      print('通過用戶ID取消的內容: ${cancelByUserResponse.body}');
+      
+      if (cancelByUserResponse.statusCode == 200) {
+        final data = json.decode(cancelByUserResponse.body);
+        if (data['status'] == 'success') {
+          _showSuccessMessage();
+          return;
+        }
+      }
+      
+      // 如果兩種方法都失敗
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('無法收回好友請求，請稍後再試'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      
+    } catch (e) {
+      print('收回好友請求時出錯: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('收回好友請求時出錯，請稍後再試'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  
+  void _showSuccessMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('已收回好友請求'),
+        backgroundColor: primaryBlue,
+      ),
+    );
+    // 重新載入搜尋結果
+    _searchFriends(_searchController.text);
   }
 
   Future<void> _respondToFriendRequest(String requestId, String status) async {
@@ -796,16 +902,88 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                                             color: accentOrange,
                                             borderRadius: BorderRadius.circular(20),
                                           ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.schedule, color: Colors.white, size: 20),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                '等待回應',
-                                                style: TextStyle(color: Colors.white),
-                                              ),
-                                            ],
+                                          child: InkWell(
+                                            onTap: () {
+                                              // 檢查請求ID是否存在
+                                              if (user['request_id'] == null) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('無法收回請求：請求ID不存在'),
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                );
+                                                return;
+                                              }
+                                              
+                                              // 顯示確認對話框
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  backgroundColor: backgroundWhite,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(15.0),
+                                                  ),
+                                                  title: Text(
+                                                    '收回好友請求',
+                                                    style: TextStyle(
+                                                      color: darkBlue,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  content: Text(
+                                                    '確定要收回發送給${user['name'] ?? '此用戶'}的好友請求嗎？',
+                                                    style: TextStyle(
+                                                      color: darkBlue.withOpacity(0.8),
+                                                    ),
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context),
+                                                      child: Text(
+                                                        '取消',
+                                                        style: TextStyle(
+                                                          color: Colors.grey.shade600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () {
+                                                        Navigator.pop(context);
+                                                        // 收回好友請求
+                                                        print('嘗試收回請求，ID: ${user['request_id']}，用戶ID: ${user['user_id']}');
+                                                        _cancelFriendRequest(
+                                                          user['request_id'] != null ? user['request_id'].toString() : '', 
+                                                          user['user_id']
+                                                        );
+                                                      },
+                                                      child: Text(
+                                                        '確定',
+                                                        style: TextStyle(
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      style: TextButton.styleFrom(
+                                                        foregroundColor: accentOrange,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                            borderRadius: BorderRadius.circular(20),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.schedule, color: Colors.white, size: 20),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  '已發送',
+                                                  style: TextStyle(color: Colors.white),
+                                                ),
+                                                SizedBox(width: 2),
+                                                Icon(Icons.cancel_outlined, color: Colors.white, size: 18),
+                                              ],
+                                            ),
                                           ),
                                         )
                                       : Container(

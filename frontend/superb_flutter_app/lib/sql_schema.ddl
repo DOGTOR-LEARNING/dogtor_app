@@ -1,3 +1,9 @@
+主題顏色：
+主藍色：#319cb6
+強調橙色：#f59b03
+白色背景：#FFF9F7
+深藍色：#0777B1
+
 -- dogtor.users definition
 
 CREATE TABLE `users` (
