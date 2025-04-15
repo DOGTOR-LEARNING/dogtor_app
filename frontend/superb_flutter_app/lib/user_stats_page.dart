@@ -34,6 +34,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   List<Map<String, dynamic>> _weakPoints = [];
   // 新增學習連續性
   int _streak = 0;
+  int _currentStreak = 0;
+  int _maxStreak = 0;
   // 新增學習建議
   List<String> _learningTips = [];
   // 新增推薦章節
@@ -51,6 +53,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     _fetchKnowledgeScores();
     _fetchWeeklyStats();
     _fetchLearningSuggestions();
+    _fetchLearningDays();
   }
 
   @override
@@ -142,6 +145,39 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       }
     } catch (e) {
       print('獲取知識點分數時出錯: $e');
+    }
+  }
+
+  // 獲取學習天數數據，包括當前連續天數和歷史最高連續天數
+  Future<void> _fetchLearningDays() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final response = await http.get(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_learning_days/${user.uid}'),
+        headers: {
+          'Accept': 'application/json; charset=utf-8',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonString = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(jsonString);
+        if (data['success']) {
+          setState(() {
+            _currentStreak = data['current_streak'] ?? 0;
+            _maxStreak = data['total_streak'] ?? 0;
+            
+            // 確保weekly stats API返回前也能顯示連續天數
+            if (_streak == 0) {
+              _streak = _currentStreak;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('獲取學習天數記錄時出錯: $e');
     }
   }
 
@@ -695,7 +731,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     return lines;
   }
 
-  // 新增方法：學習連續性
+  // 更新學習連續性Widget
   Widget _buildLearningStreak() {
     return Card(
       elevation: 4,
@@ -731,6 +767,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               ],
             ),
             const SizedBox(height: 16),
+            // 當前連續學習天數
             Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -750,14 +787,54 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '連續學習天數',
+                        '當前連續學習',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
                         ),
                       ),
                       Text(
-                        '$_streak 天',
+                        '$_currentStreak 天',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // 歷史最高連續學習天數
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: secondaryColor.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.emoji_events,
+                    color: Colors.amber,
+                    size: 40,
+                  ),
+                  SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '歷史最高連續',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        '$_maxStreak 天',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

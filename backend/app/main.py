@@ -1384,6 +1384,8 @@ async def get_weekly_stats(user_id: str):
                 
                 # 獲取本週每天的完成關卡數
                 this_week_stats = []
+                daily_stats = []  # 新增日常學習統計數據
+                
                 for i in range(7):
                     day = this_week_start + timedelta(days=i)
                     day_start = datetime.combine(day, datetime.min.time())
@@ -1398,10 +1400,18 @@ async def get_weekly_stats(user_id: str):
                     result = cursor.fetchone()
                     level_count = result['level_count'] if result else 0
                     
-                    this_week_stats.append({
+                    day_data = {
                         'day': ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][i],
                         'date': day.strftime('%Y-%m-%d'),
                         'levels': level_count
+                    }
+                    
+                    this_week_stats.append(day_data)
+                    
+                    # 為每日統計添加數據
+                    daily_stats.append({
+                        'date': day.strftime('%Y-%m-%d'),
+                        'completed_levels': level_count
                     })
                 
                 # 獲取上週每天的完成關卡數
@@ -1457,6 +1467,7 @@ async def get_weekly_stats(user_id: str):
                         "this_week": this_week_stats,
                         "last_week": last_week_stats
                     },
+                    "daily_stats": daily_stats,  # 返回每日完成關卡數
                     "streak": streak
                 }
         

@@ -28,6 +28,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
     'current_streak_days': 0,
     'max_streak_days': 0,
     'total_completed_questions': 0,
+    'today_completed_levels': 0,
   };
   bool isLoading = true;
   bool isSendingNotification = false;
@@ -119,6 +120,22 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
         final weeklyStatsData = json.decode(jsonString);
         print('weeklyStatsData: $weeklyStatsData');
         
+        // 獲取今日完成的關卡數
+        final today = DateTime.now().toString().split(' ')[0]; // 獲取當前日期 (YYYY-MM-DD)
+        
+        // 檢查是否有今天的數據
+        int todayCompletedLevels = 0;
+        if (weeklyStatsData.containsKey('daily_stats') && 
+            weeklyStatsData['daily_stats'] != null) {
+          final dailyStats = weeklyStatsData['daily_stats'] as List;
+          for (var stat in dailyStats) {
+            if (stat['date'] == today) {
+              todayCompletedLevels = stat['completed_levels'] ?? 0;
+              break;
+            }
+          }
+        }
+        
         // 嘗試獲取用戶整體統計
         final userStatsResponse = await http.post(
           Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_user_stats'),
@@ -131,9 +148,12 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
           print('userStatsData: $userStatsData');
           
           setState(() {
-            // 從用戶統計獲取已完成問題數量
+            // 從用戶統計獲取已完成問題數量 (保留但不顯示)
             learningStats['total_completed_questions'] = 
                 userStatsData['stats']?['total_levels'] ?? 0;
+            
+            // 設置今日完成關卡數
+            learningStats['today_completed_levels'] = todayCompletedLevels;
             
             isLoading = false;
           });
@@ -324,32 +344,40 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                         ),
                       ),
                     ),
-                ],
-              ),
-            ),
-            
-            // 學習連續性區塊
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '學習進度',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: FriendProfilePage.textBlue,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  isLoading
-                      ? Center(
-                          child: CircularProgressIndicator(
-                            color: FriendProfilePage.primaryBlue,
+                  SizedBox(height: 8),
+                  // 歷史最高連續學習天數標籤
+                  if (!isLoading && learningStats['max_streak_days'] > 0)
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: FriendProfilePage.progressGreen.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: FriendProfilePage.progressGreen.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.emoji_events,
+                            color: FriendProfilePage.accentOrange,
+                            size: 18,
                           ),
-                        )
-                      : _buildLearningStreakCard(),
+                          SizedBox(width: 4),
+                          Text(
+                            '歷史最高連續 ${learningStats['max_streak_days']} 天',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: FriendProfilePage.textBlue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -390,6 +418,33 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                 ],
               ),
             ),
+            
+            // 學習連續性區塊
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '學習進度',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: FriendProfilePage.textBlue,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  isLoading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            color: FriendProfilePage.primaryBlue,
+                          ),
+                        )
+                      : _buildLearningStreakCard(),
+                ],
+              ),
+            ),
+            
             // 底部留白
             SizedBox(height: 32),
           ],
@@ -410,8 +465,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
   // 學習連續性卡片
   Widget _buildLearningStreakCard() {
     final int currentStreakDays = learningStats['current_streak_days'] ?? 0;
-    final int maxStreakDays = learningStats['max_streak_days'] ?? 0;
-    final int completedQuestions = learningStats['total_completed_questions'] ?? 0;
+    final int todayCompletedLevels = learningStats['today_completed_levels'] ?? 0;
     
     return Container(
       margin: EdgeInsets.only(bottom: 16),
@@ -478,54 +532,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
               ],
             ),
             SizedBox(height: 16),
-            // 歷史最高連續學習天數
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: FriendProfilePage.primaryBlue.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.emoji_events,
-                        color: FriendProfilePage.accentOrange,
-                        size: 24,
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Text(
-                      '歷史最高連續',
-                      style: TextStyle(
-                        color: FriendProfilePage.textBlue,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: FriendProfilePage.accentOrange.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '$maxStreakDays 天',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: FriendProfilePage.accentOrange,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            // 已完成問題數量
+            // 今日完成關卡數
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -538,14 +545,14 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        Icons.check_circle,
+                        Icons.today,
                         color: FriendProfilePage.progressGreen,
                         size: 24,
                       ),
                     ),
                     SizedBox(width: 12),
                     Text(
-                      '已解題數',
+                      '今日完成關卡',
                       style: TextStyle(
                         color: FriendProfilePage.textBlue,
                         fontSize: 16,
@@ -561,7 +568,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '$completedQuestions 題',
+                    '$todayCompletedLevels 關',
                     style: TextStyle(
                       fontSize: 16,
                       color: FriendProfilePage.progressGreen,
