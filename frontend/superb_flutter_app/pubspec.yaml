@@ -44,10 +44,11 @@ dependencies:
   cloud_firestore_web: ^4.4.5
   shared_preferences: ^2.2.0
   fl_chart: ^0.70.2
-  intl: ^0.18.1
+  intl: ^0.20.2
   hive: ^2.0.4
   hive_flutter: ^1.1.0
   path_provider: ^2.0.15
+  table_calendar: ^3.2.0
 
 
 dev_dependencies:

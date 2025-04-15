@@ -2502,3 +2502,99 @@ async def send_learning_reminder(request: Request):
     if not user_id:
         return {"success": False, "message": "Missing user_id"}
 ## 發送學習提醒 還沒寫完～～～～
+
+@app.get("/get_learning_days/{user_id}")
+async def get_learning_days(user_id: str):
+    try:
+        print(f"收到獲取用戶學習日期記錄請求: user_id={user_id}")
+        
+        if not user_id:
+            print(f"錯誤: 缺少用戶 ID")
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取用戶學習日期記錄（最近三個月內）
+                from datetime import datetime, timedelta
+                today = datetime.now().date()
+                three_months_ago = today - timedelta(days=90)
+                
+                # 查詢用戶在過去三個月內所有學習天數
+                cursor.execute("""
+                SELECT DISTINCT DATE(answered_at) as learning_date
+                FROM user_level
+                WHERE user_id = %s AND answered_at >= %s
+                ORDER BY learning_date DESC
+                """, (user_id, three_months_ago))
+                
+                results = cursor.fetchall()
+                
+                # 將日期格式化為ISO字符串
+                learning_days = [row['learning_date'].isoformat() for row in results]
+                
+                # 計算最長連續學習天數，上限2500天
+                cursor.execute("""
+                SELECT DISTINCT DATE(answered_at) as study_date
+                FROM user_level
+                WHERE user_id = %s
+                ORDER BY study_date DESC
+                LIMIT 2500
+                """, (user_id,))
+                
+                all_study_dates = [row['study_date'] for row in cursor.fetchall()]
+                
+                # 計算全部連續學習天數
+                total_streak = 0
+                max_streak = 0
+                current_streak = 0
+                
+                if all_study_dates:
+                    # 檢查今天是否有學習
+                    if all_study_dates[0] == today:
+                        current_streak = 1
+                        # 檢查之前的連續天數
+                        for i in range(1, len(all_study_dates)):
+                            expected_date = all_study_dates[i-1] - timedelta(days=1)
+                            if all_study_dates[i] == expected_date:
+                                current_streak += 1
+                            else:
+                                break
+                    
+                    # 計算歷史中最長連續學習記錄
+                    temp_streak = 1
+                    for i in range(1, len(all_study_dates)):
+                        if (all_study_dates[i-1] - all_study_dates[i]).days == 1:
+                            temp_streak += 1
+                        else:
+                            max_streak = max(max_streak, temp_streak)
+                            temp_streak = 1
+                    
+                    max_streak = max(max_streak, temp_streak)
+                    total_streak = max(current_streak, max_streak)
+                
+                # 限制最大值為2500
+                total_streak = min(total_streak, 2500)
+                
+                return {
+                    "success": True,
+                    "learning_days": learning_days,
+                    "total_streak": total_streak,
+                    "current_streak": current_streak
+                }
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"獲取用戶學習日期記錄時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取用戶學習日期記錄時出錯: {str(e)}"}

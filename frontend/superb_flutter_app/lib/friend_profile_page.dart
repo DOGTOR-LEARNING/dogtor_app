@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/cupertino.dart';
+import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class FriendProfilePage extends StatefulWidget {
   final Map<String, dynamic> friend;
@@ -27,11 +29,63 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
   };
   bool isLoading = true;
   bool isSendingNotification = false;
+  
+  // 學習記錄日期集合
+  Set<DateTime> _learningDays = {};
+  DateTime _focusedDay = DateTime.now();
+  DateTime _selectedDay = DateTime.now();
+  CalendarFormat _calendarFormat = CalendarFormat.month;
 
   @override
   void initState() {
     super.initState();
     _fetchLearningStats();
+    _fetchLearningDays();
+  }
+
+  // 獲取學習天數記錄
+  Future<void> _fetchLearningDays() async {
+    try {
+      final String userId = widget.friend['user_id'];
+      final response = await http.get(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_learning_days/$userId'),
+        headers: {'Accept': 'application/json; charset=utf-8'},
+      );
+      
+      if (response.statusCode == 200) {
+        final jsonString = utf8.decode(response.bodyBytes);
+        final data = json.decode(jsonString);
+        
+        if (data['success'] == true) {
+          setState(() {
+            // 更新總連續學習天數
+            if (data.containsKey('total_streak')) {
+              learningStats['streak_days'] = data['total_streak'] ?? 0;
+            }
+            
+            // 轉換日期字符串到 DateTime 對象
+            if (data.containsKey('learning_days') && data['learning_days'] != null) {
+              _learningDays = Set<DateTime>.from(
+                (data['learning_days'] as List).map((dateStr) {
+                  final date = DateTime.parse(dateStr);
+                  // 只保留年月日部分，去除時分秒
+                  return DateTime(date.year, date.month, date.day);
+                })
+              );
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('獲取學習日期記錄時出錯: $e');
+    }
+  }
+
+  // 檢查特定日期是否有學習記錄
+  bool _isLearningDay(DateTime day) {
+    // 只比較年月日，忽略時分秒
+    final normalizedDay = DateTime(day.year, day.month, day.day);
+    return _learningDays.contains(normalizedDay);
   }
 
   Future<void> _fetchLearningStats() async {
@@ -64,8 +118,9 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
           print('userStatsData: $userStatsData');
           
           setState(() {
-            // 從每週統計獲取連續學習天數
-            learningStats['streak_days'] = weeklyStatsData['streak'] ?? 0;
+            // 直接使用從 _fetchLearningDays 獲取的總連續學習天數，這裡不再覆蓋
+            // 注意：如果 _fetchLearningDays 在 _fetchLearningStats 之後執行，這裡的值會被覆蓋
+            // learningStats['streak_days'] = weeklyStatsData['streak'] ?? 0;
             
             // 從用戶統計獲取已完成問題數量
             learningStats['total_completed_questions'] = 
@@ -459,8 +514,130 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                 ),
               ],
             ),
+            SizedBox(height: 24),
+            
+            // 近4週學習記錄日曆
+            Text(
+              '近期學習記錄',
+              style: TextStyle(
+                color: FriendProfilePage.textBlue,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 12),
+            _buildLearningCalendar(),
           ],
         ),
+      ),
+    );
+  }
+  
+  // 學習日曆組件
+  Widget _buildLearningCalendar() {
+    // 獲取過去7天日期
+    final now = DateTime.now();
+    final pastDays = List.generate(7, (index) => 
+      DateTime(now.year, now.month, now.day - (6 - index)));
+    
+    // 星期幾的顯示文字
+    final weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          )
+        ],
+      ),
+      padding: EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // 標題
+          Text(
+            '近7天學習記錄',
+            style: TextStyle(
+              color: FriendProfilePage.textBlue,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 16),
+          // 日期圓點
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: pastDays.map((date) {
+              final isToday = date.year == now.year && 
+                             date.month == now.month && 
+                             date.day == now.day;
+              final hasLearned = _isLearningDay(date);
+              
+              // 決定顯示的顏色
+              final baseColor = hasLearned 
+                  ? FriendProfilePage.accentOrange
+                  : Colors.grey.shade200;
+              
+              return Column(
+                children: [
+                  // 星期幾
+                  Text(
+                    weekdayNames[date.weekday - 1],
+                    style: TextStyle(
+                      color: isToday
+                          ? FriendProfilePage.primaryBlue
+                          : Colors.grey.shade700,
+                      fontSize: 14,
+                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  // 圓點或日期
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: baseColor,
+                      border: isToday
+                          ? Border.all(
+                              color: FriendProfilePage.primaryBlue,
+                              width: 2,
+                            )
+                          : null,
+                    ),
+                    child: Center(
+                      child: Text(
+                        date.day.toString(),
+                        style: TextStyle(
+                          color: hasLearned ? Colors.white : Colors.grey.shade700,
+                          fontWeight: isToday || hasLearned 
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  // 有學習記錄的顯示勾
+                  if (hasLearned)
+                    Icon(
+                      Icons.check_circle,
+                      color: FriendProfilePage.progressGreen,
+                      size: 16,
+                    )
+                  else
+                    SizedBox(height: 16),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
