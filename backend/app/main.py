@@ -2833,3 +2833,138 @@ async def get_subject_abilities(request: Request):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶科目能力統計時出錯: {str(e)}"}
+
+@app.post("/generate_learning_suggestions")
+async def generate_learning_suggestions(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        prompt = data.get('prompt')
+        
+        if not user_id or not prompt:
+            return {"success": False, "message": "缺少必要參數"}
+        
+        try:
+            # 初始化 Vertex AI
+            from vertexai.generative_models import GenerativeModel
+            import vertexai
+
+            # 初始化 VertexAI
+            vertexai.init(project="dogtor-454402", location="us-central1")
+            
+            # 創建模型實例
+            model = GenerativeModel("gemini-1.5-flash")
+            
+            # 生成回應
+            response = model.generate_content(f"""
+{prompt}
+
+請根據上述學習數據為這位學生提供5點個性化學習建議，每點建議應該簡潔明確，並從動詞開始，提供具體可執行的指導。
+請將每一條建議都組織成一個獨立的句子，不要使用編號，不需要提供介紹或總結。
+""")
+            
+            # 解析回應
+            suggestions_text = response.text.strip()
+            
+            # 將文本分割成單獨的建議
+            suggestions = []
+            for line in suggestions_text.split('\n'):
+                line = line.strip()
+                # 忽略空行和開頭是數字或符號的行（通常是編號）
+                if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
+                    suggestions.append(line)
+                # 如果是以編號或符號開頭，去掉前缀
+                elif line and (line.startswith('-') or line.startswith('*')):
+                    clean_line = line[1:].strip()
+                    if clean_line:
+                        suggestions.append(clean_line)
+                elif line and line[0].isdigit() and line[1:].startswith('.'):
+                    clean_line = line[2:].strip()
+                    if clean_line:
+                        suggestions.append(clean_line)
+            
+            # 如果解析出的建議少於5條，補充默認建議
+            default_suggestions = [
+                "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
+                "重點關注弱點科目，制定專項練習計劃。",
+                "使用思維導圖整理知識點，加深理解。",
+                "定期複習已學內容，鞏固記憶。",
+                "嘗試不同的學習方法，找到最適合自己的。"
+            ]
+            
+            while len(suggestions) < 5:
+                for suggestion in default_suggestions:
+                    if suggestion not in suggestions:
+                        suggestions.append(suggestion)
+                        break
+                    if len(suggestions) >= 5:
+                        break
+            
+            # 只返回前5條建議
+            suggestions = suggestions[:5]
+            
+            return {"success": True, "suggestions": suggestions}
+            
+        except ImportError:
+            # 如果Vertex AI導入失敗，使用OpenAI的API
+            # 創建一個備選方案
+            from openai import OpenAI
+            import os
+            
+            # 使用OpenAI API
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "你是一個專業的學習顧問，提供針對性的學習建議。"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=500
+            )
+            
+            # 解析回應
+            response_text = response.choices[0].message.content.strip()
+            
+            # 分割成建議
+            suggestions = []
+            for line in response_text.split('\n'):
+                line = line.strip()
+                if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
+                    suggestions.append(line)
+                elif line and (line.startswith('-') or line.startswith('*')):
+                    clean_line = line[1:].strip()
+                    if clean_line:
+                        suggestions.append(clean_line)
+                elif line and line[0].isdigit() and line[1:].startswith('.'):
+                    clean_line = line[2:].strip()
+                    if clean_line:
+                        suggestions.append(clean_line)
+            
+            # 使用默認建議補充
+            default_suggestions = [
+                "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
+                "重點關注弱點科目，制定專項練習計劃。",
+                "使用思維導圖整理知識點，加深理解。",
+                "定期複習已學內容，鞏固記憶。",
+                "嘗試不同的學習方法，找到最適合自己的。"
+            ]
+            
+            while len(suggestions) < 5:
+                for suggestion in default_suggestions:
+                    if suggestion not in suggestions:
+                        suggestions.append(suggestion)
+                        break
+                    if len(suggestions) >= 5:
+                        break
+            
+            # 只返回前5條建議
+            suggestions = suggestions[:5]
+            
+            return {"success": True, "suggestions": suggestions}
+            
+    except Exception as e:
+        print(f"生成學習建議時出錯: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": str(e)}
