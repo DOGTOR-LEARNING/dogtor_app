@@ -16,6 +16,7 @@ import io
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 from pytz import timezone
+import json
 
 app = FastAPI()
 
@@ -2855,55 +2856,101 @@ async def generate_learning_suggestions(request: Request):
             # 創建模型實例
             model = GenerativeModel("gemini-1.5-flash")
             
-            # 生成回應
-            response = model.generate_content(f"""
-{prompt}
-
-請根據上述學習數據為這位學生提供5點個性化學習建議，每點建議應該簡潔明確，並從動詞開始，提供具體可執行的指導。
-請將每一條建議都組織成一個獨立的句子，不要使用編號，不需要提供介紹或總結。
-""")
+            # 生成回應，直接使用前端的prompt
+            response = model.generate_content(prompt)
             
             # 解析回應
-            suggestions_text = response.text.strip()
+            response_text = response.text.strip()
             
-            # 將文本分割成單獨的建議
-            suggestions = []
-            for line in suggestions_text.split('\n'):
-                line = line.strip()
-                # 忽略空行和開頭是數字或符號的行（通常是編號）
-                if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
-                    suggestions.append(line)
-                # 如果是以編號或符號開頭，去掉前缀
-                elif line and (line.startswith('-') or line.startswith('*')):
-                    clean_line = line[1:].strip()
-                    if clean_line:
-                        suggestions.append(clean_line)
-                elif line and line[0].isdigit() and line[1:].startswith('.'):
-                    clean_line = line[2:].strip()
-                    if clean_line:
-                        suggestions.append(clean_line)
-            
-            # 如果解析出的建議少於5條，補充默認建議
-            default_suggestions = [
-                "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
-                "重點關注弱點科目，制定專項練習計劃。",
-                "使用思維導圖整理知識點，加深理解。",
-                "定期複習已學內容，鞏固記憶。",
-                "嘗試不同的學習方法，找到最適合自己的。"
-            ]
-            
-            while len(suggestions) < 5:
-                for suggestion in default_suggestions:
-                    if suggestion not in suggestions:
-                        suggestions.append(suggestion)
-                        break
-                    if len(suggestions) >= 5:
-                        break
-            
-            # 只返回前5條建議
-            suggestions = suggestions[:5]
-            
-            return {"success": True, "suggestions": suggestions}
+            # 嘗試解析JSON格式的回應
+            try:
+                # 解析JSON格式回應
+                parsed_data = json.loads(response_text)
+                
+                suggestions = parsed_data.get('suggestions', [])
+                sections = parsed_data.get('sections', {})
+                
+                # 確保至少有5個建議
+                default_suggestions = [
+                    "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
+                    "重點關注弱點科目，制定專項練習計劃。",
+                    "使用思維導圖整理知識點，加深理解。",
+                    "定期複習已學內容，鞏固記憶。",
+                    "嘗試不同的學習方法，找到最適合自己的。"
+                ]
+                
+                while len(suggestions) < 5:
+                    for suggestion in default_suggestions:
+                        if suggestion not in suggestions:
+                            suggestions.append(suggestion)
+                            break
+                        if len(suggestions) >= 5:
+                            break
+                
+                # 確保有必要的sections
+                default_sections = {
+                    "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
+                    "review": "需要複習最近學習過的內容，鞏固記憶。",
+                    "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
+                }
+                
+                for key, default_value in default_sections.items():
+                    if key not in sections or not sections[key]:
+                        sections[key] = default_value
+                
+                return {
+                    "success": True, 
+                    "suggestions": suggestions[:5],
+                    "sections": sections
+                }
+                
+            except json.JSONDecodeError:
+                # 如果不是JSON格式，使用老方法解析文本
+                suggestions = []
+                for line in response_text.split('\n'):
+                    line = line.strip()
+                    # 忽略空行和開頭是數字或符號的行（通常是編號）
+                    if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
+                        suggestions.append(line)
+                    # 如果是以編號或符號開頭，去掉前缀
+                    elif line and (line.startswith('-') or line.startswith('*')):
+                        clean_line = line[1:].strip()
+                        if clean_line:
+                            suggestions.append(clean_line)
+                    elif line and line[0].isdigit() and line[1:].startswith('.'):
+                        clean_line = line[2:].strip()
+                        if clean_line:
+                            suggestions.append(clean_line)
+                
+                # 如果解析出的建議少於5條，補充默認建議
+                default_suggestions = [
+                    "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
+                    "重點關注弱點科目，制定專項練習計劃。",
+                    "使用思維導圖整理知識點，加深理解。",
+                    "定期複習已學內容，鞏固記憶。",
+                    "嘗試不同的學習方法，找到最適合自己的。"
+                ]
+                
+                while len(suggestions) < 5:
+                    for suggestion in default_suggestions:
+                        if suggestion not in suggestions:
+                            suggestions.append(suggestion)
+                            break
+                        if len(suggestions) >= 5:
+                            break
+                
+                # 只返回前5條建議和默認的sections
+                default_sections = {
+                    "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
+                    "review": "需要複習最近學習過的內容，鞏固記憶。",
+                    "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
+                }
+                
+                return {
+                    "success": True, 
+                    "suggestions": suggestions[:5],
+                    "sections": default_sections
+                }
             
         except ImportError:
             # 如果Vertex AI導入失敗，使用OpenAI的API
@@ -2926,42 +2973,92 @@ async def generate_learning_suggestions(request: Request):
             # 解析回應
             response_text = response.choices[0].message.content.strip()
             
-            # 分割成建議
-            suggestions = []
-            for line in response_text.split('\n'):
-                line = line.strip()
-                if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
-                    suggestions.append(line)
-                elif line and (line.startswith('-') or line.startswith('*')):
-                    clean_line = line[1:].strip()
-                    if clean_line:
-                        suggestions.append(clean_line)
-                elif line and line[0].isdigit() and line[1:].startswith('.'):
-                    clean_line = line[2:].strip()
-                    if clean_line:
-                        suggestions.append(clean_line)
-            
-            # 使用默認建議補充
-            default_suggestions = [
-                "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
-                "重點關注弱點科目，制定專項練習計劃。",
-                "使用思維導圖整理知識點，加深理解。",
-                "定期複習已學內容，鞏固記憶。",
-                "嘗試不同的學習方法，找到最適合自己的。"
-            ]
-            
-            while len(suggestions) < 5:
-                for suggestion in default_suggestions:
-                    if suggestion not in suggestions:
-                        suggestions.append(suggestion)
-                        break
-                    if len(suggestions) >= 5:
-                        break
-            
-            # 只返回前5條建議
-            suggestions = suggestions[:5]
-            
-            return {"success": True, "suggestions": suggestions}
+            # 嘗試解析JSON格式的回應
+            try:
+                parsed_data = json.loads(response_text)
+                
+                suggestions = parsed_data.get('suggestions', [])
+                sections = parsed_data.get('sections', {})
+                
+                # 確保至少有5個建議
+                default_suggestions = [
+                    "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
+                    "重點關注弱點科目，制定專項練習計劃。",
+                    "使用思維導圖整理知識點，加深理解。",
+                    "定期複習已學內容，鞏固記憶。",
+                    "嘗試不同的學習方法，找到最適合自己的。"
+                ]
+                
+                while len(suggestions) < 5:
+                    for suggestion in default_suggestions:
+                        if suggestion not in suggestions:
+                            suggestions.append(suggestion)
+                            break
+                        if len(suggestions) >= 5:
+                            break
+                
+                # 確保有必要的sections
+                default_sections = {
+                    "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
+                    "review": "需要複習最近學習過的內容，鞏固記憶。",
+                    "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
+                }
+                
+                for key, default_value in default_sections.items():
+                    if key not in sections or not sections[key]:
+                        sections[key] = default_value
+                
+                return {
+                    "success": True, 
+                    "suggestions": suggestions[:5],
+                    "sections": sections
+                }
+                
+            except json.JSONDecodeError:
+                # 如果不是JSON格式，使用老方法解析文本
+                suggestions = []
+                for line in response_text.split('\n'):
+                    line = line.strip()
+                    if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
+                        suggestions.append(line)
+                    elif line and (line.startswith('-') or line.startswith('*')):
+                        clean_line = line[1:].strip()
+                        if clean_line:
+                            suggestions.append(clean_line)
+                    elif line and line[0].isdigit() and line[1:].startswith('.'):
+                        clean_line = line[2:].strip()
+                        if clean_line:
+                            suggestions.append(clean_line)
+                
+                # 使用默認建議補充
+                default_suggestions = [
+                    "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
+                    "重點關注弱點科目，制定專項練習計劃。",
+                    "使用思維導圖整理知識點，加深理解。",
+                    "定期複習已學內容，鞏固記憶。",
+                    "嘗試不同的學習方法，找到最適合自己的。"
+                ]
+                
+                while len(suggestions) < 5:
+                    for suggestion in default_suggestions:
+                        if suggestion not in suggestions:
+                            suggestions.append(suggestion)
+                            break
+                        if len(suggestions) >= 5:
+                            break
+                
+                # 只返回前5條建議和默認的sections
+                default_sections = {
+                    "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
+                    "review": "需要複習最近學習過的內容，鞏固記憶。", 
+                    "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
+                }
+                
+                return {
+                    "success": True, 
+                    "suggestions": suggestions[:5],
+                    "sections": default_sections
+                }
             
     except Exception as e:
         print(f"生成學習建議時出錯: {e}")

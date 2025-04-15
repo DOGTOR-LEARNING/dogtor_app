@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:convert' show utf8;  // 確保導入 utf8
+import 'dart:math';  // 添加導入math庫，用於min函數
 
 class UserStatsPage extends StatefulWidget {
   const UserStatsPage({Key? key}) : super(key: key);
@@ -46,6 +47,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 新增篩選選項狀態變數
   String? _selectedSubject;
   String? _selectedChapter;
+  
+  // 是否已點擊學習建議按鈕
+  bool _hasClickedLearningTips = false;
 
   @override
   void initState() {
@@ -68,11 +72,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
 
   // 處理標籤變更
   void _handleTabChange() {
-    // 當切換到學習建議標籤時獲取數據
-    if (_tabController.index == 3 && !_isLearningTipsLoaded) {
-      _fetchLearningSuggestions();
-      _generateLearningTipsWithGemini();
-    }
+    // 不自動加載學習建議，等待用戶點擊按鈕
   }
   
   // 學習建議是否已加載標記
@@ -81,13 +81,20 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   bool _isGeneratingTips = false;
   // 個性化學習建議列表
   List<String> _personalizedTips = [];
+  // 個性化學習段落
+  Map<String, String> _learningSections = {
+    'priority': '優先學習內容還未生成',
+    'review': '需要複習的內容還未生成',
+    'improve': '可以提升的內容還未生成'
+  };
 
   // 使用Gemini生成學習建議
   Future<void> _generateLearningTipsWithGemini() async {
-    if (_isGeneratingTips || _personalizedTips.isNotEmpty) return;
+    if (_isGeneratingTips) return;
     
     setState(() {
       _isGeneratingTips = true;
+      print("開始生成學習建議...");
     });
     
     try {
@@ -96,6 +103,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       
       // 準備用戶數據提示
       String prompt = _prepareGeminiPrompt();
+      
+      print("已準備Gemini提示文本: ${prompt.substring(0, min(100, prompt.length))}...");
       
       // 調用後端API發送給Gemini
       final response = await http.post(
@@ -110,16 +119,30 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         }),
       );
       
+      print("API回應狀態碼: ${response.statusCode}");
+      
       if (response.statusCode == 200) {
         final jsonString = utf8.decode(response.bodyBytes);
         final data = jsonDecode(jsonString);
         if (data['success']) {
+          print("成功獲取個人化學習建議");
           setState(() {
-            _personalizedTips = List<String>.from(data['suggestions']);
+            _personalizedTips = List<String>.from(data['suggestions'] ?? []);
+            
+            // 也獲取學習段落內容
+            if (data.containsKey('sections')) {
+              _learningSections = {
+                'priority': data['sections']['priority'] ?? '優先學習內容還未生成',
+                'review': data['sections']['review'] ?? '需要複習的內容還未生成',
+                'improve': data['sections']['improve'] ?? '可以提升的內容還未生成'
+              };
+            }
+            
             _isGeneratingTips = false;
             _isLearningTipsLoaded = true;
           });
         } else {
+          print("API回應成功但數據處理失敗: ${data['message']}");
           setState(() {
             _isGeneratingTips = false;
             // 使用默認建議
@@ -127,6 +150,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
           });
         }
       } else {
+        print("API調用失敗: ${response.statusCode}");
         setState(() {
           _isGeneratingTips = false;
           // 使用默認建議
@@ -184,7 +208,23 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     promptBuffer.writeln('當前連續學習天數: $_currentStreak');
     
     // 添加提示指南
-    promptBuffer.writeln('\n請根據上述用戶數據，生成5條針對性的學習建議，每條建議以簡潔明了的條目形式呈現，適合中學生理解。建議應該涵蓋弱點科目、可提升空間、學習習慣和學習方法等方面。每條建議應該是一個完整的句子，以動詞開頭，提供明確可行的學習指導。');
+    promptBuffer.writeln('\n請根據上述用戶數據，完成以下兩個任務：');
+    promptBuffer.writeln('\n任務1：生成5條針對性的學習建議，每條建議以簡潔明了的條目形式呈現，適合中學生理解。建議應該涵蓋弱點科目、可提升空間、學習習慣和學習方法等方面。每條建議應該是一個完整的句子，以動詞開頭，提供明確可行的學習指導。');
+    
+    promptBuffer.writeln('\n任務2：生成三個簡短的學習方向段落，分別是：');
+    promptBuffer.writeln('1. 優先學習（列出2-3個最需要優先學習的知識點或科目）');
+    promptBuffer.writeln('2. 需要複習（列出2-3個需要複習的知識點或科目）');
+    promptBuffer.writeln('3. 可以提升（列出2-3個有潛力提升的知識點或科目）');
+    
+    promptBuffer.writeln('\n請以JSON格式回應，結構如下：');
+    promptBuffer.writeln('{');
+    promptBuffer.writeln('  "suggestions": ["建議1", "建議2", "建議3", "建議4", "建議5"],');
+    promptBuffer.writeln('  "sections": {');
+    promptBuffer.writeln('    "priority": "優先學習的內容...",');
+    promptBuffer.writeln('    "review": "需要複習的內容...",');
+    promptBuffer.writeln('    "improve": "可以提升的內容..."');
+    promptBuffer.writeln('  }');
+    promptBuffer.writeln('}');
     
     return promptBuffer.toString();
   }
@@ -553,7 +593,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
             const SizedBox(height: 24),
             _buildLearningStreak(),
             const SizedBox(height: 24),
-            _buildMonthlySubjectProgress(),
+            // 不再顯示月度科目進度
           ],
         ),
       ),
@@ -1333,565 +1373,13 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     );
   }
 
-  // 修改為本月科目進度
-  Widget _buildMonthlySubjectProgress() {
-    final monthlySubjects = _stats['monthly_subjects'] as List<dynamic>? ?? [];
-    final monthInfo = _stats['month_info'] as Map<String, dynamic>? ?? {};
-    
-    // 定義科目顏色映射
-    final subjectColors = {
-      '數學': Colors.blue,
-      '國文': Colors.green,
-      '英文': Colors.purple,
-      '理化': const Color.fromARGB(255, 246, 172, 61),
-      '生物': Colors.red,
-      '地科': Colors.brown,
-      '化學': Colors.blueGrey,
-      '物理': Colors.deepPurple,
-      '歷史': Colors.deepOrange,
-      '地理': Colors.teal,
-      '公民': Colors.pink,
-    };
-    
-    // 獲取目前月份的名稱
-    final now = DateTime.now();
-    final monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
-    final currentMonthName = monthNames[now.month - 1];
-    
-    // 獲取剩餘天數，優先使用後端提供的數據
-    final daysRemaining = monthInfo['days_remaining'] ?? 
-      (DateTime(now.year, now.month + 1, 0).day - now.day);
-    
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: accentColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.calendar_month,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  '$currentMonthName科目進度',
-                  style: TextStyle(
-                    fontSize: 18, 
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: secondaryColor.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '本月目標:',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        '每科完成5關',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Divider(color: Colors.white24, height: 24),
-                  Text(
-                    '距離本月結束還有 $daysRemaining 天',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (monthlySubjects.isEmpty)
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: secondaryColor.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    '本月尚未完成任何關卡',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              )
-            else
-              Column(
-                children: monthlySubjects.map<Widget>((subject) {
-                  final subjectName = subject['subject'] as String;
-                  final levelCount = subject['level_count'] as int;
-                  final color = subjectColors[subjectName] ?? Colors.grey;
-                  
-                  // 每個科目本月目標為5關
-                  final targetLevels = 5;
-                  final progress = levelCount / targetLevels;
-                  
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 12),
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: secondaryColor.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: color,
-                              radius: 12,
-                              child: Icon(Icons.book, size: 14, color: Colors.white),
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              subjectName,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Spacer(),
-                            Text(
-                              '$levelCount/$targetLevels 關',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            // 限制進度條最大為1.0，表示完成目標
-                            value: progress > 1.0 ? 1.0 : progress,
-                            backgroundColor: Colors.white24,
-                            color: color,
-                            minHeight: 8,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '完成度: ${(progress * 100).toInt() > 100 ? 100 : (progress * 100).toInt()}%',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                            ),
-                            if (levelCount >= targetLevels)
-                              Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: Colors.green, size: 14),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    '已達標',
-                                    style: TextStyle(
-                                      color: Colors.green,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 新增方法：知識點雷達圖
-  Widget _buildKnowledgeRadarChart() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: accentColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.radar,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  '知識掌握度',
-                  style: TextStyle(
-                    fontSize: 18, 
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_knowledgeScores.isEmpty)
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: secondaryColor.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    '尚未獲取知識點評分數據',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ),
-              )
-            else
-              // 按科目分組顯示雷達圖
-              Column(
-                children: _groupKnowledgePointsBySubject().entries.map((entry) {
-                  final subject = entry.key;
-                  final points = entry.value;
-                  
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 24),
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: secondaryColor.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          subject,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Container(
-                          height: 250,
-                          child: RadarChart(
-                            RadarChartData(
-                              radarShape: RadarShape.polygon,
-                              dataSets: [
-                                RadarDataSet(
-                                  dataEntries: points.map((point) => 
-                                    RadarEntry(value: (point['score'] as num).toDouble())
-                                  ).toList(),
-                                  fillColor: _getSubjectColor(subject).withOpacity(0.2),
-                                  borderWidth: 2,
-                                  borderColor: _getSubjectColor(subject),
-                                  entryRadius: 5,
-                                ),
-                              ],
-                              radarBackgroundColor: Colors.transparent,
-                              borderData: FlBorderData(show: false),
-                              gridBorderData: BorderSide(color: Colors.white10, width: 1),
-                              tickCount: 5,
-                              ticksTextStyle: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 10,
-                              ),
-                              titleTextStyle: const TextStyle(
-                                color: Colors.white60,
-                                fontSize: 10,
-                              ),
-                              getTitle: (index, angle) {
-                                if (index >= points.length) return RadarChartTitle(text: '');
-                                String title = points[index]['point_name'] as String;
-                                if (title.length > 5) {
-                                  title = title.substring(0, 4) + '...';
-                                }
-                                return RadarChartTitle(text: title);
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 按科目分組知識點
-  Map<String, List<Map<String, dynamic>>> _groupKnowledgePointsBySubject() {
-    Map<String, List<Map<String, dynamic>>> grouped = {};
-    
-    for (var point in _knowledgeScores) {
-      final subject = point['subject'] as String? ?? '未分類';
-      if (!grouped.containsKey(subject)) {
-        grouped[subject] = [];
-      }
-      grouped[subject]!.add(point);
-    }
-    
-    // 對每個科目只保留前8個知識點，避免雷達圖過於擁擠
-    grouped.forEach((subject, points) {
-      if (points.length > 8) {
-        grouped[subject] = points.sublist(0, 8);
-      }
-    });
-    
-    return grouped;
-  }
-
-  // 獲取科目對應的顏色
-  Color _getSubjectColor(String subject) {
-    final subjectColors = {
-      '數學': Colors.blue,
-      '國文': Colors.green,
-      '英文': Colors.purple,
-      '理化': const Color.fromARGB(255, 246, 172, 61),
-      '生物': Colors.red,
-      '地科': Colors.brown,
-      '化學': Colors.blueGrey,
-      '物理': Colors.deepPurple,
-      '歷史': Colors.deepOrange,
-      '地理': Colors.teal,
-      '公民': Colors.pink,
-      '未分類': Colors.grey,
-    };
-    
-    return subjectColors[subject] ?? Colors.grey;
-  }
-
-  // 新增方法：知識點列表
-  Widget _buildKnowledgeList() {
-    if (_knowledgeScores.isEmpty) {
-      return Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Center(
-            child: Text(
-              '尚未有知識點評分數據',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-        ),
-      );
-    }
-    
-    // 按分數排序
-    final sortedScores = List<Map<String, dynamic>>.from(_knowledgeScores)
-      ..sort((a, b) => (b['score'] as num).compareTo(a['score'] as num));
-    
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: accentColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.list_alt,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  '知識點掌握列表',
-                  style: TextStyle(
-                    fontSize: 18, 
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: secondaryColor.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          '知識點',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          '小節',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          '分數',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Divider(color: Colors.white30),
-                  ...sortedScores.take(10).map((score) {
-                    final pointName = score['point_name'] as String;
-                    final sectionName = score['section_name'] as String;
-                    final scoreValue = score['score'] as num;
-                    
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              pointName,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              sectionName,
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 1,
-                            child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getScoreColor(scoreValue.toDouble()),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                scoreValue.toStringAsFixed(1),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  if (sortedScores.length > 10)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        '... 還有 ${sortedScores.length - 10} 個知識點',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 新增方法：下一步學習計劃
+  // 修改：下一步學習計劃
   Widget _buildNextSteps() {
+    // 如果尚未點擊獲取建議按鈕，則不顯示
+    if (!_hasClickedLearningTips) {
+      return SizedBox();
+    }
+    
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1926,62 +1414,60 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               ],
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: secondaryColor.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  _buildNextStepItem(
-                    icon: Icons.priority_high,
-                    title: '優先學習',
-                    content: '代數方程式、化學反應式平衡',
-                    color: Colors.red,
-                  ),
-                  Divider(color: Colors.white24, height: 24),
-                  _buildNextStepItem(
-                    icon: Icons.refresh,
-                    title: '需要複習',
-                    content: '三角函數、物理力學',
-                    color: Colors.orange,
-                  ),
-                  Divider(color: Colors.white24, height: 24),
-                  _buildNextStepItem(
-                    icon: Icons.trending_up,
-                    title: '可以提升',
-                    content: '統計概率、英語閱讀理解',
-                    color: Colors.green,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: accentColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '生成個人化學習計劃',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+            if (_isGeneratingTips)
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: secondaryColor.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                textAlign: TextAlign.center,
+                child: Center(
+                  child: Text(
+                    '正在生成學習計劃...',
+                    style: TextStyle(color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: secondaryColor.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    _buildNextStepItem(
+                      icon: Icons.priority_high,
+                      title: '優先學習',
+                      content: _learningSections['priority'] ?? '優先學習內容還未生成',
+                      color: Colors.red,
+                    ),
+                    Divider(color: Colors.white24, height: 24),
+                    _buildNextStepItem(
+                      icon: Icons.refresh,
+                      title: '需要複習',
+                      content: _learningSections['review'] ?? '需要複習的內容還未生成',
+                      color: Colors.orange,
+                    ),
+                    Divider(color: Colors.white24, height: 24),
+                    _buildNextStepItem(
+                      icon: Icons.trending_up,
+                      title: '可以提升',
+                      content: _learningSections['improve'] ?? '可以提升的內容還未生成',
+                      color: Colors.green,
+                    ),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  // 輔助方法：下一步學習項目
+  // 新增方法：下一步學習項目
   Widget _buildNextStepItem({
     required IconData icon,
     required String title,
@@ -2874,7 +2360,25 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
 
   // 新增方法：弱點知識點卡片
   Widget _buildWeakPointsCard() {
-    final weakPoints = _weakPoints.where((point) => (point['score'] as num) > 0).toList();
+    // 篩選弱點知識點
+    var filteredWeakPoints = _weakPoints.where((point) => 
+      (point['score'] as num) > 0 && 
+      (_selectedSubject == null || point['subject'] == _selectedSubject) &&
+      (_selectedChapter == null || point['chapter_name'] == _selectedChapter)
+    ).toList();
+    
+    // 獲取所有可用的科目和章節（用於篩選器）
+    Set<String> subjects = {};
+    Set<String> chapters = {};
+    
+    for (var point in _weakPoints) {
+      if ((point['score'] as num) > 0) {
+        String subject = point['subject'] as String? ?? '';
+        String chapter = point['chapter_name'] as String? ?? '';
+        if (subject.isNotEmpty) subjects.add(subject);
+        if (chapter.isNotEmpty) chapters.add(chapter);
+      }
+    }
     
     return Card(
       elevation: 4,
@@ -2910,7 +2414,132 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               ],
             ),
             const SizedBox(height: 16),
-            if (weakPoints.isEmpty)
+            
+            // 新增篩選器
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: secondaryColor.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '篩選:',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String?>(
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white10,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            hintText: '選擇科目',
+                            hintStyle: TextStyle(color: Colors.white70),
+                          ),
+                          dropdownColor: secondaryColor,
+                          value: _selectedSubject,
+                          items: [
+                            DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('所有科目', style: TextStyle(color: Colors.white)),
+                            ),
+                            ...subjects.map((subject) => 
+                              DropdownMenuItem<String?>(
+                                value: subject,
+                                child: Text(subject, style: TextStyle(color: Colors.white)),
+                              )
+                            ).toList(),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedSubject = value;
+                              // 如果選擇了新科目，重置章節篩選
+                              if (_selectedChapter != null) {
+                                bool chapterBelongsToSubject = _weakPoints.any((point) => 
+                                  point['subject'] == value && 
+                                  point['chapter_name'] == _selectedChapter
+                                );
+                                if (!chapterBelongsToSubject) {
+                                  _selectedChapter = null;
+                                }
+                              }
+                            });
+                          },
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<String?>(
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white10,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            hintText: '選擇章節',
+                            hintStyle: TextStyle(color: Colors.white70),
+                          ),
+                          dropdownColor: secondaryColor,
+                          value: _selectedChapter,
+                          items: [
+                            DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('所有章節', style: TextStyle(color: Colors.white)),
+                            ),
+                            ...chapters.where((chapter) => 
+                              _selectedSubject == null || 
+                              _weakPoints.any((point) => 
+                                point['subject'] == _selectedSubject && 
+                                point['chapter_name'] == chapter
+                              )
+                            ).map((chapter) => 
+                              DropdownMenuItem<String?>(
+                                value: chapter,
+                                child: Text(chapter, style: TextStyle(color: Colors.white)),
+                              )
+                            ).toList(),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedChapter = value;
+                              // 如果選擇了章節但沒有選科目，自動選擇對應科目
+                              if (_selectedChapter != null && _selectedSubject == null) {
+                                for (var point in _weakPoints) {
+                                  if (point['chapter_name'] == _selectedChapter) {
+                                    _selectedSubject = point['subject'] as String?;
+                                    break;
+                                  }
+                                }
+                              }
+                            });
+                          },
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            if (filteredWeakPoints.isEmpty)
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -2919,7 +2548,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 ),
                 child: Center(
                   child: Text(
-                    '太棒了！目前沒有需要特別加強的知識點',
+                    _weakPoints.isEmpty 
+                      ? '太棒了！目前沒有需要特別加強的知識點'
+                      : '目前沒有符合篩選條件的知識點',
                     style: TextStyle(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
@@ -2933,7 +2564,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
-                  children: weakPoints.take(5).map((point) {
+                  children: filteredWeakPoints.take(5).map((point) {
                     final pointName = point['point_name'] as String? ?? '';
                     final sectionName = point['section_name'] as String? ?? '';
                     final chapterName = point['chapter_name'] as String? ?? '';
@@ -3019,6 +2650,46 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                   }).toList(),
                 ),
               ),
+            
+            const SizedBox(height: 16),
+            
+            // 添加學習建議按鈕
+            if (!_hasClickedLearningTips)
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _hasClickedLearningTips = true;
+                  });
+                  
+                  // 獲取學習建議和弱點知識點
+                  _fetchLearningSuggestions();
+                  _generateLearningTipsWithGemini();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lightbulb, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        '獲取學習建議',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -3027,13 +2698,13 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
 
   // 新增方法：學習建議
   Widget _buildLearningTips() {
-    final tips = [
-      '根據您的學習數據，建議您多花時間在數學代數部分',
-      '您在物理力學概念上表現優秀，可以嘗試更高難度的題目',
-      '建議每天至少完成3個關卡，保持學習連續性',
-      '週末可以安排複習之前學過的知識點',
-      '嘗試使用不同的學習方法，如製作筆記、思維導圖等',
-    ];
+    // 如果尚未點擊獲取建議按鈕，則不顯示
+    if (!_hasClickedLearningTips) {
+      return SizedBox();
+    }
+    
+    // 使用個人化建議或默認建議
+    final displayTips = _personalizedTips.isNotEmpty ? _personalizedTips : _learningTips;
     
     return Card(
       elevation: 4,
@@ -3069,43 +2740,87 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               ],
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: secondaryColor.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: tips.map((tip) {
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          color: accentColor,
-                          size: 20,
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            tip,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
+            if (_isGeneratingTips)
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: secondaryColor.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        '正在生成個人化學習建議...',
+                        style: TextStyle(color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: secondaryColor.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: displayTips.map((tip) {
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: accentColor,
+                            size: 20,
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              tip,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  // 獲取科目對應的顏色
+  Color _getSubjectColor(String subject) {
+    final subjectColors = {
+      '數學': Colors.blue,
+      '國文': Colors.green,
+      '英文': Colors.purple,
+      '理化': const Color.fromARGB(255, 246, 172, 61),
+      '生物': Colors.red,
+      '地科': Colors.brown,
+      '化學': Colors.blueGrey,
+      '物理': Colors.deepPurple,
+      '歷史': Colors.deepOrange,
+      '地理': Colors.teal,
+      '公民': Colors.pink,
+      '未分類': Colors.grey,
+    };
+    
+    return subjectColors[subject] ?? Colors.grey;
   }
 }
