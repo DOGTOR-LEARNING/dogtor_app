@@ -14,6 +14,9 @@ import 'package:flutter/rendering.dart';
 import 'user_stats_page.dart';  // Import the UserStatsPage
 import 'friends_page.dart';  // 引入新的好友頁面
 
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
@@ -21,6 +24,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedIndex = 1;
+  int _userHearts = 0;
   ScrollController _scrollController = ScrollController();
   final double _maxPlanetSize = 200.0;  // 增加最大尺寸
   final double _minPlanetSize = 100.0;  // 增加最小尺寸
@@ -32,6 +36,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUserPhoto();  // 在初始化時加載用戶頭像
+    _loadUserHeart();
   }
 
   @override
@@ -55,6 +60,36 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _userPhotoUrl = prefs.getString('photo_url');
       print("頭像 URL: $_userPhotoUrl");
     });
+  }
+
+  // 加載剩餘體力
+  Future<bool> _loadUserHeart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+
+      if (userId == null) return false;
+
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/check_heart'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+            setState(() {
+            _userHearts = data['hearts'];  // Update the heart value
+          });
+          return data['hearts'] > 0;
+        }
+      }
+    } catch (e) {
+      print("檢查體力失敗: $e");
+    }
+
+    return false;
   }
 
   // 計算星球大小的方法
@@ -300,6 +335,15 @@ void _onItemTapped(int index) {
                                     color: Colors.red,  // Set the color for the heart icon
                                     size: 24,
                                   ),
+                                ),
+                              ),
+                              // 剩餘愛心數量顯示
+                              SizedBox(width: 8), // Space between the heart icon and the number
+                              Text(
+                                '$_userHearts', // Display the heart value
+                                style: TextStyle(
+                                  fontSize: 20, // Adjust the font size as needed
+                                  color: Colors.black, // Set the text color
                                 ),
                               ),
                             ],
