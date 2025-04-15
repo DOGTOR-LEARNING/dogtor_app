@@ -272,6 +272,36 @@ void _onItemTapped(int index) {
                                   ),
                                 ),
                               ),
+                              // 新增心形按鈕
+                              SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  // Define what happens when the heart button is pressed
+                                  print("Heart button pressed");
+                                  // You can navigate to another page or perform any action here
+                                },
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.favorite,  // Use the heart icon
+                                    color: Colors.red,  // Set the color for the heart icon
+                                    size: 24,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ],
