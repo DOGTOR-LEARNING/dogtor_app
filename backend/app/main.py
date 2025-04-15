@@ -2545,49 +2545,57 @@ async def get_learning_days(user_id: str):
                 SELECT DISTINCT DATE(answered_at) as study_date
                 FROM user_level
                 WHERE user_id = %s
-                ORDER BY study_date DESC
+                ORDER BY study_date
                 LIMIT 2500
                 """, (user_id,))
                 
                 all_study_dates = [row['study_date'] for row in cursor.fetchall()]
+                all_study_dates.sort(reverse=True)  # 確保日期是降序排列（最新的在前）
                 
-                # 計算全部連續學習天數
-                total_streak = 0
-                max_streak = 0
+                # 計算當前連續學習天數
                 current_streak = 0
+                yesterday = today - timedelta(days=1)
                 
                 if all_study_dates:
-                    # 檢查今天是否有學習
-                    if all_study_dates[0] == today:
+                    # 檢查最近一次學習是否是今天或昨天
+                    if all_study_dates[0] == today or all_study_dates[0] == yesterday:
                         current_streak = 1
+                        last_date = all_study_dates[0]
+                        
                         # 檢查之前的連續天數
                         for i in range(1, len(all_study_dates)):
-                            expected_date = all_study_dates[i-1] - timedelta(days=1)
+                            # 檢查是否與上一個日期相差正好一天
+                            expected_date = last_date - timedelta(days=1)
                             if all_study_dates[i] == expected_date:
                                 current_streak += 1
+                                last_date = all_study_dates[i]
                             else:
                                 break
-                    
-                    # 計算歷史中最長連續學習記錄
+                
+                # 計算歷史中最長連續學習記錄
+                max_streak = 0
+                if all_study_dates:
+                    # 將日期排序（舊到新）
+                    sorted_dates = sorted(all_study_dates)
                     temp_streak = 1
-                    for i in range(1, len(all_study_dates)):
-                        if (all_study_dates[i-1] - all_study_dates[i]).days == 1:
+                    for i in range(1, len(sorted_dates)):
+                        if (sorted_dates[i] - sorted_dates[i-1]).days == 1:
                             temp_streak += 1
                         else:
                             max_streak = max(max_streak, temp_streak)
                             temp_streak = 1
                     
                     max_streak = max(max_streak, temp_streak)
-                    total_streak = max(current_streak, max_streak)
                 
                 # 限制最大值為2500
-                total_streak = min(total_streak, 2500)
+                current_streak = min(current_streak, 2500)
+                max_streak = min(max_streak, 2500)
                 
                 return {
                     "success": True,
                     "learning_days": learning_days,
-                    "total_streak": total_streak,
-                    "current_streak": current_streak
+                    "current_streak": current_streak,
+                    "total_streak": max_streak  # 歷史最高連續學習天數
                 }
         
         finally:

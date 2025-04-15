@@ -25,6 +25,8 @@ class FriendProfilePage extends StatefulWidget {
 class _FriendProfilePageState extends State<FriendProfilePage> {
   Map<String, dynamic> learningStats = {
     'streak_days': 0,
+    'current_streak_days': 0,
+    'max_streak_days': 0,
     'total_completed_questions': 0,
   };
   bool isLoading = true;
@@ -55,12 +57,20 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
       if (response.statusCode == 200) {
         final jsonString = utf8.decode(response.bodyBytes);
         final data = json.decode(jsonString);
+        print('學習日期記錄響應: $data');
         
         if (data['success'] == true) {
           setState(() {
-            // 更新總連續學習天數
+            // 獲取當前連續學習天數
+            if (data.containsKey('current_streak')) {
+              learningStats['current_streak_days'] = data['current_streak'] ?? 0;
+              // 同時更新顯示用的streak_days
+              learningStats['streak_days'] = data['current_streak'] ?? 0;
+            }
+            
+            // 獲取歷史最高連續學習天數
             if (data.containsKey('total_streak')) {
-              learningStats['streak_days'] = data['total_streak'] ?? 0;
+              learningStats['max_streak_days'] = data['total_streak'] ?? 0;
             }
             
             // 轉換日期字符串到 DateTime 對象
@@ -72,6 +82,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                   return DateTime(date.year, date.month, date.day);
                 })
               );
+              print('學習日期集合: $_learningDays');
             }
           });
         }
@@ -85,7 +96,9 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
   bool _isLearningDay(DateTime day) {
     // 只比較年月日，忽略時分秒
     final normalizedDay = DateTime(day.year, day.month, day.day);
-    return _learningDays.contains(normalizedDay);
+    final result = _learningDays.contains(normalizedDay);
+    print('檢查日期 $normalizedDay 是否學習: $result');
+    return result;
   }
 
   Future<void> _fetchLearningStats() async {
@@ -118,10 +131,6 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
           print('userStatsData: $userStatsData');
           
           setState(() {
-            // 直接使用從 _fetchLearningDays 獲取的總連續學習天數，這裡不再覆蓋
-            // 注意：如果 _fetchLearningDays 在 _fetchLearningStats 之後執行，這裡的值會被覆蓋
-            // learningStats['streak_days'] = weeklyStatsData['streak'] ?? 0;
-            
             // 從用戶統計獲取已完成問題數量
             learningStats['total_completed_questions'] = 
                 userStatsData['stats']?['total_levels'] ?? 0;
@@ -400,7 +409,8 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
 
   // 學習連續性卡片
   Widget _buildLearningStreakCard() {
-    final int streakDays = learningStats['streak_days'] ?? 0;
+    final int currentStreakDays = learningStats['current_streak_days'] ?? 0;
+    final int maxStreakDays = learningStats['max_streak_days'] ?? 0;
     final int completedQuestions = learningStats['total_completed_questions'] ?? 0;
     
     return Container(
@@ -421,7 +431,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 連續學習天數
+            // 當前連續學習天數
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -441,7 +451,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                     ),
                     SizedBox(width: 12),
                     Text(
-                      '連續學習',
+                      '當前連續學習',
                       style: TextStyle(
                         color: FriendProfilePage.textBlue,
                         fontSize: 16,
@@ -457,7 +467,54 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '$streakDays 天',
+                    '$currentStreakDays 天',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: FriendProfilePage.accentOrange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            // 歷史最高連續學習天數
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: FriendProfilePage.primaryBlue.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.emoji_events,
+                        color: FriendProfilePage.accentOrange,
+                        size: 24,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      '歷史最高連續',
+                      style: TextStyle(
+                        color: FriendProfilePage.textBlue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: FriendProfilePage.accentOrange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$maxStreakDays 天',
                     style: TextStyle(
                       fontSize: 16,
                       color: FriendProfilePage.accentOrange,
