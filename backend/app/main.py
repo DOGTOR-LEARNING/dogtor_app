@@ -14,7 +14,7 @@ from typing import Optional
 from pydantic import BaseModel
 import io
 from email.mime.text import MIMEText
-from datetime import datetime
+from datetime import datetime, timedelta
 from pytz import timezone
 
 app = FastAPI()
@@ -2398,3 +2398,65 @@ async def get_chat_history(user_id: str):
         return {"success": False, "message": f"獲取聊天歷史記錄時出錯: {str(e)}"}
     finally:
         connection.close()
+
+MAX_HEARTS = 5
+RECOVER_DURATION = timedelta(hours=2)
+
+def calculate_current_hearts(last_updated, stored_hearts):
+    now = datetime.utcnow()
+    elapsed = now - last_updated
+    recovered = elapsed // RECOVER_DURATION
+    new_hearts = min(MAX_HEARTS, stored_hearts + recovered)
+    time_since_last = elapsed % RECOVER_DURATION
+    return new_hearts, time_since_last, recovered
+
+@app.post("/check_heart")
+async def check_heart(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id", "")
+        
+        if not user_id:
+            return {"success": False, "message": "Missing user_id"}
+
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+
+        with connection.cursor() as cursor:
+            cursor.execute("SET NAMES utf8mb4")
+            cursor.execute("SET CHARACTER SET utf8mb4")
+            cursor.execute("SET character_set_connection=utf8mb4")
+            
+            # 查詢 user_heart 資料
+            cursor.execute("SELECT hearts, last_updated FROM user_heart WHERE user_id = %s", (user_id,))
+            result = cursor.fetchone()
+            
+            if not result:
+                return {"success": False, "message": f"User {user_id} has no heart data."}
+            
+            print(result)
+
+            stored_hearts = result['hearts']
+            last_updated = result['last_updated']
+
+            current_hearts, time_since_last, recovered = calculate_current_hearts(last_updated, stored_hearts)
+
+            # 如果有恢復心，更新 DB
+            if recovered > 0 and current_hearts < MAX_HEARTS:
+                cursor.execute(
+                    "UPDATE user_heart SET hearts = %s, last_updated = %s WHERE user_id = %s",
+                    (current_hearts, datetime.utcnow(), user_id)
+                )
+                connection.commit()
+
+            time_to_next_heart = str(RECOVER_DURATION - time_since_last) if current_hearts < MAX_HEARTS else None
+
+            return {
+                "success": True,
+                "user_id": user_id,
+                "hearts": current_hearts,
+                "next_heart_in": time_to_next_heart
+            }
+
+    except Exception as e:
+        return {"success": False, "message": str(e)}
