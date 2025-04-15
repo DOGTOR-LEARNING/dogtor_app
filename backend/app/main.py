@@ -2617,3 +2617,219 @@ async def get_learning_days(user_id: str):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶學習日期記錄時出錯: {str(e)}"}
+
+@app.post("/get_monthly_subject_progress")
+async def get_monthly_subject_progress(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        
+        print(f"收到獲取用戶本月科目進度請求: user_id={user_id}")
+        
+        if not user_id:
+            print(f"錯誤: 缺少用戶 ID")
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取當前月份的開始和結束日期
+                from datetime import datetime, timedelta
+                today = datetime.now().date()
+                month_start = datetime(today.year, today.month, 1).date()
+                
+                # 計算當前月份的最後一天
+                if today.month == 12:
+                    next_month = datetime(today.year + 1, 1, 1).date()
+                else:
+                    next_month = datetime(today.year, today.month + 1, 1).date()
+                month_end = next_month - timedelta(days=1)
+                
+                # 轉換為字符串格式
+                month_start_str = month_start.strftime('%Y-%m-%d 00:00:00')
+                month_end_str = month_end.strftime('%Y-%m-%d 23:59:59')
+                
+                print(f"查詢時間範圍: {month_start_str} 到 {month_end_str}")
+                
+                # 獲取本月各科目完成的關卡數量
+                cursor.execute("""
+                SELECT cl.subject, COUNT(*) as level_count
+                FROM user_level ul
+                JOIN level_info li ON ul.level_id = li.id
+                JOIN chapter_list cl ON li.chapter_id = cl.id
+                WHERE ul.user_id = %s AND ul.answered_at BETWEEN %s AND %s
+                GROUP BY cl.subject
+                ORDER BY cl.subject
+                """, (user_id, month_start_str, month_end_str))
+                
+                monthly_subjects = cursor.fetchall()
+                print(f"找到 {len(monthly_subjects)} 個科目的本月進度")
+                
+                # 獲取所有可能的科目，以便包含尚未完成的科目
+                cursor.execute("""
+                SELECT DISTINCT subject
+                FROM chapter_list
+                ORDER BY subject
+                """)
+                
+                all_subjects = cursor.fetchall()
+                
+                # 將查詢結果轉換為字典格式以便快速查找
+                monthly_dict = {subject['subject']: subject for subject in monthly_subjects}
+                
+                # 確保所有科目都有進度數據，即使沒有完成任何關卡
+                result_subjects = []
+                for subject in all_subjects:
+                    subject_name = subject['subject']
+                    if subject_name in monthly_dict:
+                        result_subjects.append(monthly_dict[subject_name])
+                    else:
+                        result_subjects.append({
+                            'subject': subject_name,
+                            'level_count': 0
+                        })
+                
+                return {
+                    "success": True,
+                    "monthly_subjects": result_subjects,
+                    "month_info": {
+                        "start_date": month_start.strftime('%Y-%m-%d'),
+                        "end_date": month_end.strftime('%Y-%m-%d'),
+                        "days_total": month_end.day,
+                        "days_passed": today.day,
+                        "days_remaining": month_end.day - today.day,
+                    }
+                }
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"獲取用戶本月科目進度時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取用戶本月科目進度時出錯: {str(e)}"}
+
+@app.post("/get_subject_abilities")
+async def get_subject_abilities(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        
+        print(f"收到獲取用戶科目能力統計請求: user_id={user_id}")
+        
+        if not user_id:
+            print(f"錯誤: 缺少用戶 ID")
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取按科目分組的答題數據
+                cursor.execute("""
+                SELECT 
+                    cl.subject,
+                    SUM(uqs.total_attempts) as total_attempts,
+                    SUM(uqs.correct_attempts) as correct_attempts
+                FROM 
+                    user_question_stats uqs
+                JOIN 
+                    questions q ON uqs.question_id = q.id
+                JOIN 
+                    knowledge_points kp ON q.knowledge_id = kp.id
+                JOIN 
+                    chapter_list cl ON kp.chapter_id = cl.id
+                WHERE 
+                    uqs.user_id = %s
+                GROUP BY 
+                    cl.subject
+                ORDER BY 
+                    cl.subject
+                """, (user_id,))
+                
+                subject_abilities = cursor.fetchall()
+                print(f"找到 {len(subject_abilities)} 個科目的能力統計")
+                
+                # 獲取所有可能的科目，以便包含尚未答題的科目
+                cursor.execute("""
+                SELECT DISTINCT subject
+                FROM chapter_list
+                ORDER BY subject
+                """)
+                
+                all_subjects = cursor.fetchall()
+                
+                # 將查詢結果轉換為字典格式以便快速查找
+                abilities_dict = {item['subject']: item for item in subject_abilities}
+                
+                # 確保所有科目都有數據，即使沒有答題記錄
+                result_abilities = []
+                for subject in all_subjects:
+                    subject_name = subject['subject']
+                    if subject_name in abilities_dict:
+                        # 計算能力分數
+                        ability = abilities_dict[subject_name]
+                        total_attempts = ability['total_attempts'] or 0
+                        correct_attempts = ability['correct_attempts'] or 0
+                        
+                        # 使用新的計算公式: 分數=((-(1/0.01)^x)+1) * (該科目的correct_attempt/x), x=該科目的total_attempt
+                        ability_score = 0
+                        if total_attempts > 0:
+                            try:
+                                # 確保 x 不為零且不會導致過大的計算結果
+                                x = min(max(total_attempts, 1), 150)  # 限制在 1-150 範圍內，防止計算溢出
+                                accuracy = correct_attempts / total_attempts
+                                experience_factor = 1 - (1 / (0.01 ** x))  # 這可能會計算溢出，所以限制 x 範圍
+                                ability_score = experience_factor * accuracy * 10
+                            except OverflowError:
+                                # 如果計算溢出，使用簡化的公式
+                                accuracy = correct_attempts / total_attempts
+                                ability_score = accuracy * 10
+                        
+                        # 限制分數在 0-10 範圍內
+                        ability_score = min(max(ability_score, 0), 10)
+                        
+                        result_abilities.append({
+                            'subject': subject_name,
+                            'total_attempts': total_attempts,
+                            'correct_attempts': correct_attempts,
+                            'ability_score': round(ability_score, 2)
+                        })
+                    else:
+                        result_abilities.append({
+                            'subject': subject_name,
+                            'total_attempts': 0,
+                            'correct_attempts': 0,
+                            'ability_score': 0
+                        })
+                
+                # 按能力分數排序（從高到低）
+                result_abilities.sort(key=lambda x: x['ability_score'], reverse=True)
+                
+                return {
+                    "success": True,
+                    "subject_abilities": result_abilities
+                }
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"獲取用戶科目能力統計時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取用戶科目能力統計時出錯: {str(e)}"}
