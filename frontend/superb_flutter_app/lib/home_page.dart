@@ -36,6 +36,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -126,12 +127,23 @@ void _onItemTapped(int index) {
       extendBody: true,
       body: Stack(
         children: [
-          // 背景圖片
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/home-background.png'),
-                fit: BoxFit.cover,
+          // 背景圖片 - 添加視差效果
+          AnimatedBuilder(
+            animation: _scrollController,
+            builder: (context, child) {
+              // 計算背景偏移，使其滾動速度比前景慢
+              double offset = _scrollController.hasClients ? _scrollController.offset * 0.3 : 0.0;
+              return Transform.translate(
+                offset: Offset(0, offset),
+                child: child,
+              );
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/home-background.png'),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
@@ -273,6 +285,7 @@ void _onItemTapped(int index) {
                           _screenHeight = constraints.maxHeight;
                           return ListView.builder(
                             controller: _scrollController,
+                            physics: SnappingScrollPhysics(itemExtent: 180), // 使用自定義的吸附式滾動
                             itemCount: planets.length,
                             itemBuilder: (context, index) {
                               return AnimatedBuilder(
@@ -680,4 +693,66 @@ void _onItemTapped(int index) {
       'image': 'assets/pics/home-island2.png',  // 重複使用圖片
     },
   ];
+}
+
+// 自定義吸附式滾動物理效果
+class SnappingScrollPhysics extends ScrollPhysics {
+  final double itemExtent;
+
+  const SnappingScrollPhysics({
+    ScrollPhysics? parent,
+    required this.itemExtent,
+  }) : super(parent: parent);
+
+  @override
+  SnappingScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return SnappingScrollPhysics(
+      parent: buildParent(ancestor),
+      itemExtent: itemExtent,
+    );
+  }
+
+  double _getPage(ScrollMetrics position) {
+    return position.pixels / itemExtent;
+  }
+
+  double _getPixels(double page) {
+    return page * itemExtent;
+  }
+
+  double _getTargetPixels(ScrollMetrics position, Tolerance tolerance, double velocity) {
+    double page = _getPage(position);
+    if (velocity < -tolerance.velocity) {
+      page -= 0.5;
+    } else if (velocity > tolerance.velocity) {
+      page += 0.5;
+    }
+    return _getPixels(page.roundToDouble());
+  }
+
+  @override
+  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
+    // 如果已經在邊界，使用默認行為
+    if (position.outOfRange) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+
+    final Tolerance tolerance = this.tolerance;
+    final double target = _getTargetPixels(position, tolerance, velocity);
+    
+    // 如果目標滾動位置非常接近當前位置，且沒有滾動速度，不使用模擬
+    if ((target - position.pixels).abs() < tolerance.distance &&
+        velocity.abs() < tolerance.velocity) {
+      return null;
+    }
+    
+    // 返回一個使滾動動畫平滑的彈簧模擬
+    return ScrollSpringSimulation(
+      spring,
+      position.pixels,
+      target,
+      velocity,
+      tolerance: tolerance,
+    );
+  }
 }
