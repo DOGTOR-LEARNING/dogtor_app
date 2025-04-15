@@ -180,18 +180,9 @@ class _ChatPageState extends State<ChatPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                
-                FutureBuilder<Uint8List>(
-                  future: _selectedImage!.readAsBytes(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      return Image.memory(
-                        snapshot.data!,
-                        fit: BoxFit.contain,
-                      );
-                    }
-                    return Center(child: CircularProgressIndicator());
-                  },
+                Image.file(
+                  File(_selectedImage!.path),
+                  fit: BoxFit.contain,
                 ),
                 TextButton(
                   child: Text('Close'),
@@ -362,7 +353,7 @@ class _ChatPageState extends State<ChatPage> {
 
       // 修改為本地開發服務器 URL 進行測試
       final response = await http.get(
-        Uri.parse('http://localhost:8000/get_chat_history/$userId'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_chat_history/$userId'),
       );
 
       if (response.statusCode == 200) {
@@ -447,9 +438,18 @@ class _ChatPageState extends State<ChatPage> {
       };
 
       if (_selectedImage != null) {
-        final bytes = await _selectedImage!.readAsBytes();
-        final base64Image = base64Encode(bytes);
-        requestBody["image_base64"] = base64Image;
+        try {
+          final bytes = await _selectedImage!.readAsBytes();
+          // 檢查圖片類型
+          final mimeType = _selectedImage!.mimeType ?? 'image/jpeg';
+          print("上傳圖片類型: $mimeType, 大小: ${bytes.length} bytes");
+          final base64Image = base64Encode(bytes);
+          requestBody["image_base64"] = base64Image;
+          requestBody["image_mime_type"] = mimeType; // 將圖片類型也傳給後端
+        } catch (e) {
+          print("圖片編碼錯誤: $e");
+          // 出錯時仍然繼續，只是不附加圖片
+        }
       }
 
       final response = await http.post(
@@ -549,7 +549,14 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+                  // 修改拍照設置，明確指定 JPEG 格式和高品質
+                  final XFile? photo = await _picker.pickImage(
+                    source: ImageSource.camera,
+                    imageQuality: 95, // 高品質
+                    preferredCameraDevice: CameraDevice.rear,
+                    requestFullMetadata: false, // 減少 EXIF 資訊
+                  );
+                  print("photo path: ${photo?.path}");
                   if (photo != null) {
                     _handleSelectedImage(photo);
                   }
@@ -565,10 +572,29 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  void _handleSelectedImage(XFile image) {
-    setState(() {
-      _selectedImage = image;
-    });
+  Future<void> _handleSelectedImage(XFile image) async {
+    print("處理圖片: ${image.path}, 格式: ${image.mimeType ?? '未知'}");
+    
+    try {
+      // 讀取圖像數據
+      final bytes = await image.readAsBytes();
+      print("圖片大小: ${bytes.length} bytes");
+
+      // 檢查圖像數據是否有效
+      if (bytes.isNotEmpty) {
+        setState(() {
+          _selectedImage = image;
+        });
+      } else {
+        print('選擇的圖像無效');
+      }
+    } catch (e) {
+      print('處理圖像時出錯: $e');
+      // 即使出錯，仍然設置圖像路徑，讓 Image.file 嘗試直接讀取
+      setState(() {
+        _selectedImage = image;
+      });
+    }
   }
 
   void _toggleFilter(String filter) {
@@ -621,9 +647,13 @@ class _ChatPageState extends State<ChatPage> {
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.4,
                 ),
-                child: ListView.builder(
+                child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: _chatHistory.length,
+                  separatorBuilder: (context, index) => Divider(
+                    height: 1,
+                    color: Colors.grey[300],
+                  ),
                   itemBuilder: (context, index) {
                     final chat = _chatHistory[index];
                     final question = chat['question'] as String;
@@ -646,15 +676,11 @@ class _ChatPageState extends State<ChatPage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           SizedBox(height: 4),
-                          Text(
-                            answer,
-                            style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                          _buildResponse(
+                            answer.length > 32 ? '${answer.substring(0, 32)}...' : answer,
+                            fontSize: 14,
+                            textColor: Colors.grey[600]!,
+                            textAlign: TextAlign.left,
                           ),
                           SizedBox(height: 4),
                           Text(
@@ -1040,17 +1066,9 @@ class _ChatPageState extends State<ChatPage> {
                                         ),
                                         child: ClipRRect(
                                           borderRadius: BorderRadius.circular(11),
-                                          child: FutureBuilder<Uint8List>(
-                                            future: _selectedImage!.readAsBytes(),
-                                            builder: (context, snapshot) {
-                                              if (snapshot.hasData) {
-                                                return Image.memory(
-                                                  snapshot.data!,
-                                                  fit: BoxFit.cover,
-                                                );
-                                              }
-                                              return Center(child: CircularProgressIndicator());
-                                            },
+                                          child: Image.file(
+                                            File(_selectedImage!.path),
+                                            fit: BoxFit.cover,
                                           ),
                                         ),
                                       ),
@@ -1120,7 +1138,12 @@ class _ChatPageState extends State<ChatPage> {
                                       // Response content
                                       Padding(
                                         padding: EdgeInsets.all(16),
-                                        child: _buildResponse(_response),
+                                        child: _buildResponse(
+                                          _response,
+                                          fontSize: 14,
+                                          textColor: Colors.black87,
+                                          textAlign: TextAlign.left,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1182,31 +1205,76 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildResponse(String response) {
-    return Markdown(
-      selectable: true,
-      data: response,
-      shrinkWrap: true,
-      physics: ClampingScrollPhysics(),
-      styleSheet: MarkdownStyleSheet(
-        p: TextStyle(color: Colors.black, fontSize: 16),
-        h1: TextStyle(color: Colors.black),
-        h2: TextStyle(color: Colors.black),
-        h3: TextStyle(color: Colors.black),
-        h4: TextStyle(color: Colors.black),
-        h5: TextStyle(color: Colors.black),
-        h6: TextStyle(color: Colors.black),
-        listBullet: TextStyle(color: Colors.black),
-      ),
-      builders: {
-        'latex': LatexElementBuilder(
-          textStyle: TextStyle(color: Colors.black, fontSize: 16),
-          textScaleFactor: 1.1,
+  Widget _buildResponse(
+    String response, {
+    double fontSize = 16,
+    Color textColor = Colors.black,
+    TextAlign textAlign = TextAlign.left,
+    bool selectable = true,
+    double latexScaleFactor = 1.1,
+  }) {
+    return Container(
+      alignment: textAlign == TextAlign.center ? Alignment.center : 
+                textAlign == TextAlign.right ? Alignment.centerRight :
+                Alignment.centerLeft,
+      child: Markdown(
+        selectable: selectable,
+        data: response,
+        shrinkWrap: true,
+        physics: ClampingScrollPhysics(),
+        styleSheet: MarkdownStyleSheet(
+          p: TextStyle(
+            color: textColor,
+            fontSize: fontSize,
+          ),
+          h1: TextStyle(
+            color: textColor,
+            fontSize: fontSize * 1.5,
+            fontWeight: FontWeight.bold,
+          ),
+          h2: TextStyle(
+            color: textColor,
+            fontSize: fontSize * 1.3,
+            fontWeight: FontWeight.bold,
+          ),
+          h3: TextStyle(
+            color: textColor,
+            fontSize: fontSize * 1.2,
+            fontWeight: FontWeight.bold,
+          ),
+          h4: TextStyle(
+            color: textColor,
+            fontSize: fontSize * 1.1,
+            fontWeight: FontWeight.bold,
+          ),
+          h5: TextStyle(
+            color: textColor,
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+          ),
+          h6: TextStyle(
+            color: textColor,
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+          ),
+          listBullet: TextStyle(
+            color: textColor,
+            fontSize: fontSize,
+          ),
         ),
-      },
-      extensionSet: md.ExtensionSet(
-        [LatexBlockSyntax()],
-        [LatexInlineSyntax()],
+        builders: {
+          'latex': LatexElementBuilder(
+            textStyle: TextStyle(
+              color: textColor,
+              fontSize: fontSize,
+            ),
+            textScaleFactor: latexScaleFactor,
+          ),
+        },
+        extensionSet: md.ExtensionSet(
+          [LatexBlockSyntax()],
+          [LatexInlineSyntax()],
+        ),
       ),
     );
   }
