@@ -2460,3 +2460,36 @@ async def check_heart(request: Request):
 
     except Exception as e:
         return {"success": False, "message": str(e)}
+
+@app.post("/consume_heart")
+async def consume_heart(request: Request):
+    data = await request.json()
+    user_id = data.get("user_id")
+    if not user_id:
+        return {"success": False, "message": "Missing user_id"}
+
+    connection = get_db_connection()
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT hearts, last_updated FROM user_heart WHERE user_id = %s", (user_id,))
+        result = cursor.fetchone()
+
+        if not result:
+            return {"success": False, "message": "User not found"}
+
+        stored_hearts, last_updated = result['hearts'], result['last_updated']
+        now = datetime.utcnow()
+        elapsed = now - last_updated
+        recovered = elapsed // RECOVER_DURATION
+        new_hearts = min(MAX_HEARTS, stored_hearts + recovered)
+
+        if new_hearts < 1:
+            return {"success": False, "message": "Not enough hearts"}
+
+        updated_hearts = new_hearts - 1
+        cursor.execute(
+            "UPDATE user_heart SET hearts = %s, last_updated = %s WHERE user_id = %s",
+            (updated_hearts, now, user_id)
+        )
+        connection.commit()
+
+    return {"success": True, "hearts": updated_hearts}

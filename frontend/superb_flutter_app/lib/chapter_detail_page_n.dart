@@ -262,6 +262,61 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
     return sectionWithChapter['book'] ?? '';
   }
 
+  Future<bool> _checkHeart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+
+      if (userId == null) return false;
+
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/check_heart'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+          return data['hearts'] > 0;
+        }
+      }
+    } catch (e) {
+      print("檢查體力失敗: $e");
+    }
+
+    return false;
+  }
+
+  Future<void> _consumeHeart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+
+      if (userId == null) return;
+
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/consume_heart'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+          print("體力扣除成功，剩餘體力: ${data['hearts']}");
+        } else {
+          print("體力扣除失敗: ${data['message']}");
+        }
+      } else {
+        print("API 錯誤，狀態碼: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("扣除體力時出錯: $e");
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -526,20 +581,29 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                                     padding: EdgeInsets.all(8),
                                                     child: Icon(Icons.play_arrow, color: Colors.white),
                                                   ),
-                                                  onTap: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) => QuizPage(
-                                                          chapter: chapterName,
-                                                          section: section['level_name'],
-                                                          knowledgePoints: section['knowledge_spots'],
-                                                          levelNum: section['level_id'].toString(),
+                                                  onTap: () async {
+                                                    final hasHeart = await _checkHeart();
+
+                                                    if (hasHeart) {
+                                                      _consumeHeart();
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (context) => QuizPage(
+                                                            chapter: chapterName,
+                                                            section: section['level_name'],
+                                                            knowledgePoints: section['knowledge_spots'],
+                                                            levelNum: section['level_id'].toString(),
+                                                          ),
                                                         ),
-                                                      ),
-                                                    ).then((_) {
-                                                      _loadUserLevelStars();
-                                                    });
+                                                      ).then((_) {
+                                                        _loadUserLevelStars();
+                                                      });
+                                                    } else {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(content: Text("體力不足，無法挑戰")),
+                                                        );
+                                                      }
                                                   },
                                                 ),
                                               ))
