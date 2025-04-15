@@ -167,19 +167,50 @@ void _onItemTapped(int index) {
             animation: _scrollController,
             builder: (context, child) {
               // 計算背景偏移，使其滾動速度比前景慢
-              double offset = _scrollController.hasClients ? _scrollController.offset * 0.3 : 0.0;
-              return Transform.translate(
-                offset: Offset(0, offset),
-                child: child,
+              // 對於頂部問題，我們需要確保背景不會向下移動過多
+              double offset = _scrollController.hasClients ? 
+                  max(0, _scrollController.offset * 0.1) : 0.0; // 使用 max 函數確保不會負值
+              
+              return Stack(
+                children: [
+                  // 底部填充層，防止任何地方出現黑邊
+                  Container(
+                    color: Color(0xFF4A90E2), // 藍色底色，與背景圖底色接近
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
+                  // 帶偏移的背景圖
+                  Positioned(
+                    top: -offset, // 反向偏移，當滾動時背景向上移動
+                    left: 0,
+                    right: 0,
+                    child: child!,
+                  ),
+                ],
               );
             },
-            child: Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/home-background.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // 獲取螢幕尺寸
+                final screenHeight = MediaQuery.of(context).size.height;
+                final screenWidth = MediaQuery.of(context).size.width;
+                // 更大的容器高度
+                final containerHeight = screenHeight*1.6; // 增加高度，確保足夠
+                
+                return Container(
+                  // 強制容器高度，確保背景足夠大
+                  height: containerHeight,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/home-background.png'),
+                      fit: BoxFit.cover,
+                      // 改為居中對齊，確保頂部和底部都有足夠的內容
+                      alignment: Alignment.center,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           // 主要內容
@@ -535,9 +566,30 @@ void _onItemTapped(int index) {
                           height: baseWidth * 1, // Provide a height constraint
                           child: Column(
                             children: [
-                              // Top part with lighter blur
+                              // 最頂部，非常輕微的模糊
                               Expanded(
-                                flex: 2,
+                                flex: 1,
+                                child: ClipRect(
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.0),
+                                            Colors.white.withOpacity(0.01),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // 第二層模糊
+                              Expanded(
+                                flex: 1,
                                 child: ClipRect(
                                   child: BackdropFilter(
                                     filter: ImageFilter.blur(sigmaX: 1.0, sigmaY: 1.0),
@@ -545,7 +597,7 @@ void _onItemTapped(int index) {
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
-                                            Colors.white.withOpacity(0.0),
+                                            Colors.white.withOpacity(0.01),
                                             Colors.white.withOpacity(0.02),
                                           ],
                                           begin: Alignment.topCenter,
@@ -556,9 +608,30 @@ void _onItemTapped(int index) {
                                   ),
                                 ),
                               ),
-                              // Middle part with stronger blur
+                              // 第三層模糊
                               Expanded(
-                                flex: 4,
+                                flex: 1,
+                                child: ClipRect(
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 2.0, sigmaY: 2.0),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.02),
+                                            Colors.white.withOpacity(0.03),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // 中間強模糊層
+                              Expanded(
+                                flex: 2,
                                 child: ClipRect(
                                   child: BackdropFilter(
                                     filter: ImageFilter.blur(sigmaX: 3.0, sigmaY: 3.0),
@@ -566,8 +639,8 @@ void _onItemTapped(int index) {
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
-                                            Colors.white.withOpacity(0.02),
-                                            Colors.white.withOpacity(0.05),
+                                            Colors.white.withOpacity(0.03),
+                                            Colors.white.withOpacity(0.04),
                                           ],
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
@@ -577,9 +650,30 @@ void _onItemTapped(int index) {
                                   ),
                                 ),
                               ),
-                              // Bottom part with lighter blur
+                              // 倒數第二層模糊
                               Expanded(
-                                flex: 2,
+                                flex: 1,
+                                child: ClipRect(
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 4.0, sigmaY: 4.0),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.04),
+                                            Colors.white.withOpacity(0.03),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // 底部模糊層
+                              Expanded(
+                                flex: 1,
                                 child: ClipRect(
                                   child: BackdropFilter(
                                     filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
@@ -587,7 +681,7 @@ void _onItemTapped(int index) {
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
-                                            Colors.white.withOpacity(0.05),
+                                            Colors.white.withOpacity(0.03),
                                             Colors.white.withOpacity(0.0),
                                           ],
                                           begin: Alignment.topCenter,
@@ -603,38 +697,6 @@ void _onItemTapped(int index) {
                         ),
                       ),
 
-
-                      // 導航按鈕 - 學習（次底層）
-                      Positioned(
-                        bottom: baseWidth * 0.1,
-                        left: (screenWidth - studySize.width) / 2,
-                        child: Container(
-                          width: studySize.width * 1.17,
-                          height: studySize.height * 1.17,
-                          child: GestureDetector(
-                            onTap: () => _onItemTapped(1),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Expanded(
-                                  child: Image.asset(
-                                    'assets/images/toolbar-study.png',
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                SizedBox(height: baseWidth * 0.02),
-                                Text(
-                                  '學習',
-                                  style: TextStyle(
-                                    color: _selectedIndex == 1 ? Colors.white : Colors.white.withOpacity(0.7),
-                                    fontSize: baseWidth * 0.08,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                       // 背景圖片 - 放在學習按鈕上方
                       Positioned(
                         bottom: -screenWidth * 0.06,
@@ -648,6 +710,39 @@ void _onItemTapped(int index) {
                           ),
                         ),
                       ),
+
+                      // 導航按鈕 - 錯題本
+                      Positioned(
+                        left: screenWidth * 0.04,
+                        bottom: baseWidth * 0.16,
+                        child: Container(
+                          width: questionSize.width * 1.2,
+                          height: questionSize.height * 1.2,
+                          child: GestureDetector(
+                            onTap: () => _onItemTapped(0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Expanded(
+                                  child: Image.asset(
+                                    'assets/images/toolbar-question.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                SizedBox(height: baseWidth * 0.02),
+                                Text(
+                                  '錯題本',
+                                  style: TextStyle(
+                                    color: _selectedIndex == 0 ? Colors.white : Colors.white.withOpacity(0.7),
+                                    fontSize: baseWidth * 0.08,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
                       // 導航按鈕 - 即問題
                       Positioned(
                         right: screenWidth * 0.05,
@@ -679,29 +774,30 @@ void _onItemTapped(int index) {
                           ),
                         ),
                       ),
-                      // 導航按鈕 - 錯題本（最上層）
+                      
+                      // 導航按鈕 - 學習（放在最上層確保可點擊性）
                       Positioned(
-                        left: screenWidth * 0.04,
-                        bottom: baseWidth * 0.16,
+                        bottom: baseWidth * 0.1,
+                        left: (screenWidth - studySize.width) / 2,
                         child: Container(
-                          width: questionSize.width * 1.2,
-                          height: questionSize.height * 1.2,
+                          width: studySize.width * 1.17,
+                          height: studySize.height * 1.17,
                           child: GestureDetector(
-                            onTap: () => _onItemTapped(0),
+                            onTap: () => _onItemTapped(1),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Expanded(
                                   child: Image.asset(
-                                    'assets/images/toolbar-question.png',
+                                    'assets/images/toolbar-study.png',
                                     fit: BoxFit.contain,
                                   ),
                                 ),
                                 SizedBox(height: baseWidth * 0.02),
                                 Text(
-                                  '錯題本',
+                                  '學習',
                                   style: TextStyle(
-                                    color: _selectedIndex == 0 ? Colors.white : Colors.white.withOpacity(0.7),
+                                    color: _selectedIndex == 1 ? Colors.white : Colors.white.withOpacity(0.7),
                                     fontSize: baseWidth * 0.08,
                                   ),
                                 ),
