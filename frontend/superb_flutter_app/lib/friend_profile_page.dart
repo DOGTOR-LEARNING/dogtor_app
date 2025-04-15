@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter/cupertino.dart';
 
-class FriendProfilePage extends StatelessWidget {
+class FriendProfilePage extends StatefulWidget {
   final Map<String, dynamic> friend;
 
   // 定義主題顏色
@@ -9,25 +12,174 @@ class FriendProfilePage extends StatelessWidget {
   static const Color backgroundWhite = Color(0xFFFFF9F7);  // 白色背景
   static const Color textBlue = Color(0xFF0777B1);     // 深藍色文字
   static const Color cardBlue = Color(0xFFECF6F9);     // 卡片背景色
+  static const Color progressGreen = Color(0xFF4CAF50); // 進度綠色
 
   const FriendProfilePage({Key? key, required this.friend}) : super(key: key);
 
   @override
+  _FriendProfilePageState createState() => _FriendProfilePageState();
+}
+
+class _FriendProfilePageState extends State<FriendProfilePage> {
+  Map<String, dynamic> learningStats = {
+    'streak_days': 0,
+    'total_completed_questions': 0,
+  };
+  bool isLoading = true;
+  bool isSendingNotification = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLearningStats();
+  }
+
+  Future<void> _fetchLearningStats() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // 獲取每週學習統計
+      final String userId = widget.friend['user_id'];
+      final weeklyStatsResponse = await http.get(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_weekly_stats/$userId'),
+        headers: {'Accept': 'application/json; charset=utf-8'},
+      );
+      
+      if (weeklyStatsResponse.statusCode == 200) {
+        final jsonString = utf8.decode(weeklyStatsResponse.bodyBytes);
+        final weeklyStatsData = json.decode(jsonString);
+        print('weeklyStatsData: $weeklyStatsData');
+        
+        // 嘗試獲取用戶整體統計
+        final userStatsResponse = await http.post(
+          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_user_stats'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'user_id': userId}),
+        );
+        
+        if (userStatsResponse.statusCode == 200) {
+          final userStatsData = json.decode(userStatsResponse.body);
+          print('userStatsData: $userStatsData');
+          
+          setState(() {
+            // 從每週統計獲取連續學習天數
+            learningStats['streak_days'] = weeklyStatsData['streak'] ?? 0;
+            
+            // 從用戶統計獲取已完成問題數量
+            learningStats['total_completed_questions'] = 
+                userStatsData['stats']?['total_levels'] ?? 0;
+            
+            isLoading = false;
+          });
+        } else {
+          throw Exception('無法獲取用戶統計數據');
+        }
+      } else {
+        throw Exception('無法獲取每週統計數據');
+      }
+    } catch (e) {
+      print('獲取學習統計出錯: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  // 發送學習提醒通知
+  Future<void> _sendLearningReminder() async {
+    if (isSendingNotification) return;
+    
+    setState(() {
+      isSendingNotification = true;
+    });
+
+    try {
+      final String userId = widget.friend['user_id'];
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/send_learning_reminder'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': userId,
+          'message': '你的朋友提醒你該學習了！'
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // 顯示成功提示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('學習提醒已成功發送！'),
+            backgroundColor: FriendProfilePage.progressGreen,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      } else {
+        throw Exception('無法發送提醒通知');
+      }
+    } catch (e) {
+      print('發送學習提醒出錯: $e');
+      // 顯示錯誤提示
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('無法發送學習提醒，請稍後再試'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      setState(() {
+        isSendingNotification = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundWhite,
+      backgroundColor: FriendProfilePage.backgroundWhite,
       appBar: AppBar(
         title: Text(
           '好友檔案',
           style: TextStyle(
-            color: textBlue,
+            color: FriendProfilePage.textBlue,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
-        backgroundColor: backgroundWhite,
+        backgroundColor: FriendProfilePage.backgroundWhite,
         elevation: 0,
-        iconTheme: IconThemeData(color: textBlue),
+        iconTheme: IconThemeData(color: FriendProfilePage.textBlue),
+        actions: [
+          // 添加發送提醒按鈕
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: isSendingNotification
+                ? Container(
+                    width: 40,
+                    height: 40,
+                    padding: EdgeInsets.all(8),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          FriendProfilePage.primaryBlue),
+                    ),
+                  )
+                : IconButton(
+                    icon: Icon(CupertinoIcons.bell_fill),
+                    color: FriendProfilePage.accentOrange,
+                    tooltip: '提醒學習',
+                    onPressed: _sendLearningReminder,
+                  ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -41,8 +193,8 @@ class FriendProfilePage extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    backgroundWhite,
-                    cardBlue.withOpacity(0.3),
+                    FriendProfilePage.backgroundWhite,
+                    FriendProfilePage.cardBlue.withOpacity(0.3),
                   ],
                 ),
               ),
@@ -54,7 +206,7 @@ class FriendProfilePage extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: primaryBlue.withOpacity(0.3),
+                          color: FriendProfilePage.primaryBlue.withOpacity(0.3),
                           blurRadius: 15,
                           spreadRadius: 2,
                         )
@@ -62,13 +214,13 @@ class FriendProfilePage extends StatelessWidget {
                     ),
                     child: CircleAvatar(
                       radius: 60,
-                      backgroundColor: primaryBlue,
-                      backgroundImage: friend['photo_url'] != null && friend['photo_url'].isNotEmpty
-                          ? NetworkImage(friend['photo_url'])
+                      backgroundColor: FriendProfilePage.primaryBlue,
+                      backgroundImage: widget.friend['photo_url'] != null && widget.friend['photo_url'].isNotEmpty
+                          ? NetworkImage(widget.friend['photo_url'])
                           : null,
-                      child: friend['photo_url'] == null || friend['photo_url'].isEmpty
+                      child: widget.friend['photo_url'] == null || widget.friend['photo_url'].isEmpty
                           ? Text(
-                              (friend['name'] ?? friend['nickname'] ?? '?')[0].toUpperCase(),
+                              (widget.friend['name'] ?? widget.friend['nickname'] ?? '?')[0].toUpperCase(),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 40,
@@ -81,29 +233,29 @@ class FriendProfilePage extends StatelessWidget {
                   SizedBox(height: 24),
                   // 用戶名稱
                   Text(
-                    friend['name'] ?? '',
+                    widget.friend['name'] ?? '',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w600,
-                      color: textBlue,
+                      color: FriendProfilePage.textBlue,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 8),
                   // 用戶暱稱（如果有）
-                  if (friend['nickname'] != null && friend['nickname'].toString().isNotEmpty)
+                  if (widget.friend['nickname'] != null && widget.friend['nickname'].toString().isNotEmpty)
                     Container(
                       margin: EdgeInsets.symmetric(horizontal: 16),
                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
-                        color: accentOrange.withOpacity(0.2),
+                        color: FriendProfilePage.accentOrange.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        friend['nickname'],
+                        widget.friend['nickname'],
                         style: TextStyle(
                           fontSize: 16,
-                          color: accentOrange,
+                          color: FriendProfilePage.accentOrange,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -111,6 +263,33 @@ class FriendProfilePage extends StatelessWidget {
                 ],
               ),
             ),
+            
+            // 學習連續性區塊
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '學習進度',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: FriendProfilePage.textBlue,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  isLoading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            color: FriendProfilePage.primaryBlue,
+                          ),
+                        )
+                      : _buildLearningStreakCard(),
+                ],
+              ),
+            ),
+            
             // 資訊卡片區域
             Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -122,33 +301,164 @@ class FriendProfilePage extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: textBlue,
+                      color: FriendProfilePage.textBlue,
                     ),
                   ),
                   SizedBox(height: 16),
-                  if (friend['email'] != null && friend['email'].toString().isNotEmpty)
+                  if (widget.friend['email'] != null && widget.friend['email'].toString().isNotEmpty)
                     _buildProfileCard(
                       icon: Icons.email,
                       title: '電子郵件',
-                      content: friend['email'].toString(),
+                      content: widget.friend['email'].toString(),
                     ),
-                  if (friend['year_grade'] != null && friend['year_grade'].toString().isNotEmpty)
+                  if (widget.friend['year_grade'] != null && widget.friend['year_grade'].toString().isNotEmpty)
                     _buildProfileCard(
                       icon: Icons.school,
                       title: '年級',
-                      content: friend['year_grade'].toString(),
+                      content: widget.friend['year_grade'].toString(),
                     ),
-                  if (friend['introduction'] != null && friend['introduction'].toString().isNotEmpty)
+                  if (widget.friend['introduction'] != null && widget.friend['introduction'].toString().isNotEmpty)
                     _buildProfileCard(
                       icon: Icons.person,
                       title: '自我介紹',
-                      content: friend['introduction'].toString(),
+                      content: widget.friend['introduction'].toString(),
                     ),
                 ],
               ),
             ),
             // 底部留白
             SizedBox(height: 32),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _sendLearningReminder,
+        backgroundColor: FriendProfilePage.primaryBlue,
+        icon: Icon(Icons.notifications_active, color: Colors.white),
+        label: Text(
+          '提醒學習',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  // 學習連續性卡片
+  Widget _buildLearningStreakCard() {
+    final int streakDays = learningStats['streak_days'] ?? 0;
+    final int completedQuestions = learningStats['total_completed_questions'] ?? 0;
+    
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: FriendProfilePage.cardBlue,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          )
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 連續學習天數
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: FriendProfilePage.primaryBlue.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.local_fire_department,
+                        color: FriendProfilePage.accentOrange,
+                        size: 24,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      '連續學習',
+                      style: TextStyle(
+                        color: FriendProfilePage.textBlue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: FriendProfilePage.accentOrange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$streakDays 天',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: FriendProfilePage.accentOrange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            // 已完成問題數量
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: FriendProfilePage.progressGreen.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.check_circle,
+                        color: FriendProfilePage.progressGreen,
+                        size: 24,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      '已解題數',
+                      style: TextStyle(
+                        color: FriendProfilePage.textBlue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: FriendProfilePage.progressGreen.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$completedQuestions 題',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: FriendProfilePage.progressGreen,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -163,7 +473,7 @@ class FriendProfilePage extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: cardBlue,
+        color: FriendProfilePage.cardBlue,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -183,12 +493,12 @@ class FriendProfilePage extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: primaryBlue.withOpacity(0.2),
+                    color: FriendProfilePage.primaryBlue.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     icon,
-                    color: primaryBlue,
+                    color: FriendProfilePage.primaryBlue,
                     size: 24,
                   ),
                 ),
@@ -196,7 +506,7 @@ class FriendProfilePage extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    color: textBlue,
+                    color: FriendProfilePage.textBlue,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -208,13 +518,13 @@ class FriendProfilePage extends StatelessWidget {
               width: double.infinity,
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: backgroundWhite,
+                color: FriendProfilePage.backgroundWhite,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 content,
                 style: TextStyle(
-                  color: textBlue.withOpacity(0.8),
+                  color: FriendProfilePage.textBlue.withOpacity(0.8),
                   fontSize: 16,
                 ),
               ),
@@ -224,4 +534,4 @@ class FriendProfilePage extends StatelessWidget {
       ),
     );
   }
-} 
+}

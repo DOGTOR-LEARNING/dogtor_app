@@ -2493,3 +2493,12 @@ async def consume_heart(request: Request):
         connection.commit()
 
     return {"success": True, "hearts": updated_hearts}
+
+
+@app.post("/send_learning_reminder")
+async def send_learning_reminder(request: Request):
+    data = await request.json()
+    user_id = data.get("user_id")
+    if not user_id:
+        return {"success": False, "message": "Missing user_id"}
+## 發送學習提醒 還沒寫完～～～～
