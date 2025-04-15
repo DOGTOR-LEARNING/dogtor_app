@@ -299,52 +299,6 @@ async def check_user(user_id: str):
         if connection:
             connection.close()
 
-# 創建新用戶
-@app.post("/users")
-async def create_user(user: User):
-    connection = None
-    try:
-        connection = get_db_connection()
-        with connection.cursor() as cursor:
-            # 檢查用戶是否已存在
-            sql = "SELECT * FROM users WHERE user_id = %s"
-            cursor.execute(sql, (user.user_id,))
-            existing_user = cursor.fetchone()
-            
-            if existing_user:
-                # 用戶已存在，檢查並初始化知識點分數
-                await initialize_user_knowledge_scores(user.user_id, connection)
-                return {"message": "User already exists", "user": existing_user}
-            
-            # 創建新用戶
-            sql = """
-            INSERT INTO users (user_id, email, name, photo_url, created_at)
-            VALUES (%s, %s, %s, %s, %s)
-            """
-            cursor.execute(sql, (
-                user.user_id,
-                user.email,
-                user.name,
-                user.photo_url,
-                user.created_at or datetime.now().isoformat()
-            ))
-            connection.commit()
-            
-            # 獲取創建的用戶
-            sql = "SELECT * FROM users WHERE user_id = %s"
-            cursor.execute(sql, (user.user_id,))
-            new_user = cursor.fetchone()
-            
-            # 初始化知識點分數
-            await initialize_user_knowledge_scores(user.user_id, connection)
-            
-            return {"message": "User created successfully", "user": new_user}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-    finally:
-        if connection:
-            connection.close()
-
 # 初始化用戶知識點分數
 async def initialize_user_knowledge_scores(user_id: str, connection):
     try:
@@ -1017,7 +971,7 @@ async def complete_level(request: Request):
                 if not knowledge_points:
                     return {"success": True, "message": "關卡完成記錄已新增，但該章節沒有知識點"}
                 
-                knowledge_ids = [kp['id'] for kp in knowledge_points]
+                knowledge_ids = [kp['id'] for kp['id'] in knowledge_points]
                 
                 # 更新這些知識點的分數
                 updated_count = 0
@@ -2845,116 +2799,39 @@ async def generate_learning_suggestions(request: Request):
         if not user_id or not prompt:
             return {"success": False, "message": "缺少必要參數"}
         
+        # 增強提示以獲取具體知識點名稱
+        enhanced_prompt = f"""
+{prompt}
+
+請特別注意：
+1. 回傳格式必須是嚴格的JSON格式
+2. 請在sections中提供具體的章節或知識點名稱，而不是一般性建議
+3. "priority"部分列出2-3個最應該優先學習的具體知識點或科目名稱
+4. "review"部分列出2-3個需要複習的具體知識點或科目名稱
+5. "improve"部分列出2-3個可以提升的具體知識點或科目名稱
+6. 不要使用通用的描述，而是使用具體名稱，例如"化學中的氧化還原反應"，"物理中的牛頓第二定律"等
+"""
+        
+        # 嘗試使用 AI 服務
+        response_text = ""
+        # 嘗試使用 Vertex AI (Gemini)
         try:
-            # 初始化 Vertex AI
             from vertexai.generative_models import GenerativeModel
             import vertexai
-
+            
             # 初始化 VertexAI
             vertexai.init(project="dogtor-454402", location="us-central1")
             
             # 創建模型實例
             model = GenerativeModel("gemini-1.5-flash")
             
-            # 生成回應，直接使用前端的prompt
-            response = model.generate_content(prompt)
-            
-            # 解析回應
+            # 生成回應
+            response = model.generate_content(enhanced_prompt)
             response_text = response.text.strip()
             
-            # 嘗試解析JSON格式的回應
-            try:
-                # 解析JSON格式回應
-                parsed_data = json.loads(response_text)
-                
-                suggestions = parsed_data.get('suggestions', [])
-                sections = parsed_data.get('sections', {})
-                
-                # 確保至少有5個建議
-                default_suggestions = [
-                    "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
-                    "重點關注弱點科目，制定專項練習計劃。",
-                    "使用思維導圖整理知識點，加深理解。",
-                    "定期複習已學內容，鞏固記憶。",
-                    "嘗試不同的學習方法，找到最適合自己的。"
-                ]
-                
-                while len(suggestions) < 5:
-                    for suggestion in default_suggestions:
-                        if suggestion not in suggestions:
-                            suggestions.append(suggestion)
-                            break
-                        if len(suggestions) >= 5:
-                            break
-                
-                # 確保有必要的sections
-                default_sections = {
-                    "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
-                    "review": "需要複習最近學習過的內容，鞏固記憶。",
-                    "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
-                }
-                
-                for key, default_value in default_sections.items():
-                    if key not in sections or not sections[key]:
-                        sections[key] = default_value
-                
-                return {
-                    "success": True, 
-                    "suggestions": suggestions[:5],
-                    "sections": sections
-                }
-                
-            except json.JSONDecodeError:
-                # 如果不是JSON格式，使用老方法解析文本
-                suggestions = []
-                for line in response_text.split('\n'):
-                    line = line.strip()
-                    # 忽略空行和開頭是數字或符號的行（通常是編號）
-                    if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
-                        suggestions.append(line)
-                    # 如果是以編號或符號開頭，去掉前缀
-                    elif line and (line.startswith('-') or line.startswith('*')):
-                        clean_line = line[1:].strip()
-                        if clean_line:
-                            suggestions.append(clean_line)
-                    elif line and line[0].isdigit() and line[1:].startswith('.'):
-                        clean_line = line[2:].strip()
-                        if clean_line:
-                            suggestions.append(clean_line)
-                
-                # 如果解析出的建議少於5條，補充默認建議
-                default_suggestions = [
-                    "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
-                    "重點關注弱點科目，制定專項練習計劃。",
-                    "使用思維導圖整理知識點，加深理解。",
-                    "定期複習已學內容，鞏固記憶。",
-                    "嘗試不同的學習方法，找到最適合自己的。"
-                ]
-                
-                while len(suggestions) < 5:
-                    for suggestion in default_suggestions:
-                        if suggestion not in suggestions:
-                            suggestions.append(suggestion)
-                            break
-                        if len(suggestions) >= 5:
-                            break
-                
-                # 只返回前5條建議和默認的sections
-                default_sections = {
-                    "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
-                    "review": "需要複習最近學習過的內容，鞏固記憶。",
-                    "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
-                }
-                
-                return {
-                    "success": True, 
-                    "suggestions": suggestions[:5],
-                    "sections": default_sections
-                }
-            
-        except ImportError:
+            print(f"Gemini原始回應: {response_text[:100]}...")
+        except ImportError as ie:
             # 如果Vertex AI導入失敗，使用OpenAI的API
-            # 創建一個備選方案
             from openai import OpenAI
             import os
             
@@ -2965,101 +2842,225 @@ async def generate_learning_suggestions(request: Request):
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "你是一個專業的學習顧問，提供針對性的學習建議。"},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": enhanced_prompt}
                 ],
                 max_tokens=500
             )
             
-            # 解析回應
             response_text = response.choices[0].message.content.strip()
+            print(f"OpenAI原始回應: {response_text[:100]}...")
+        except Exception as e:
+            print(f"AI服務調用失敗: {e}")
+            response_text = ""
+        
+        # 通用的回應處理邏輯
+        # 清理回應文本，嘗試提取有效的 JSON 部分
+        cleaned_text = response_text
+        
+        # 移除可能的 JSON 文本說明，尋找第一個 '{' 和最後一個 '}'
+        json_start = cleaned_text.find('{')
+        json_end = cleaned_text.rfind('}')
+        
+        if json_start >= 0 and json_end > json_start:
+            cleaned_text = cleaned_text[json_start:json_end+1]
+            print(f"清理後的 JSON: {cleaned_text[:100]}...")
+        
+        # 嘗試解析JSON格式的回應
+        try:
+            # 解析JSON格式回應
+            parsed_data = json.loads(cleaned_text)
             
-            # 嘗試解析JSON格式的回應
-            try:
-                parsed_data = json.loads(response_text)
+            suggestions = parsed_data.get('suggestions', [])
+            sections = parsed_data.get('sections', {})
+            
+            # 清理建議內容，移除多餘的引號和不必要的格式
+            cleaned_suggestions = []
+            for suggestion in suggestions:
+                # 確保建議是字符串類型
+                if not isinstance(suggestion, str):
+                    continue
+                        
+                # 移除可能的多餘引號
+                suggestion = suggestion.strip()
+                if suggestion.startswith('"') and suggestion.endswith('"'):
+                    suggestion = suggestion[1:-1]
                 
-                suggestions = parsed_data.get('suggestions', [])
-                sections = parsed_data.get('sections', {})
+                # 移除多餘的逗號、分號等
+                if suggestion.endswith(',') or suggestion.endswith(';'):
+                    suggestion = suggestion[:-1]
                 
-                # 確保至少有5個建議
-                default_suggestions = [
-                    "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
-                    "重點關注弱點科目，制定專項練習計劃。",
-                    "使用思維導圖整理知識點，加深理解。",
-                    "定期複習已學內容，鞏固記憶。",
-                    "嘗試不同的學習方法，找到最適合自己的。"
-                ]
+                if suggestion:
+                    cleaned_suggestions.append(suggestion)
+            
+            suggestions = cleaned_suggestions
+            
+            # 確保至少有5個建議
+            default_suggestions = [
+                "每天堅持學習，建立穩定的學習習慣。",
+                "重點關注弱點科目，制定專項練習計劃。",
+                "使用思維導圖整理知識點，加深理解。",
+                "定期複習已學內容，鞏固記憶。",
+                "嘗試不同的學習方法，找到最適合自己的。"
+            ]
+            
+            while len(suggestions) < 5:
+                for suggestion in default_suggestions:
+                    if suggestion not in suggestions:
+                        suggestions.append(suggestion)
+                        break
+                    if len(suggestions) >= 5:
+                        break
+            
+            # 確保有必要的sections且內容具體
+            default_sections = {
+                "priority": "需要先確定該學生的弱點知識點後，才能給出具體的優先學習建議",
+                "review": "需要查看該學生最近的學習記錄，才能給出具體的複習建議",
+                "improve": "需要分析該學生的強項，才能給出具體的提升建議"
+            }
+            
+            # 檢查sections是否包含具體的內容
+            for key, default_value in default_sections.items():
+                # 僅當sections缺少某個關鍵字或內容為空時才使用默認值
+                if key not in sections:
+                    sections[key] = default_value
+                # 檢查sections的內容是否過於簡短或通用
+                elif len(sections[key]) < 10 or "具體" in sections[key] or "建議" in sections[key]:
+                    # 如果內容過於簡短或包含非具體的描述詞，則提示需要更具體
+                    sections[key] = default_value
+            
+            return {
+                "success": True, 
+                "suggestions": suggestions[:5],
+                "sections": sections
+            }
+            
+        except json.JSONDecodeError:
+            # 如果不是JSON格式，使用文本處理
+            print(f"JSON解析失敗，嘗試文本處理...")
+            
+            # 檢查是否包含類似 ```json 這樣的代碼塊
+            json_code_block_start = response_text.find("```json")
+            json_code_block_end = response_text.rfind("```")
+            
+            if json_code_block_start >= 0 and json_code_block_end > json_code_block_start:
+                # 提取 ```json 和 ``` 之間的內容
+                json_block = response_text[json_code_block_start + 7:json_code_block_end].strip()
+                try:
+                    parsed_data = json.loads(json_block)
+                    
+                    suggestions = parsed_data.get('suggestions', [])
+                    sections = parsed_data.get('sections', {})
+                    
+                    # 清理建議內容
+                    cleaned_suggestions = []
+                    for suggestion in suggestions:
+                        if not isinstance(suggestion, str):
+                            continue
+                        suggestion = suggestion.strip()
+                        if suggestion.startswith('"') and suggestion.endswith('"'):
+                            suggestion = suggestion[1:-1]
+                        if suggestion.endswith(',') or suggestion.endswith(';'):
+                            suggestion = suggestion[:-1]
+                        if suggestion:
+                            cleaned_suggestions.append(suggestion)
+                    
+                    suggestions = cleaned_suggestions
+                    
+                    # 確保至少有5個建議
+                    default_suggestions = [
+                        "每天堅持學習，建立穩定的學習習慣。",
+                        "重點關注弱點科目，制定專項練習計劃。",
+                        "使用思維導圖整理知識點，加深理解。",
+                        "定期複習已學內容，鞏固記憶。",
+                        "嘗試不同的學習方法，找到最適合自己的。"
+                    ]
+                    
+                    while len(suggestions) < 5:
+                        for suggestion in default_suggestions:
+                            if suggestion not in suggestions:
+                                suggestions.append(suggestion)
+                                break
+                            if len(suggestions) >= 5:
+                                break
+                    
+                    # 確保有必要的sections且內容具體
+                    default_sections = {
+                        "priority": "需要先確定該學生的弱點知識點後，才能給出具體的優先學習建議",
+                        "review": "需要查看該學生最近的學習記錄，才能給出具體的複習建議",
+                        "improve": "需要分析該學生的強項，才能給出具體的提升建議"
+                    }
+                    
+                    # 檢查sections是否包含具體的內容
+                    for key, default_value in default_sections.items():
+                        # 僅當sections缺少某個關鍵字或內容為空時才使用默認值
+                        if key not in sections:
+                            sections[key] = default_value
+                        # 檢查sections的內容是否過於簡短或通用
+                        elif len(sections[key]) < 10 or "具體" in sections[key] or "建議" in sections[key]:
+                            # 如果內容過於簡短或包含非具體的描述詞，則提示需要更具體
+                            sections[key] = default_value
+                    
+                    return {
+                        "success": True, 
+                        "suggestions": suggestions[:5],
+                        "sections": sections
+                    }
+                except json.JSONDecodeError:
+                    # 如果代碼塊內容也不是有效JSON，繼續使用正常的文本處理
+                    pass
+            
+            # 收集一般文本建議
+            suggestions = []
+            for line in response_text.split('\n'):
+                line = line.strip()
+                # 忽略空行、代碼塊標記和開頭是JSON語法的行
+                if not line or line == '```' or line == '```json' or line.startswith('{') or line.startswith('}'):
+                    continue
                 
-                while len(suggestions) < 5:
-                    for suggestion in default_suggestions:
-                        if suggestion not in suggestions:
-                            suggestions.append(suggestion)
-                            break
-                        if len(suggestions) >= 5:
-                            break
-                
-                # 確保有必要的sections
-                default_sections = {
-                    "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
-                    "review": "需要複習最近學習過的內容，鞏固記憶。",
-                    "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
-                }
-                
-                for key, default_value in default_sections.items():
-                    if key not in sections or not sections[key]:
-                        sections[key] = default_value
-                
-                return {
-                    "success": True, 
-                    "suggestions": suggestions[:5],
-                    "sections": sections
-                }
-                
-            except json.JSONDecodeError:
-                # 如果不是JSON格式，使用老方法解析文本
-                suggestions = []
-                for line in response_text.split('\n'):
-                    line = line.strip()
-                    if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
+                # 忽略開頭是數字或符號的行（通常是編號）但提取其內容
+                if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
+                    if len(line) > 10:  # 確保這是一條有實質內容的建議
                         suggestions.append(line)
-                    elif line and (line.startswith('-') or line.startswith('*')):
-                        clean_line = line[1:].strip()
-                        if clean_line:
-                            suggestions.append(clean_line)
-                    elif line and line[0].isdigit() and line[1:].startswith('.'):
-                        clean_line = line[2:].strip()
-                        if clean_line:
-                            suggestions.append(clean_line)
-                
-                # 使用默認建議補充
-                default_suggestions = [
-                    "每天堅持學習至少30分鐘，建立穩定的學習習慣。",
-                    "重點關注弱點科目，制定專項練習計劃。",
-                    "使用思維導圖整理知識點，加深理解。",
-                    "定期複習已學內容，鞏固記憶。",
-                    "嘗試不同的學習方法，找到最適合自己的。"
-                ]
-                
-                while len(suggestions) < 5:
-                    for suggestion in default_suggestions:
-                        if suggestion not in suggestions:
-                            suggestions.append(suggestion)
-                            break
-                        if len(suggestions) >= 5:
-                            break
-                
-                # 只返回前5條建議和默認的sections
-                default_sections = {
-                    "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
-                    "review": "需要複習最近學習過的內容，鞏固記憶。", 
-                    "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
-                }
-                
-                return {
-                    "success": True, 
-                    "suggestions": suggestions[:5],
-                    "sections": default_sections
-                }
+                # 如果是以編號或符號開頭，去掉前缀
+                elif line and (line.startswith('-') or line.startswith('*')):
+                    clean_line = line[1:].strip()
+                    if clean_line and len(clean_line) > 10:  # 確保提取有意義的建議
+                        suggestions.append(clean_line)
+                elif line and line[0].isdigit() and line[1:].startswith('.'):
+                    clean_line = line[2:].strip()
+                    if clean_line and len(clean_line) > 10:
+                        suggestions.append(clean_line)
             
+            # 如果解析出的建議少於5條，補充默認建議
+            default_suggestions = [
+                "每天堅持學習，建立穩定的學習習慣。",
+                "重點關注弱點科目，制定專項練習計劃。",
+                "使用思維導圖整理知識點，加深理解。",
+                "定期複習已學內容，鞏固記憶。",
+                "嘗試不同的學習方法，找到最適合自己的。"
+            ]
+            
+            while len(suggestions) < 5:
+                for suggestion in default_suggestions:
+                    if suggestion not in suggestions:
+                        suggestions.append(suggestion)
+                        break
+                    if len(suggestions) >= 5:
+                        break
+            
+            # 只返回前5條建議和默認的sections
+            default_sections = {
+                "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
+                "review": "需要複習最近學習過的內容，鞏固記憶。", 
+                "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
+            }
+            
+            return {
+                "success": True, 
+                "suggestions": suggestions[:5],
+                "sections": default_sections
+            }
+        
     except Exception as e:
         print(f"生成學習建議時出錯: {e}")
         import traceback
