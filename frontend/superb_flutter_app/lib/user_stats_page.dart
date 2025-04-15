@@ -847,48 +847,128 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               ),
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: secondaryColor.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: List.generate(7, (index) {
-                  final bool isActive = index < _streak;
-                  return Expanded(
-                    child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 4),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: isActive ? accentColor : Colors.white24,
-                              shape: BoxShape.circle,
-                            ),
-                            child: isActive 
-                              ? Icon(Icons.check, color: Colors.white, size: 16)
-                              : null,
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            ['一', '二', '三', '四', '五', '六', '日'][index],
-                            style: TextStyle(
-                              color: isActive ? Colors.white : Colors.white60,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
+            // 使用友好檔案頁面風格的近7天學習記錄
+            _buildPast7DaysLearningRecord(),
           ],
         ),
+      ),
+    );
+  }
+
+  // 添加新方法：顯示過去7天學習記錄，使用圓形風格
+  Widget _buildPast7DaysLearningRecord() {
+    // 獲取過去7天日期
+    final now = DateTime.now();
+    final pastDays = List.generate(7, (index) => 
+      DateTime(now.year, now.month, now.day - (6 - index)));
+    
+    // 星期幾的顯示文字
+    final weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
+    
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: secondaryColor.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          // 標題
+          Text(
+            '近7天學習記錄',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 16),
+          // 日期圓點
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: pastDays.map((date) {
+              final isToday = date.year == now.year && 
+                             date.month == now.month && 
+                             date.day == now.day;
+              
+              // 檢查該日期是否有學習記錄
+              // 使用 _weeklyStats 數據判斷是否學習
+              bool hasLearned = false;
+              if (_weeklyStats.containsKey('本週')) {
+                final weekData = _weeklyStats['本週'] ?? [];
+                for (var data in weekData) {
+                  final dataDate = DateTime.parse(data['date']);
+                  if (dataDate.year == date.year && 
+                      dataDate.month == date.month && 
+                      dataDate.day == date.day && 
+                      (data['levels'] as int? ?? 0) > 0) {
+                    hasLearned = true;
+                    break;
+                  }
+                }
+              }
+              
+              // 決定顯示的顏色
+              final baseColor = hasLearned 
+                  ? accentColor
+                  : Colors.grey.shade700;
+              
+              return Column(
+                children: [
+                  // 星期幾
+                  Text(
+                    weekdayNames[date.weekday - 1],
+                    style: TextStyle(
+                      color: isToday
+                          ? Colors.white
+                          : Colors.white70,
+                      fontSize: 14,
+                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  // 圓點或日期
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: hasLearned ? baseColor : Colors.white24,
+                      border: isToday
+                          ? Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            )
+                          : null,
+                    ),
+                    child: Center(
+                      child: Text(
+                        date.day.toString(),
+                        style: TextStyle(
+                          color: hasLearned ? Colors.white : Colors.white70,
+                          fontWeight: isToday || hasLearned 
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  // 有學習記錄的顯示勾
+                  if (hasLearned)
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 16,
+                    )
+                  else
+                    SizedBox(height: 16),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
