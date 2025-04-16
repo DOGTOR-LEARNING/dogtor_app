@@ -2868,10 +2868,9 @@ async def generate_learning_suggestions(request: Request):
             system_message += "請根據學生的個人資訊和學習數據，提供最適合的學習建議。"
             
             # 生成回應
-            response = model.generate_content([
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": enhanced_prompt}
-            ])
+            response = model.generate_content(
+                system_message + "\n\n" + enhanced_prompt
+            )
             response_text = response.text.strip()
             
             print(f"Gemini原始回應: {response_text[:100]}...")
