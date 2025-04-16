@@ -21,4 +21,4 @@ ENV PORT=8080
 EXPOSE ${PORT}
 
 # 使用 uvicorn 啟動應用
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --timeout-keep-alive 75
+CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT} --timeout-keep-alive 75
