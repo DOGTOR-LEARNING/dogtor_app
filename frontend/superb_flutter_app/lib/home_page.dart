@@ -13,6 +13,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/rendering.dart';
 import 'user_stats_page.dart';  // Import the UserStatsPage
 import 'friends_page.dart';  // 引入新的好友頁面
+import 'notification_status_page.dart';  // Import the NotificationStatusPage
 
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -339,6 +340,52 @@ void _onItemTapped(int index) {
                                   ),
                                 ),
                               ),
+                              
+                              // 添加通知狀態頁面按鈕
+                              SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    PageRouteBuilder(
+                                      pageBuilder: (context, animation, secondaryAnimation) => NotificationStatusPage(),
+                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                        const begin = Offset(1.0, 0.0);
+                                        const end = Offset.zero;
+                                        const curve = Curves.easeInOut;
+                                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                        var offsetAnimation = animation.drive(tween);
+                                        return SlideTransition(
+                                          position: offsetAnimation,
+                                          child: child,
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.notifications,
+                                    color: Colors.purple.shade700,
+                                    size: 24,
+                                  ),
+                                ),
+                              ),
+                              
                               // 新增心形按鈕
                               SizedBox(height: 8),
                               GestureDetector(

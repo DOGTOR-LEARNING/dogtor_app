@@ -2509,6 +2509,21 @@ async def send_learning_reminder(request: Request):
                     if reminder_count >= 3:
                         return {"success": False, "message": "您已在24小時內提醒該好友多次，請稍後再試"}
                 
+                # 首先檢查是否有 tokens 表
+                cursor.execute("""
+                    SHOW TABLES LIKE 'user_tokens'
+                """)
+                table_exists = cursor.fetchone()
+                if not table_exists:
+                    # 記錄提醒嘗試但標記為失敗
+                    now = datetime.utcnow()
+                    cursor.execute("""
+                        INSERT INTO reminder_history (user_id, sender_id, message, sent_at, success)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (user_id, sender_id, message, now, False))
+                    connection.commit()
+                    return {"success": False, "message": "通知系統尚未設置完成，無法發送提醒"}
+                
                 # 查詢用戶的 firebase token
                 cursor.execute("""
                     SELECT firebase_token
@@ -2520,21 +2535,63 @@ async def send_learning_reminder(request: Request):
                 tokens = cursor.fetchall()
                 
                 if not tokens:
-                    return {"success": False, "message": "找不到用戶的推送通知令牌"}
+                    # 記錄找不到令牌的情況
+                    now = datetime.utcnow()
+                    cursor.execute("""
+                        INSERT INTO reminder_history (user_id, sender_id, message, sent_at, success)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (user_id, sender_id, message, now, False))
+                    connection.commit()
+                    
+                    # 檢查用戶是否存在
+                    cursor.execute("SELECT name FROM users WHERE user_id = %s", (user_id,))
+                    user_exists = cursor.fetchone()
+                    if not user_exists:
+                        return {"success": False, "message": "找不到該用戶"}
+                    else:
+                        return {"success": False, "message": "該好友尚未註冊推送通知或未登入應用程式，無法發送提醒"}
                 
                 success_count = 0
-                for token_row in tokens:
-                    token = token_row["firebase_token"]
-                    # 發送通知
-                    result = send_push_notification(
-                        token=token, 
-                        title="學習提醒", 
-                        body=message
-                    )
-                    if result != "error":
-                        success_count += 1
+                error_message = ""
                 
-                # 記錄提醒歷史
+                # 嘗試使用 messaging 直接發送
+                try:
+                    from firebase_admin import messaging
+                    
+                    for token_row in tokens:
+                        token = token_row["firebase_token"]
+                        
+                        try:
+                            # 創建消息內容
+                            message_obj = messaging.Message(
+                                notification=messaging.Notification(
+                                    title="學習提醒",
+                                    body=message,
+                                ),
+                                token=token,
+                                # 不添加發送者相關的數據，避免權限問題
+                            )
+                            
+                            # 直接發送消息
+                            response = messaging.send(message_obj)
+                            print(f"✅ 學習提醒推播成功：{token[:10]}... → {response}")
+                            success_count += 1
+                        except Exception as token_error:
+                            print(f"❌ 向令牌 {token[:10]}... 發送失敗：{token_error}")
+                            # 如果錯誤是令牌無效，可以選擇從數據庫中刪除此令牌
+                            if "InvalidRegistration" in str(token_error) or "NotRegistered" in str(token_error):
+                                print(f"🗑️ 刪除無效令牌：{token[:10]}...")
+                                cursor.execute("DELETE FROM user_tokens WHERE firebase_token = %s", (token,))
+                                connection.commit()
+                            continue
+                            
+                except Exception as push_error:
+                    error_message = str(push_error)
+                    print(f"❌ 學習提醒推播系統錯誤：{push_error}")
+                    import traceback
+                    print(traceback.format_exc())
+                
+                # 記錄提醒歷史（即使發送失敗，也記錄嘗試）
                 now = datetime.utcnow()
                 cursor.execute("""
                     INSERT INTO reminder_history (user_id, sender_id, message, sent_at, success)
@@ -2546,7 +2603,7 @@ async def send_learning_reminder(request: Request):
                 if success_count > 0:
                     return {"success": True, "message": f"已成功發送提醒給用戶", "sent_count": success_count}
                 else:
-                    return {"success": False, "message": "發送通知失敗"}
+                    return {"success": False, "message": f"發送通知失敗: {error_message}" if error_message else "該好友暫時無法接收通知，請稍後再試"}
                 
         finally:
             connection.close()
@@ -3363,3 +3420,179 @@ async def create_reminder_history_table():
         return {"success": False, "message": str(e)}
     finally:
         connection.close()
+
+@app.post("/debug_push_notification")
+async def debug_push_notification(request: Request):
+    """用於調試推送通知問題的測試端點"""
+    data = await request.json()
+    user_id = data.get("user_id")
+    
+    if not user_id:
+        return {"success": False, "message": "Missing user_id"}
+        
+    try:
+        connection = get_db_connection()
+        
+        try:
+            with connection.cursor() as cursor:
+                # 查詢用戶的 firebase token
+                cursor.execute("""
+                    SELECT firebase_token
+                    FROM user_tokens
+                    WHERE user_id = %s
+                    ORDER BY last_updated DESC
+                    LIMIT 1
+                """, (user_id,))
+                
+                token_row = cursor.fetchone()
+                
+                if not token_row:
+                    return {"success": False, "message": "找不到用戶的推送通知令牌"}
+                
+                token = token_row["firebase_token"]
+                
+                # 直接使用 messaging 庫
+                try:
+                    from firebase_admin import messaging
+                    
+                    # 創建消息內容
+                    message = messaging.Message(
+                        notification=messaging.Notification(
+                            title="測試通知",
+                            body="這是一條測試通知",
+                        ),
+                        token=token,
+                    )
+                    
+                    # 發送消息
+                    response = messaging.send(message)
+                    print(f"✅ 調試推播成功：{token[:10]}... → {response}")
+                    
+                    return {
+                        "success": True, 
+                        "message": "測試通知發送成功", 
+                        "response": response,
+                        "token_prefix": token[:10]
+                    }
+                except Exception as push_error:
+                    import traceback
+                    error_trace = traceback.format_exc()
+                    print(f"❌ 調試推播失敗：{push_error}\n{error_trace}")
+                    return {
+                        "success": False, 
+                        "message": f"發送測試通知失敗: {str(push_error)}",
+                        "error_trace": error_trace
+                    }
+                
+        finally:
+            connection.close()
+            
+    except Exception as e:
+        print(f"調試推送通知時出錯: {e}")
+        import traceback
+        error_trace = traceback.format_exc()
+        print(error_trace)
+        return {"success": False, "message": f"調試推送通知時出錯: {str(e)}", "error_trace": error_trace}
+
+@app.post("/validate_tokens")
+async def validate_tokens(request: Request):
+    """驗證並清理無效的 Firebase 令牌"""
+    data = await request.json()
+    user_id = data.get("user_id")
+    
+    if not user_id:
+        return {"success": False, "message": "Missing user_id"}
+    
+    try:
+        connection = get_db_connection()
+        
+        try:
+            with connection.cursor() as cursor:
+                # 檢查是否有 tokens 表
+                cursor.execute("""
+                    SHOW TABLES LIKE 'user_tokens'
+                """)
+                table_exists = cursor.fetchone()
+                if not table_exists:
+                    return {"success": False, "message": "令牌表不存在"}
+                
+                # 查詢用戶的 firebase tokens
+                cursor.execute("""
+                    SELECT id, firebase_token, last_updated
+                    FROM user_tokens
+                    WHERE user_id = %s
+                    ORDER BY last_updated DESC
+                """, (user_id,))
+                
+                tokens = cursor.fetchall()
+                if not tokens:
+                    return {"success": False, "message": "找不到用戶的推送通知令牌", "tokens_count": 0}
+                
+                from firebase_admin import messaging
+                valid_tokens = []
+                invalid_tokens = []
+                
+                # 驗證每個令牌
+                for token_row in tokens:
+                    token_id = token_row["id"]
+                    token = token_row["firebase_token"]
+                    last_updated = token_row["last_updated"]
+                    
+                    try:
+                        # 嘗試發送一個空消息來驗證令牌
+                        message = messaging.Message(
+                            data={"test": "true"},  # 使用靜默推送測試有效性
+                            token=token,
+                        )
+                        
+                        # 發送測試消息
+                        try:
+                            response = messaging.send(message, dry_run=True)  # 使用 dry_run 模式測試
+                            print(f"✅ 令牌有效：{token[:10]}... → {response}")
+                            valid_tokens.append({
+                                "id": token_id,
+                                "token_prefix": token[:10],
+                                "last_updated": last_updated.strftime("%Y-%m-%d %H:%M:%S") if last_updated else None
+                            })
+                        except Exception as send_error:
+                            if "InvalidRegistration" in str(send_error) or "NotRegistered" in str(send_error):
+                                print(f"❌ 令牌無效：{token[:10]}... → {send_error}")
+                                # 刪除無效令牌
+                                cursor.execute("DELETE FROM user_tokens WHERE id = %s", (token_id,))
+                                connection.commit()
+                                invalid_tokens.append({
+                                    "id": token_id,
+                                    "token_prefix": token[:10],
+                                    "error": str(send_error)
+                                })
+                            else:
+                                # 其他錯誤，可能是連接問題等
+                                print(f"⚠️ 令牌驗證出錯：{token[:10]}... → {send_error}")
+                                valid_tokens.append({
+                                    "id": token_id,
+                                    "token_prefix": token[:10],
+                                    "last_updated": last_updated.strftime("%Y-%m-%d %H:%M:%S") if last_updated else None,
+                                    "warning": str(send_error)
+                                })
+                    except Exception as e:
+                        print(f"⚠️ 驗證過程出錯：{e}")
+                        continue
+                
+                return {
+                    "success": True,
+                    "message": "令牌驗證完成",
+                    "valid_tokens_count": len(valid_tokens),
+                    "invalid_tokens_count": len(invalid_tokens),
+                    "valid_tokens": valid_tokens,
+                    "invalid_tokens": invalid_tokens
+                }
+                
+        finally:
+            connection.close()
+            
+    except Exception as e:
+        print(f"驗證令牌時出錯: {e}")
+        import traceback
+        error_trace = traceback.format_exc()
+        print(error_trace)
+        return {"success": False, "message": f"驗證令牌時出錯: {str(e)}", "error_trace": error_trace}

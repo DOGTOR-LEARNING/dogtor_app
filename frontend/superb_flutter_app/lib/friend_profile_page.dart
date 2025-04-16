@@ -198,9 +198,10 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
         }),
       );
 
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        
+      final jsonData = json.decode(response.body);
+      print('學習提醒響應: $jsonData');
+      
+      if (response.statusCode == 200 && jsonData['success'] == true) {
         // 顯示成功提示
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -213,15 +214,25 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
           ),
         );
       } else {
-        final jsonData = json.decode(response.body);
-        throw Exception(jsonData['message'] ?? '無法發送提醒通知');
+        // 後端返回錯誤但狀態碼是200
+        final errorMessage = jsonData['message'] ?? '無法發送提醒通知';
+        
+        // 如果是權限或未註冊的問題，顯示特殊處理
+        if (errorMessage.contains('尚未註冊推送通知') || 
+            errorMessage.contains('無法接收通知')) {
+          _showNotificationPermissionDialog(errorMessage);
+        } else {
+          throw Exception(errorMessage);
+        }
       }
     } catch (e) {
       print('發送學習提醒出錯: $e');
       // 顯示錯誤提示
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('無法發送學習提醒，請稍後再試'),
+          content: Text(e.toString().contains('Exception:') 
+              ? e.toString().split('Exception:')[1].trim() 
+              : '無法發送學習提醒，請稍後再試'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -234,6 +245,49 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
         isSendingNotification = false;
       });
     }
+  }
+  
+  // 顯示通知權限對話框
+  void _showNotificationPermissionDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('無法發送提醒'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message),
+            SizedBox(height: 16),
+            Text(
+              '可能的原因：',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text('• 您的好友尚未登入應用程式'),
+            Text('• 您的好友未允許推送通知權限'),
+            Text('• 您的好友長時間未使用應用程式'),
+            SizedBox(height: 16),
+            Text(
+              '您可以透過其他方式（例如訊息或電話）提醒他們。',
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Colors.grey[700],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('我知道了'),
+            style: TextButton.styleFrom(
+              foregroundColor: FriendProfilePage.primaryBlue,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
