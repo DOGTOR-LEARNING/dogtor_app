@@ -22,7 +22,8 @@ import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
-
+import 'notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -38,14 +39,16 @@ Future<void> main() async {
   );
 
   // 初始化 Hive
+  // 這樣能載入之前的錯題？
   await Hive.initFlutter();
   await Hive.openBox('questionsBox');
 
   final dir = await getApplicationDocumentsDirectory();
   print("Hive 資料會儲存在這裡：${dir.path}");
 
-
   
+  //await NotificationService.init(); // ← 在這裡初始化推播，包含 token 取得與上傳邏輯
+
   runApp(MyApp());
 }
 

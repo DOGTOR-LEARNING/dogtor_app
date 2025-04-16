@@ -37,6 +37,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _loadUserPhoto();  // 在初始化時加載用戶頭像
     _loadUserHeart();
+    
   }
 
   @override
