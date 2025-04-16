@@ -17,6 +17,7 @@ from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 from pytz import timezone
 from firebase_push import send_push_notification
+import json
 
 app = FastAPI()
 
@@ -294,52 +295,6 @@ async def check_user(user_id: str):
         print(f"檢查用戶時出錯: {str(e)}")
         import traceback
         print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-    finally:
-        if connection:
-            connection.close()
-
-# 創建新用戶
-@app.post("/users")
-async def create_user(user: User):
-    connection = None
-    try:
-        connection = get_db_connection()
-        with connection.cursor() as cursor:
-            # 檢查用戶是否已存在
-            sql = "SELECT * FROM users WHERE user_id = %s"
-            cursor.execute(sql, (user.user_id,))
-            existing_user = cursor.fetchone()
-            
-            if existing_user:
-                # 用戶已存在，檢查並初始化知識點分數
-                await initialize_user_knowledge_scores(user.user_id, connection)
-                return {"message": "User already exists", "user": existing_user}
-            
-            # 創建新用戶
-            sql = """
-            INSERT INTO users (user_id, email, name, photo_url, created_at)
-            VALUES (%s, %s, %s, %s, %s)
-            """
-            cursor.execute(sql, (
-                user.user_id,
-                user.email,
-                user.name,
-                user.photo_url,
-                user.created_at or datetime.now().isoformat()
-            ))
-            connection.commit()
-            
-            # 獲取創建的用戶
-            sql = "SELECT * FROM users WHERE user_id = %s"
-            cursor.execute(sql, (user.user_id,))
-            new_user = cursor.fetchone()
-            
-            # 初始化知識點分數
-            await initialize_user_knowledge_scores(user.user_id, connection)
-            
-            return {"message": "User created successfully", "user": new_user}
-    except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     finally:
         if connection:
@@ -1017,7 +972,7 @@ async def complete_level(request: Request):
                 if not knowledge_points:
                     return {"success": True, "message": "關卡完成記錄已新增，但該章節沒有知識點"}
                 
-                knowledge_ids = [kp['id'] for kp in knowledge_points]
+                knowledge_ids = [kp['id'] for kp['id'] in knowledge_points]
                 
                 # 更新這些知識點的分數
                 updated_count = 0
@@ -2618,6 +2573,500 @@ async def get_learning_days(user_id: str):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": f"獲取用戶學習日期記錄時出錯: {str(e)}"}
+
+@app.post("/get_monthly_subject_progress")
+async def get_monthly_subject_progress(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        
+        print(f"收到獲取用戶本月科目進度請求: user_id={user_id}")
+        
+        if not user_id:
+            print(f"錯誤: 缺少用戶 ID")
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取當前月份的開始和結束日期
+                from datetime import datetime, timedelta
+                today = datetime.now().date()
+                month_start = datetime(today.year, today.month, 1).date()
+                
+                # 計算當前月份的最後一天
+                if today.month == 12:
+                    next_month = datetime(today.year + 1, 1, 1).date()
+                else:
+                    next_month = datetime(today.year, today.month + 1, 1).date()
+                month_end = next_month - timedelta(days=1)
+                
+                # 轉換為字符串格式
+                month_start_str = month_start.strftime('%Y-%m-%d 00:00:00')
+                month_end_str = month_end.strftime('%Y-%m-%d 23:59:59')
+                
+                print(f"查詢時間範圍: {month_start_str} 到 {month_end_str}")
+                
+                # 獲取本月各科目完成的關卡數量
+                cursor.execute("""
+                SELECT cl.subject, COUNT(*) as level_count
+                FROM user_level ul
+                JOIN level_info li ON ul.level_id = li.id
+                JOIN chapter_list cl ON li.chapter_id = cl.id
+                WHERE ul.user_id = %s AND ul.answered_at BETWEEN %s AND %s
+                GROUP BY cl.subject
+                ORDER BY cl.subject
+                """, (user_id, month_start_str, month_end_str))
+                
+                monthly_subjects = cursor.fetchall()
+                print(f"找到 {len(monthly_subjects)} 個科目的本月進度")
+                
+                # 獲取所有可能的科目，以便包含尚未完成的科目
+                cursor.execute("""
+                SELECT DISTINCT subject
+                FROM chapter_list
+                ORDER BY subject
+                """)
+                
+                all_subjects = cursor.fetchall()
+                
+                # 將查詢結果轉換為字典格式以便快速查找
+                monthly_dict = {subject['subject']: subject for subject in monthly_subjects}
+                
+                # 確保所有科目都有進度數據，即使沒有完成任何關卡
+                result_subjects = []
+                for subject in all_subjects:
+                    subject_name = subject['subject']
+                    if subject_name in monthly_dict:
+                        result_subjects.append(monthly_dict[subject_name])
+                    else:
+                        result_subjects.append({
+                            'subject': subject_name,
+                            'level_count': 0
+                        })
+                
+                return {
+                    "success": True,
+                    "monthly_subjects": result_subjects,
+                    "month_info": {
+                        "start_date": month_start.strftime('%Y-%m-%d'),
+                        "end_date": month_end.strftime('%Y-%m-%d'),
+                        "days_total": month_end.day,
+                        "days_passed": today.day,
+                        "days_remaining": month_end.day - today.day,
+                    }
+                }
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"獲取用戶本月科目進度時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取用戶本月科目進度時出錯: {str(e)}"}
+
+@app.post("/get_subject_abilities")
+async def get_subject_abilities(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        
+        print(f"收到獲取用戶科目能力統計請求: user_id={user_id}")
+        
+        if not user_id:
+            print(f"錯誤: 缺少用戶 ID")
+            return {"success": False, "message": "缺少用戶 ID"}
+        
+        connection = get_db_connection()
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取按科目分組的答題數據
+                cursor.execute("""
+                SELECT 
+                    cl.subject,
+                    SUM(uqs.total_attempts) as total_attempts,
+                    SUM(uqs.correct_attempts) as correct_attempts
+                FROM 
+                    user_question_stats uqs
+                JOIN 
+                    questions q ON uqs.question_id = q.id
+                JOIN 
+                    knowledge_points kp ON q.knowledge_id = kp.id
+                JOIN 
+                    chapter_list cl ON kp.chapter_id = cl.id
+                WHERE 
+                    uqs.user_id = %s
+                GROUP BY 
+                    cl.subject
+                ORDER BY 
+                    cl.subject
+                """, (user_id,))
+                
+                subject_abilities = cursor.fetchall()
+                print(f"找到 {len(subject_abilities)} 個科目的能力統計")
+                
+                # 獲取所有可能的科目，以便包含尚未答題的科目
+                cursor.execute("""
+                SELECT DISTINCT subject
+                FROM chapter_list
+                ORDER BY subject
+                """)
+                
+                all_subjects = cursor.fetchall()
+                
+                # 將查詢結果轉換為字典格式以便快速查找
+                abilities_dict = {item['subject']: item for item in subject_abilities}
+                
+                # 確保所有科目都有數據，即使沒有答題記錄
+                result_abilities = []
+                for subject in all_subjects:
+                    subject_name = subject['subject']
+                    if subject_name in abilities_dict:
+                        # 計算能力分數
+                        ability = abilities_dict[subject_name]
+                        total_attempts = ability['total_attempts'] or 0
+                        correct_attempts = ability['correct_attempts'] or 0
+                        
+                        # 使用新的計算公式: 分數=((-(1/0.01)^x)+1) * (該科目的correct_attempt/x), x=該科目的total_attempt
+                        ability_score = 0
+                        if total_attempts > 0:
+                            try:
+                                # 確保 x 不為零且不會導致過大的計算結果
+                                x = min(max(total_attempts, 1), 150)  # 限制在 1-150 範圍內，防止計算溢出
+                                accuracy = correct_attempts / total_attempts
+                                experience_factor = 1 - (1 / (0.01 ** x))  # 這可能會計算溢出，所以限制 x 範圍
+                                ability_score = experience_factor * accuracy * 10
+                            except OverflowError:
+                                # 如果計算溢出，使用簡化的公式
+                                accuracy = correct_attempts / total_attempts
+                                ability_score = accuracy * 10
+                        
+                        # 限制分數在 0-10 範圍內
+                        ability_score = min(max(ability_score, 0), 10)
+                        
+                        result_abilities.append({
+                            'subject': subject_name,
+                            'total_attempts': total_attempts,
+                            'correct_attempts': correct_attempts,
+                            'ability_score': round(ability_score, 2)
+                        })
+                    else:
+                        result_abilities.append({
+                            'subject': subject_name,
+                            'total_attempts': 0,
+                            'correct_attempts': 0,
+                            'ability_score': 0
+                        })
+                
+                # 按能力分數排序（從高到低）
+                result_abilities.sort(key=lambda x: x['ability_score'], reverse=True)
+                
+                return {
+                    "success": True,
+                    "subject_abilities": result_abilities
+                }
+        
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"獲取用戶科目能力統計時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"獲取用戶科目能力統計時出錯: {str(e)}"}
+
+@app.post("/generate_learning_suggestions")
+async def generate_learning_suggestions(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        prompt = data.get('prompt')
+        
+        if not user_id or not prompt:
+            return {"success": False, "message": "缺少必要參數"}
+        
+        # 增強提示以獲取具體知識點名稱
+        enhanced_prompt = f"""
+{prompt}
+
+請特別注意：
+1. 回傳格式必須是嚴格的JSON格式
+2. 請在sections中提供具體的章節或知識點名稱，而不是一般性建議
+3. "priority"部分列出2-3個最應該優先學習的具體知識點或科目名稱
+4. "review"部分列出2-3個需要複習的具體知識點或科目名稱
+5. "improve"部分列出2-3個可以提升的具體知識點或科目名稱
+6. 不要使用通用的描述，而是使用具體名稱，例如"化學中的氧化還原反應"，"物理中的牛頓第二定律"等
+"""
+        
+        # 嘗試使用 AI 服務
+        response_text = ""
+        # 嘗試使用 Vertex AI (Gemini)
+        try:
+            from vertexai.generative_models import GenerativeModel
+            import vertexai
+            
+            # 初始化 VertexAI
+            vertexai.init(project="dogtor-454402", location="us-central1")
+            
+            # 創建模型實例
+            model = GenerativeModel("gemini-1.5-flash")
+            
+            # 生成回應
+            response = model.generate_content(enhanced_prompt)
+            response_text = response.text.strip()
+            
+            print(f"Gemini原始回應: {response_text[:100]}...")
+        except ImportError as ie:
+            # 如果Vertex AI導入失敗，使用OpenAI的API
+            from openai import OpenAI
+            import os
+            
+            # 使用OpenAI API
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "你是一個專業的學習顧問，提供針對性的學習建議。"},
+                    {"role": "user", "content": enhanced_prompt}
+                ],
+                max_tokens=500
+            )
+            
+            response_text = response.choices[0].message.content.strip()
+            print(f"OpenAI原始回應: {response_text[:100]}...")
+        except Exception as e:
+            print(f"AI服務調用失敗: {e}")
+            response_text = ""
+        
+        # 通用的回應處理邏輯
+        # 清理回應文本，嘗試提取有效的 JSON 部分
+        cleaned_text = response_text
+        
+        # 移除可能的 JSON 文本說明，尋找第一個 '{' 和最後一個 '}'
+        json_start = cleaned_text.find('{')
+        json_end = cleaned_text.rfind('}')
+        
+        if json_start >= 0 and json_end > json_start:
+            cleaned_text = cleaned_text[json_start:json_end+1]
+            print(f"清理後的 JSON: {cleaned_text[:100]}...")
+        
+        # 嘗試解析JSON格式的回應
+        try:
+            # 解析JSON格式回應
+            parsed_data = json.loads(cleaned_text)
+            
+            suggestions = parsed_data.get('suggestions', [])
+            sections = parsed_data.get('sections', {})
+            
+            # 清理建議內容，移除多餘的引號和不必要的格式
+            cleaned_suggestions = []
+            for suggestion in suggestions:
+                # 確保建議是字符串類型
+                if not isinstance(suggestion, str):
+                    continue
+                        
+                # 移除可能的多餘引號
+                suggestion = suggestion.strip()
+                if suggestion.startswith('"') and suggestion.endswith('"'):
+                    suggestion = suggestion[1:-1]
+                
+                # 移除多餘的逗號、分號等
+                if suggestion.endswith(',') or suggestion.endswith(';'):
+                    suggestion = suggestion[:-1]
+                
+                if suggestion:
+                    cleaned_suggestions.append(suggestion)
+            
+            suggestions = cleaned_suggestions
+            
+            # 確保至少有5個建議
+            default_suggestions = [
+                "每天堅持學習，建立穩定的學習習慣。",
+                "重點關注弱點科目，制定專項練習計劃。",
+                "使用思維導圖整理知識點，加深理解。",
+                "定期複習已學內容，鞏固記憶。",
+                "嘗試不同的學習方法，找到最適合自己的。"
+            ]
+            
+            while len(suggestions) < 5:
+                for suggestion in default_suggestions:
+                    if suggestion not in suggestions:
+                        suggestions.append(suggestion)
+                        break
+                    if len(suggestions) >= 5:
+                        break
+            
+            # 確保有必要的sections且內容具體
+            default_sections = {
+                "priority": "需要先確定該學生的弱點知識點後，才能給出具體的優先學習建議",
+                "review": "需要查看該學生最近的學習記錄，才能給出具體的複習建議",
+                "improve": "需要分析該學生的強項，才能給出具體的提升建議"
+            }
+            
+            # 檢查sections是否包含具體的內容
+            for key, default_value in default_sections.items():
+                # 僅當sections缺少某個關鍵字或內容為空時才使用默認值
+                if key not in sections:
+                    sections[key] = default_value
+                # 檢查sections的內容是否過於簡短或通用
+                elif len(sections[key]) < 10 or "具體" in sections[key] or "建議" in sections[key]:
+                    # 如果內容過於簡短或包含非具體的描述詞，則提示需要更具體
+                    sections[key] = default_value
+            
+            return {
+                "success": True, 
+                "suggestions": suggestions[:5],
+                "sections": sections
+            }
+            
+        except json.JSONDecodeError:
+            # 如果不是JSON格式，使用文本處理
+            print(f"JSON解析失敗，嘗試文本處理...")
+            
+            # 檢查是否包含類似 ```json 這樣的代碼塊
+            json_code_block_start = response_text.find("```json")
+            json_code_block_end = response_text.rfind("```")
+            
+            if json_code_block_start >= 0 and json_code_block_end > json_code_block_start:
+                # 提取 ```json 和 ``` 之間的內容
+                json_block = response_text[json_code_block_start + 7:json_code_block_end].strip()
+                try:
+                    parsed_data = json.loads(json_block)
+                    
+                    suggestions = parsed_data.get('suggestions', [])
+                    sections = parsed_data.get('sections', {})
+                    
+                    # 清理建議內容
+                    cleaned_suggestions = []
+                    for suggestion in suggestions:
+                        if not isinstance(suggestion, str):
+                            continue
+                        suggestion = suggestion.strip()
+                        if suggestion.startswith('"') and suggestion.endswith('"'):
+                            suggestion = suggestion[1:-1]
+                        if suggestion.endswith(',') or suggestion.endswith(';'):
+                            suggestion = suggestion[:-1]
+                        if suggestion:
+                            cleaned_suggestions.append(suggestion)
+                    
+                    suggestions = cleaned_suggestions
+                    
+                    # 確保至少有5個建議
+                    default_suggestions = [
+                        "每天堅持學習，建立穩定的學習習慣。",
+                        "重點關注弱點科目，制定專項練習計劃。",
+                        "使用思維導圖整理知識點，加深理解。",
+                        "定期複習已學內容，鞏固記憶。",
+                        "嘗試不同的學習方法，找到最適合自己的。"
+                    ]
+                    
+                    while len(suggestions) < 5:
+                        for suggestion in default_suggestions:
+                            if suggestion not in suggestions:
+                                suggestions.append(suggestion)
+                                break
+                            if len(suggestions) >= 5:
+                                break
+                    
+                    # 確保有必要的sections且內容具體
+                    default_sections = {
+                        "priority": "需要先確定該學生的弱點知識點後，才能給出具體的優先學習建議",
+                        "review": "需要查看該學生最近的學習記錄，才能給出具體的複習建議",
+                        "improve": "需要分析該學生的強項，才能給出具體的提升建議"
+                    }
+                    
+                    # 檢查sections是否包含具體的內容
+                    for key, default_value in default_sections.items():
+                        # 僅當sections缺少某個關鍵字或內容為空時才使用默認值
+                        if key not in sections:
+                            sections[key] = default_value
+                        # 檢查sections的內容是否過於簡短或通用
+                        elif len(sections[key]) < 10 or "具體" in sections[key] or "建議" in sections[key]:
+                            # 如果內容過於簡短或包含非具體的描述詞，則提示需要更具體
+                            sections[key] = default_value
+                    
+                    return {
+                        "success": True, 
+                        "suggestions": suggestions[:5],
+                        "sections": sections
+                    }
+                except json.JSONDecodeError:
+                    # 如果代碼塊內容也不是有效JSON，繼續使用正常的文本處理
+                    pass
+            
+            # 收集一般文本建議
+            suggestions = []
+            for line in response_text.split('\n'):
+                line = line.strip()
+                # 忽略空行、代碼塊標記和開頭是JSON語法的行
+                if not line or line == '```' or line == '```json' or line.startswith('{') or line.startswith('}'):
+                    continue
+                
+                # 忽略開頭是數字或符號的行（通常是編號）但提取其內容
+                if line and not line[0].isdigit() and not line.startswith('-') and not line.startswith('*'):
+                    if len(line) > 10:  # 確保這是一條有實質內容的建議
+                        suggestions.append(line)
+                # 如果是以編號或符號開頭，去掉前缀
+                elif line and (line.startswith('-') or line.startswith('*')):
+                    clean_line = line[1:].strip()
+                    if clean_line and len(clean_line) > 10:  # 確保提取有意義的建議
+                        suggestions.append(clean_line)
+                elif line and line[0].isdigit() and line[1:].startswith('.'):
+                    clean_line = line[2:].strip()
+                    if clean_line and len(clean_line) > 10:
+                        suggestions.append(clean_line)
+            
+            # 如果解析出的建議少於5條，補充默認建議
+            default_suggestions = [
+                "每天堅持學習，建立穩定的學習習慣。",
+                "重點關注弱點科目，制定專項練習計劃。",
+                "使用思維導圖整理知識點，加深理解。",
+                "定期複習已學內容，鞏固記憶。",
+                "嘗試不同的學習方法，找到最適合自己的。"
+            ]
+            
+            while len(suggestions) < 5:
+                for suggestion in default_suggestions:
+                    if suggestion not in suggestions:
+                        suggestions.append(suggestion)
+                        break
+                    if len(suggestions) >= 5:
+                        break
+            
+            # 只返回前5條建議和默認的sections
+            default_sections = {
+                "priority": "優先學習弱點科目的基礎知識點，打好基礎。",
+                "review": "需要複習最近學習過的內容，鞏固記憶。", 
+                "improve": "可以嘗試挑戰更高難度的問題，提升學習能力。"
+            }
+            
+            return {
+                "success": True, 
+                "suggestions": suggestions[:5],
+                "sections": default_sections
+            }
+        
+    except Exception as e:
+        print(f"生成學習建議時出錯: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": str(e)}
 
 @app.post("/register_token")
 async def register_token(request: Request):
