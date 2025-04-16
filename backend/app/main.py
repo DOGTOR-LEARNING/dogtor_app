@@ -16,6 +16,7 @@ import io
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 from pytz import timezone
+from firebase_push import send_push_notification
 import json
 
 app = FastAPI()
@@ -3138,3 +3139,112 @@ async def generate_learning_suggestions(request: Request):
         import traceback
         print(traceback.format_exc())
         return {"success": False, "message": str(e)}
+
+@app.post("/register_token")
+async def register_token(request: Request):
+    connection = get_db_connection()
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        firebase_token = data.get('firebase_token')
+        old_token = data.get('old_token', None)
+        device_info = data.get('device_info', None)
+
+        if not user_id or not firebase_token:
+            return {"success": False, "message": "缺少必要參數"}
+
+        with connection.cursor() as cursor:
+            # 如果有傳 old_token，先試著用 old_token 來更新資料
+            if old_token:
+                update_sql = """
+                    UPDATE user_tokens
+                    SET firebase_token = %s, user_id = %s, device_info = %s, last_updated = %s
+                    WHERE firebase_token = %s
+                """
+                affected = cursor.execute(update_sql, (
+                    firebase_token, user_id, device_info, datetime.utcnow(), old_token
+                ))
+                if affected:
+                    connection.commit()
+                    print(f"🔁 已更新舊 token 為新 token：{firebase_token[:10]}...")
+                    return {"success": True, "message": "更新成功"}
+                else:
+                    print("⚠️ 找不到舊 token，改為新增 token")
+
+            # 如果沒舊 token 或找不到，就嘗試插入新 token
+            insert_sql = """
+                INSERT INTO user_tokens (user_id, firebase_token, device_info, last_updated)
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    user_id = VALUES(user_id),
+                    device_info = VALUES(device_info),
+                    last_updated = VALUES(last_updated)
+            """
+            cursor.execute(insert_sql, (user_id, firebase_token, device_info, datetime.utcnow()))
+            connection.commit()
+            print(f"✅ Token 註冊成功: {firebase_token[:10]}...")
+            return {"success": True, "message": "Token 註冊成功"}
+    except Exception as e:
+        print(f"❌ Token 註冊時出錯: {str(e)}")
+        return {"success": False, "message": f"Token 註冊時出錯: {str(e)}"}
+    finally:
+        connection.close()
+
+@app.post("/send_test_push")
+async def send_test_push(request: Request):
+    data = await request.json()
+    token = data.get("token")
+    title = data.get("title", "Dogtor 通知")
+    body = data.get("body", "這是測試推播")
+
+    if not token:
+        return {"success": False, "message": "缺少 token"}
+
+    result = send_push_notification(token, title, body)
+    return {"success": result != "error", "message": result}
+
+@app.post("/cron_push_heart_reminder")
+def push_heart_reminder():
+    now = datetime.utcnow()
+    today_str = now.strftime("%Y-%m-%d")
+
+    connection = get_db_connection()
+    with connection.cursor() as cursor:
+
+        # ① 體力已滿
+        cursor.execute("""
+            SELECT ut.firebase_token
+            FROM user_tokens ut
+            JOIN user_heart uh ON ut.user_id = uh.user_id
+            WHERE uh.hearts = 5
+        """)
+        full_heart_tokens = [row["firebase_token"] for row in cursor.fetchall()]
+        for token in full_heart_tokens:
+            send_push_notification(token, "體力已回滿！", "快來 Dogtor 答題吧 ⚔️")
+
+    connection.close()
+    return {"success": True, "message": "體力回復推播發送完成"}
+
+@app.post("/cron_push_learning_reminder")
+def push_learning_reminder():
+    now = datetime.utcnow()
+    today_str = now.strftime("%Y-%m-%d")
+
+    connection = get_db_connection()
+    with connection.cursor() as cursor:        # ② 今日未作答
+        cursor.execute("""
+            SELECT ut.firebase_token
+            FROM user_tokens ut
+            LEFT JOIN (
+                SELECT DISTINCT user_id FROM chat_history
+                WHERE DATE(timestamp) = %s
+            ) as active_today
+            ON ut.user_id = active_today.user_id
+            WHERE active_today.user_id IS NULL
+        """, (today_str,))
+        inactive_tokens = [row["firebase_token"] for row in cursor.fetchall()]
+        for token in inactive_tokens:
+            send_push_notification(token, "今天還沒答題唷 👀", "來 Dogtor 一起挑戰吧 💡")
+    
+    connection.close()
+    return {"success": True, "message": "未答題推播發送完成"}

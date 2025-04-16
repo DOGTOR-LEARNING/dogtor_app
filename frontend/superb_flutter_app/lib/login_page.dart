@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-
+import 'notification_service.dart';
 class LoginPage extends StatelessWidget {
   // 使用您的 Google 客戶端 ID
   final String clientId = '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com';
@@ -155,6 +155,7 @@ class LoginPage extends StatelessWidget {
       bool isLoggedIn = await _checkIfUserIsLoggedIn();
       if (isLoggedIn) {
         // 用戶已登入，直接導航到首頁
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomePage()),
@@ -184,7 +185,9 @@ class LoginPage extends StatelessWidget {
       if (user != null) {
         // 檢查用戶是否存在於數據庫，如果不存在則創建
         await _checkAndCreateUserInDatabase(user);
-        
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String? userId = prefs.getString('user_id');
+        if (userId != null){ await NotificationService.init(userId); }
         // 登入成功後導航到首頁
         Navigator.pushReplacement(
           context,
