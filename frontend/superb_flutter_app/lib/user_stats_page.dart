@@ -56,11 +56,33 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
-    _fetchUserStats();
-    _fetchKnowledgeScores();
-    _fetchWeeklyStats();
-    _fetchLearningDays();
-    _fetchSubjectAbilities();
+    
+    // 設置加載狀態
+    setState(() {
+      _isLoading = true;
+    });
+    
+    // 同時加載所有數據，並在全部完成後更新狀態
+    Future.wait([
+      _fetchUserStats(),
+      _fetchKnowledgeScores(),
+      _fetchWeeklyStats(),
+      _fetchLearningDays(),
+      _fetchSubjectAbilities(),
+    ]).then((_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }).catchError((error) {
+      print('初始化數據加載時出錯: $error');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
   }
 
   @override
@@ -231,7 +253,6 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
 
   Future<void> _fetchUserStats() async {
     setState(() {
-      _isLoading = true;
       _errorMessage = '';
     });
 
@@ -239,7 +260,6 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         setState(() {
-          _isLoading = false;
           _errorMessage = '請先登入';
         });
         return;
@@ -260,23 +280,19 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         if (data['success']) {
           setState(() {
             _stats = data['stats'];
-            _isLoading = false;
           });
         } else {
           setState(() {
-            _isLoading = false;
             _errorMessage = data['message'] ?? '獲取數據失敗';
           });
         }
       } else {
         setState(() {
-          _isLoading = false;
           _errorMessage = '伺服器錯誤: ${response.statusCode}';
         });
       }
     } catch (e) {
       setState(() {
-        _isLoading = false;
         _errorMessage = '發生錯誤: $e';
       });
     }
@@ -334,7 +350,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
             
             // 找出弱點知識點（分數低於5分的）
             _weakPoints = _knowledgeScores
-                .where((score) => (score['score'] as num) < 5)
+                .where((score) => (score['score'] as num) < 5 && (score['score'] as num) > 0)
                 .toList()
               ..sort((a, b) => (a['score'] as num).compareTo(b['score'] as num));
           });
@@ -447,6 +463,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
+      print("開始獲取科目能力統計: user_id=${user.uid}");
+      
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_subject_abilities'),
         headers: {
@@ -460,10 +478,17 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         final jsonString = utf8.decode(response.bodyBytes);
         final data = jsonDecode(jsonString);
         if (data['success']) {
-          setState(() {
-            _subjectAbilities = List<Map<String, dynamic>>.from(data['subject_abilities']);
-          });
+          if (mounted) {
+            setState(() {
+              _subjectAbilities = List<Map<String, dynamic>>.from(data['subject_abilities']);
+              print("成功獲取科目能力統計: ${_subjectAbilities.length} 個科目");
+            });
+          }
+        } else {
+          print("API返回失敗: ${data['message']}");
         }
+      } else {
+        print("API請求失敗: ${response.statusCode}");
       }
     } catch (e) {
       print('獲取科目能力統計時出錯: $e');
