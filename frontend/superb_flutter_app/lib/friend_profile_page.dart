@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FriendProfilePage extends StatefulWidget {
   final Map<String, dynamic> friend;
@@ -180,21 +181,30 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
     });
 
     try {
+      // 獲取當前登入用戶的 ID
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('未登入');
+      }
+
       final String userId = widget.friend['user_id'];
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/send_learning_reminder'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'user_id': userId,
-          'message': '你的朋友提醒你該學習了！'
+          'sender_id': currentUser.uid,
+          'message': '你的朋友 ${currentUser.displayName ?? '某人'} 提醒你該學習了！'
         }),
       );
 
       if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        
         // 顯示成功提示
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('學習提醒已成功發送！'),
+            content: Text(jsonData['message'] ?? '學習提醒已成功發送！'),
             backgroundColor: FriendProfilePage.progressGreen,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -203,7 +213,8 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
           ),
         );
       } else {
-        throw Exception('無法發送提醒通知');
+        final jsonData = json.decode(response.body);
+        throw Exception(jsonData['message'] ?? '無法發送提醒通知');
       }
     } catch (e) {
       print('發送學習提醒出錯: $e');

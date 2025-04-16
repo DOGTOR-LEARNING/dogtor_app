@@ -2466,9 +2466,96 @@ async def consume_heart(request: Request):
 async def send_learning_reminder(request: Request):
     data = await request.json()
     user_id = data.get("user_id")
+    message = data.get("message", "你的朋友提醒你該學習了！")
+    sender_id = data.get("sender_id", None)  # 誰發送的提醒（可選）
+    
     if not user_id:
         return {"success": False, "message": "Missing user_id"}
-## 發送學習提醒 還沒寫完～～～～
+    
+    try:
+        connection = get_db_connection()
+        
+        try:
+            with connection.cursor() as cursor:
+                # 確保提醒歷史表存在
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS reminder_history (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id VARCHAR(255) NOT NULL,
+                    sender_id VARCHAR(255),
+                    message TEXT,
+                    sent_at DATETIME NOT NULL,
+                    success BOOLEAN NOT NULL DEFAULT FALSE,
+                    INDEX (user_id),
+                    INDEX (sent_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                """)
+                connection.commit()
+                
+                # 檢查是否在過去24小時內已經發送過提醒
+                if sender_id:
+                    cursor.execute("""
+                        SELECT COUNT(*) as reminder_count
+                        FROM reminder_history
+                        WHERE user_id = %s AND sender_id = %s 
+                            AND sent_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                            AND success = TRUE
+                    """, (user_id, sender_id))
+                    
+                    result = cursor.fetchone()
+                    reminder_count = result['reminder_count'] if result else 0
+                    
+                    # 如果同一個發送者對同一個用戶在24小時內發送了超過3次提醒，限制發送
+                    if reminder_count >= 3:
+                        return {"success": False, "message": "您已在24小時內提醒該好友多次，請稍後再試"}
+                
+                # 查詢用戶的 firebase token
+                cursor.execute("""
+                    SELECT firebase_token
+                    FROM user_tokens
+                    WHERE user_id = %s
+                    ORDER BY last_updated DESC
+                """, (user_id,))
+                
+                tokens = cursor.fetchall()
+                
+                if not tokens:
+                    return {"success": False, "message": "找不到用戶的推送通知令牌"}
+                
+                success_count = 0
+                for token_row in tokens:
+                    token = token_row["firebase_token"]
+                    # 發送通知
+                    result = send_push_notification(
+                        token=token, 
+                        title="學習提醒", 
+                        body=message
+                    )
+                    if result != "error":
+                        success_count += 1
+                
+                # 記錄提醒歷史
+                now = datetime.utcnow()
+                cursor.execute("""
+                    INSERT INTO reminder_history (user_id, sender_id, message, sent_at, success)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (user_id, sender_id, message, now, success_count > 0))
+                
+                connection.commit()
+                
+                if success_count > 0:
+                    return {"success": True, "message": f"已成功發送提醒給用戶", "sent_count": success_count}
+                else:
+                    return {"success": False, "message": "發送通知失敗"}
+                
+        finally:
+            connection.close()
+            
+    except Exception as e:
+        print(f"發送學習提醒時出錯: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"發送學習提醒時出錯: {str(e)}"}
 
 @app.get("/get_learning_days/{user_id}")
 async def get_learning_days(user_id: str):
@@ -3251,3 +3338,28 @@ def push_learning_reminder():
     
     connection.close()
     return {"success": True, "message": "未答題推播發送完成"}
+
+@app.post("/create_reminder_history_table")
+async def create_reminder_history_table():
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reminder_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id VARCHAR(255) NOT NULL,
+                sender_id VARCHAR(255),
+                message TEXT,
+                sent_at DATETIME NOT NULL,
+                success BOOLEAN NOT NULL DEFAULT FALSE,
+                INDEX (user_id),
+                INDEX (sent_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """)
+        connection.commit()
+        return {"success": True, "message": "Reminder history table created successfully"}
+    except Exception as e:
+        print(f"創建提醒歷史表時出錯: {e}")
+        return {"success": False, "message": str(e)}
+    finally:
+        connection.close()

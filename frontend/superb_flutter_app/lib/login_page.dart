@@ -14,11 +14,13 @@ class LoginPage extends StatelessWidget {
   
   // 初始化 GoogleSignIn，並傳遞 clientId
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: Platform.isIOS
-      ? '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com'
-      : null,
+    clientId: '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com',
+    // clientId: Platform.isIOS
+    //   ? '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com'
+    //   : null,
     scopes: ['email'],
-    serverClientId: '1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com',
+    serverClientId: '426092249907-jgnr6rj7mr3gtjuuo0u6jsmifi7a822s.apps.googleusercontent.com', // ✅ 正解！
+    // serverClientId: '1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com',
   );
   
   final FirebaseAuth _auth = FirebaseAuth.instance;
