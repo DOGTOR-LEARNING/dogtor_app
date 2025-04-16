@@ -972,7 +972,7 @@ async def complete_level(request: Request):
                 if not knowledge_points:
                     return {"success": True, "message": "關卡完成記錄已新增，但該章節沒有知識點"}
                 
-                knowledge_ids = [kp['id'] for kp['id'] in knowledge_points]
+                knowledge_ids = [kp['id'] for kp in knowledge_points]
                 
                 # 更新這些知識點的分數
                 updated_count = 0
@@ -2739,8 +2739,8 @@ async def get_subject_abilities(request: Request):
                     if subject_name in abilities_dict:
                         # 計算能力分數
                         ability = abilities_dict[subject_name]
-                        total_attempts = ability['total_attempts'] or 0
-                        correct_attempts = ability['correct_attempts'] or 0
+                        total_attempts = float(ability['total_attempts'] or 0)
+                        correct_attempts = float(ability['correct_attempts'] or 0)
                         
                         # 使用新的計算公式: 分數=((-(1/0.01)^x)+1) * (該科目的correct_attempt/x), x=該科目的total_attempt
                         ability_score = 0
@@ -2748,6 +2748,10 @@ async def get_subject_abilities(request: Request):
                             try:
                                 # 確保 x 不為零且不會導致過大的計算結果
                                 x = min(max(total_attempts, 1), 150)  # 限制在 1-150 範圍內，防止計算溢出
+                                
+                                # 確保 x 是 float 類型
+                                x = float(x)
+                                
                                 accuracy = correct_attempts / total_attempts
                                 experience_factor = 1 - (1 / (0.01 ** x))  # 這可能會計算溢出，所以限制 x 範圍
                                 ability_score = experience_factor * accuracy * 10
