@@ -546,8 +546,6 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-
-      print("開始獲取科目能力統計: user_id=${user.uid}");
       
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_subject_abilities'),
@@ -557,7 +555,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         },
         body: jsonEncode({'user_id': user.uid}),
       );
-
+      
       if (response.statusCode == 200) {
         final jsonString = utf8.decode(response.bodyBytes);
         final data = jsonDecode(jsonString);
@@ -574,7 +572,14 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                   ability.containsKey('total_attempts') && 
                   ability.containsKey('correct_attempts') && 
                   ability.containsKey('ability_score')) {
-                validAbilities.add(ability);
+                // 確保資料類型正確
+                Map<String, dynamic> validAbility = {
+                  'subject': ability['subject'],
+                  'total_attempts': ability['total_attempts'] is int ? ability['total_attempts'] : (ability['total_attempts'] is double ? (ability['total_attempts'] as double).toInt() : 0),
+                  'correct_attempts': ability['correct_attempts'] is int ? ability['correct_attempts'] : (ability['correct_attempts'] is double ? (ability['correct_attempts'] as double).toInt() : 0),
+                  'ability_score': ability['ability_score'] is double ? ability['ability_score'] : (ability['ability_score'] is int ? (ability['ability_score'] as int).toDouble() : 0.0)
+                };
+                validAbilities.add(validAbility);
               }
             }
             
@@ -2426,8 +2431,13 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                     Divider(color: Colors.white30),
                     ..._subjectAbilities.map((subject) {
                       final subjectName = subject['subject'] as String;
-                      final totalAttempts = subject['total_attempts'] as int;
-                      final correctAttempts = subject['correct_attempts'] as int;
+                      // 修改類型轉換以確保兼容
+                      final totalAttempts = (subject['total_attempts'] is int) 
+                          ? subject['total_attempts'] as int 
+                          : (subject['total_attempts'] as double).toInt();
+                      final correctAttempts = (subject['correct_attempts'] is int) 
+                          ? subject['correct_attempts'] as int 
+                          : (subject['correct_attempts'] as double).toInt();
                       final abilityScore = subject['ability_score'] as num;
                       
                       return Padding(

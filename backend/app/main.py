@@ -2753,7 +2753,7 @@ async def get_subject_abilities(request: Request):
                                 x = float(x)
                                 
                                 accuracy = correct_attempts / total_attempts
-                                experience_factor = 1 - (1 / (0.01 ** x))  # 這可能會計算溢出，所以限制 x 範圍
+                                experience_factor = 1 - ((1 / 0.01) ** x)  # 這可能會計算溢出，所以限制 x 範圍
                                 ability_score = experience_factor * accuracy * 10
                             except OverflowError:
                                 # 如果計算溢出，使用簡化的公式
@@ -2765,8 +2765,8 @@ async def get_subject_abilities(request: Request):
                         
                         result_abilities.append({
                             'subject': subject_name,
-                            'total_attempts': total_attempts,
-                            'correct_attempts': correct_attempts,
+                            'total_attempts': int(total_attempts),
+                            'correct_attempts': int(correct_attempts),
                             'ability_score': round(ability_score, 2)
                         })
                     else:
