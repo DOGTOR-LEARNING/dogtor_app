@@ -50,7 +50,7 @@ dependencies:
   path_provider: ^2.0.15
   table_calendar: ^3.2.0
   firebase_messaging: ^15.2.4
-  flutter_local_notifications: ^16.0.0
+  flutter_local_notifications: ^16.3.3
 
 
 dev_dependencies:
