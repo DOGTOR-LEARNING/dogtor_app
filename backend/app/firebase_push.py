@@ -1,7 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials, messaging
 
-cred = credentials.Certificate("dogtor-454402-09807cebb0d5.json")
+cred = credentials.ApplicationDefault()
 firebase_admin.initialize_app(cred)
 
 def send_push_notification(token: str, title: str, body: str) -> str:
