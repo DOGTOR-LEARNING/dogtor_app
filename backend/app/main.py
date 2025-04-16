@@ -2796,6 +2796,11 @@ async def generate_learning_suggestions(request: Request):
         user_id = data.get('user_id')
         prompt = data.get('prompt')
         
+        # 獲取用戶個人資訊
+        user_name = data.get('user_name')
+        year_grade = data.get('year_grade')
+        user_introduction = data.get('user_introduction')
+        
         if not user_id or not prompt:
             return {"success": False, "message": "缺少必要參數"}
         
@@ -2823,10 +2828,45 @@ async def generate_learning_suggestions(request: Request):
             vertexai.init(project="dogtor-454402", location="us-central1")
             
             # 創建模型實例
-            model = GenerativeModel("gemini-1.5-flash")
+            model = GenerativeModel("gemini-2.0-flash")
+            
+            # 添加系統提示，使用用戶個人資訊
+            system_message = "你是一個專業的學習顧問，提供個人化的學習建議。"
+            if user_name:
+                system_message += f"你正在為學生 {user_name} 提供建議，"
+            
+            if year_grade:
+                # 轉換年級顯示格式，例如 G10 轉為 高一
+                grade_display = year_grade
+                if year_grade.startswith('G'):
+                    grade_num = year_grade[1:]
+                    grade_mapping = {
+                        '1': '國小一年級',
+                        '2': '國小二年級',
+                        '3': '國小三年級',
+                        '4': '國小四年級',
+                        '5': '國小五年級',
+                        '6': '國小六年級',
+                        '7': '國一',
+                        '8': '國二',
+                        '9': '國三',
+                        '10': '高一',
+                        '11': '高二',
+                        '12': '高三'
+                    }
+                    grade_display = grade_mapping.get(grade_num, f"{grade_num}年級")
+                system_message += f"該學生目前就讀{grade_display}，"
+            
+            if user_introduction:
+                system_message += f"該學生的自我介紹是：{user_introduction}。"
+            
+            system_message += "請根據學生的個人資訊和學習數據，提供最適合的學習建議。"
             
             # 生成回應
-            response = model.generate_content(enhanced_prompt)
+            response = model.generate_content([
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": enhanced_prompt}
+            ])
             response_text = response.text.strip()
             
             print(f"Gemini原始回應: {response_text[:100]}...")
@@ -2838,10 +2878,42 @@ async def generate_learning_suggestions(request: Request):
             # 使用OpenAI API
             client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             
+            # 添加系統提示，使用用戶個人資訊
+            system_message = "你是一個專業的學習顧問，提供個人化的學習建議。"
+            if user_name:
+                system_message += f"你正在為學生 {user_name} 提供建議，"
+            
+            if year_grade:
+                # 轉換年級顯示格式，例如 G10 轉為 高一
+                grade_display = year_grade
+                if year_grade.startswith('G'):
+                    grade_num = year_grade[1:]
+                    grade_mapping = {
+                        '1': '國小一年級',
+                        '2': '國小二年級',
+                        '3': '國小三年級',
+                        '4': '國小四年級',
+                        '5': '國小五年級',
+                        '6': '國小六年級',
+                        '7': '國一',
+                        '8': '國二',
+                        '9': '國三',
+                        '10': '高一',
+                        '11': '高二',
+                        '12': '高三'
+                    }
+                    grade_display = grade_mapping.get(grade_num, f"{grade_num}年級")
+                system_message += f"該學生目前就讀{grade_display}，"
+            
+            if user_introduction:
+                system_message += f"該學生的自我介紹是：{user_introduction}。"
+            
+            system_message += "請根據學生的個人資訊和學習數據，提供最適合的學習建議。"
+            
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "你是一個專業的學習顧問，提供針對性的學習建議。"},
+                    {"role": "system", "content": system_message},
                     {"role": "user", "content": enhanced_prompt}
                 ],
                 max_tokens=500

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:convert' show utf8;  // 確保導入 utf8
 import 'dart:math';  // 添加導入math庫，用於min函數
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserStatsPage extends StatefulWidget {
   const UserStatsPage({Key? key}) : super(key: key);
@@ -51,6 +52,10 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 是否已點擊學習建議按鈕
   bool _hasClickedLearningTips = false;
 
+  String _nickname = '';
+  String _yearGrade = '';
+  String _introduction = '';
+
   @override
   void initState() {
     super.initState();
@@ -60,7 +65,13 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     // 設置加載狀態
     setState(() {
       _isLoading = true;
+      // 確保下拉選單狀態初始化為空
+      _selectedSubject = null;
+      _selectedChapter = null;
     });
+    
+    // 加載用戶個人資訊
+    _loadUserProfile();
     
     // 同時加載所有數據，並在全部完成後更新狀態
     Future.wait([
@@ -128,6 +139,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       
       print("已準備Gemini提示文本: ${prompt.substring(0, min(100, prompt.length))}...");
       
+      // 若有暱稱則優先使用暱稱
+      String userDisplayName = _nickname.isNotEmpty ? _nickname : (user.displayName ?? '');
+      
       // 調用後端API發送給Gemini
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/generate_learning_suggestions'),
@@ -137,7 +151,10 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         },
         body: jsonEncode({
           'user_id': user.uid,
-          'prompt': prompt
+          'prompt': prompt,
+          'user_name': userDisplayName,
+          'year_grade': _yearGrade,
+          'user_introduction': _introduction
         }),
       );
       
@@ -194,6 +211,73 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     // 收集用戶數據
     StringBuffer promptBuffer = StringBuffer();
     
+    // 添加用戶個人資訊
+    final user = FirebaseAuth.instance.currentUser;
+    String userName = user?.displayName ?? '';
+    
+    // 若有暱稱則優先使用暱稱
+    String userDisplayName = _nickname.isNotEmpty ? _nickname : userName;
+    
+    // 添加用戶個人資訊到提示中
+    promptBuffer.writeln('用戶個人資訊:');
+    if (userDisplayName.isNotEmpty) {
+      promptBuffer.writeln('姓名: $userDisplayName');
+    }
+    if (_yearGrade.isNotEmpty) {
+      // 轉換年級顯示格式，例如 G10 轉為 高一
+      String gradeDisplay = '';
+      if (_yearGrade.startsWith('G')) {
+        String gradeNum = _yearGrade.substring(1);
+        switch (gradeNum) {
+          case '1':
+            gradeDisplay = '國小一年級';
+            break;
+          case '2':
+            gradeDisplay = '國小二年級';
+            break;
+          case '3':
+            gradeDisplay = '國小三年級';
+            break;
+          case '4':
+            gradeDisplay = '國小四年級';
+            break;
+          case '5':
+            gradeDisplay = '國小五年級';
+            break;
+          case '6':
+            gradeDisplay = '國小六年級';
+            break;
+          case '7':
+            gradeDisplay = '國一';
+            break;
+          case '8':
+            gradeDisplay = '國二';
+            break;
+          case '9':
+            gradeDisplay = '國三';
+            break;
+          case '10':
+            gradeDisplay = '高一';
+            break;
+          case '11':
+            gradeDisplay = '高二';
+            break;
+          case '12':
+            gradeDisplay = '高三';
+            break;
+          default:
+            gradeDisplay = '$gradeNum年級';
+        }
+      } else {
+        gradeDisplay = _yearGrade;
+      }
+      promptBuffer.writeln('年級: $gradeDisplay');
+    }
+    if (_introduction.isNotEmpty) {
+      promptBuffer.writeln('自我介紹: $_introduction');
+    }
+    promptBuffer.writeln();
+    
     // 添加用戶統計信息
     promptBuffer.writeln('用戶學習數據摘要:');
     
@@ -231,7 +315,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     
     // 添加提示指南
     promptBuffer.writeln('\n請根據上述用戶數據，完成以下兩個任務：');
-    promptBuffer.writeln('\n任務1：生成5條針對性的學習建議，每條建議以簡潔明了的條目形式呈現，適合中學生理解。建議應該涵蓋弱點科目、可提升空間、學習習慣和學習方法等方面。每條建議應該是一個完整的句子，以動詞開頭，提供明確可行的學習指導。');
+    promptBuffer.writeln('\n任務1：生成5條針對性的學習建議，每條建議以簡潔明了的條目形式呈現，適合中學生理解。建議應該涵蓋弱點科目、可提升空間、學習習慣和學習方法等方面，可以跟我們這個 Dogtor : AI 學習關卡是 app 相關，給實際一點的建議，不要說一些中學生難做的事。每條建議應該是一個完整的句子，以動詞開頭，提供明確可行的學習指導。');
     
     promptBuffer.writeln('\n任務2：生成三個簡短的學習方向段落，分別是：');
     promptBuffer.writeln('1. 優先學習（列出2-3個最需要優先學習的知識點或科目）');
@@ -479,8 +563,23 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         final data = jsonDecode(jsonString);
         if (data['success']) {
           if (mounted) {
+            // 確保數據有效且包含所需欄位
+            List<Map<String, dynamic>> validAbilities = [];
+            List<dynamic> rawAbilities = data['subject_abilities'] ?? [];
+            
+            for (var ability in rawAbilities) {
+              // 檢查每個科目能力記錄是否包含所需欄位
+              if (ability is Map<String, dynamic> && 
+                  ability.containsKey('subject') && 
+                  ability.containsKey('total_attempts') && 
+                  ability.containsKey('correct_attempts') && 
+                  ability.containsKey('ability_score')) {
+                validAbilities.add(ability);
+              }
+            }
+            
             setState(() {
-              _subjectAbilities = List<Map<String, dynamic>>.from(data['subject_abilities']);
+              _subjectAbilities = validAbilities;
               print("成功獲取科目能力統計: ${_subjectAbilities.length} 個科目");
             });
           }
@@ -492,6 +591,21 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       }
     } catch (e) {
       print('獲取科目能力統計時出錯: $e');
+    }
+  }
+
+  // 加載用戶個人資訊
+  Future<void> _loadUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _nickname = prefs.getString('nickname') ?? '';
+        _yearGrade = prefs.getString('year_grade') ?? '';
+        _introduction = prefs.getString('introduction') ?? '';
+      });
+      print('已加載用戶資訊: 暱稱=$_nickname, 年級=$_yearGrade');
+    } catch (e) {
+      print('加載用戶資訊時出錯: $e');
     }
   }
 
@@ -2198,6 +2312,11 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
 
   // 獲取能力雷達圖數據
   List<RadarEntry> _getAbilityDataEntries() {
+    // 如果數據為空，返回空列表
+    if (_subjectAbilities.isEmpty) {
+      return [];
+    }
+    
     // 確保至少取前6個科目（或全部如果少於6個）
     final int maxSubjects = 8;
     final subjectsToShow = _subjectAbilities.length > maxSubjects 
@@ -2205,7 +2324,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         : _subjectAbilities;
     
     return subjectsToShow.map((subject) {
-      return RadarEntry(value: (subject['ability_score'] as num).toDouble());
+      final abilityScore = (subject['ability_score'] as num?)?.toDouble() ?? 0.0;
+      return RadarEntry(value: abilityScore);
     }).toList();
   }
 
@@ -2385,8 +2505,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
 
   // 新增方法：弱點知識點卡片
   Widget _buildWeakPointsCard() {
-    // 篩選弱點知識點
-    var filteredWeakPoints = _weakPoints.where((point) => 
+    // 應用篩選器過濾弱點知識點
+    var filteredWeakPoints = _weakPoints.where((point) =>
       (point['score'] as num) > 0 && 
       (_selectedSubject == null || point['subject'] == _selectedSubject) &&
       (_selectedChapter == null || point['chapter_name'] == _selectedChapter)
@@ -2402,6 +2522,28 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         String chapter = point['chapter_name'] as String? ?? '';
         if (subject.isNotEmpty) subjects.add(subject);
         if (chapter.isNotEmpty) chapters.add(chapter);
+      }
+    }
+    
+    // 確保選定的科目在列表中存在
+    if (_selectedSubject != null && !subjects.contains(_selectedSubject)) {
+      _selectedSubject = null;
+    }
+    
+    // 確保選定的章節在列表中存在
+    if (_selectedChapter != null) {
+      bool chapterExists = false;
+      if (_selectedSubject == null) {
+        chapterExists = chapters.contains(_selectedChapter);
+      } else {
+        chapterExists = _weakPoints.any((point) => 
+          point['subject'] == _selectedSubject && 
+          point['chapter_name'] == _selectedChapter
+        );
+      }
+      
+      if (!chapterExists) {
+        _selectedChapter = null;
       }
     }
     
@@ -2480,7 +2622,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                               value: null,
                               child: Text('所有科目', style: TextStyle(color: Colors.white)),
                             ),
-                            ...subjects.map((subject) => 
+                            ...subjects.toList().map((subject) => 
                               DropdownMenuItem<String?>(
                                 value: subject,
                                 child: Text(subject, style: TextStyle(color: Colors.white)),
@@ -2526,7 +2668,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                               value: null,
                               child: Text('所有章節', style: TextStyle(color: Colors.white)),
                             ),
-                            ...chapters.where((chapter) => 
+                            ...chapters.toList().where((chapter) => 
                               _selectedSubject == null || 
                               _weakPoints.any((point) => 
                                 point['subject'] == _selectedSubject && 
