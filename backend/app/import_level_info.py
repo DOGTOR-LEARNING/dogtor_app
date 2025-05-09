@@ -188,7 +188,7 @@ def update_csv_with_level_ids(csv_file_path):
 
 if __name__ == "__main__":
     # CSV 檔案路徑
-    csv_file_path = "level_info_geo.csv" # 要改這個路徑！！！！
+    csv_file_path = "geography_level_info.csv" # 要改這個路徑！！！！
     
     # 選擇操作模式
     mode = input("選擇操作模式：1. 導入關卡資訊並更新 CSV  2. 僅更新 CSV 中的 level_id：")
