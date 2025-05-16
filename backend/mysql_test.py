@@ -20,6 +20,7 @@ conn = pymysql.connect(
     password=db_password,  # <<<<<< 請改成你自己的
     database='dogtor',
     charset='utf8mb4'
+    #cursorclass=pymysql.cursors.DictCursor  # ✅ 加上這行
 )
 
 # Modify table
@@ -142,6 +143,25 @@ def insert_user_token(user_id, firebase_token, device_info=None):
     except Exception as e:
         print(f"❌ 插入 user_token 時發生錯誤: {e}")
 
+def query_user_tokens():
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT id, user_id, firebase_token, device_info, last_updated
+                FROM user_tokens
+                ORDER BY last_updated DESC;
+            """
+            cursor.execute(sql)
+            results = cursor.fetchall()
+
+            print("🔍 查詢結果：")
+            for row in results:
+                print(f"👤 User ID: {row[1]}")
+                print(f"📱 Firebase Token: {row[2]}")
+
+    except Exception as e:
+        print(f"❌ 查詢 user_tokens 時發生錯誤: {e}")
+
 
 # Query
 try:
@@ -166,6 +186,9 @@ try:
             column_names = [column[0] for column in columns]
             print("欄位名稱：", column_names)
             print("-" * 50)
+
+    # 
+    query_user_tokens()
 
     # 🆕 執行插入 user_heart 初始化（只會補漏的）
     #insert_missing_user_hearts()
