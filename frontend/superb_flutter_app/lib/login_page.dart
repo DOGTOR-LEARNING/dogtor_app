@@ -8,6 +8,8 @@ import 'home_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'notification_service.dart';
 import 'dart:io';
+
+
 class LoginPage extends StatelessWidget {
   // 使用您的 Google 客戶端 ID
   final String clientId = '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com';
@@ -32,6 +34,7 @@ class LoginPage extends StatelessWidget {
   Future<bool> _checkIfUserIsLoggedIn() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? userId = prefs.getString('user_id');
+    if (userId != null){ await NotificationService.init(userId); } //取得FCM token
     return userId != null;
   }
 
@@ -157,10 +160,12 @@ class LoginPage extends StatelessWidget {
   }
 
   Future<void> _handleSignIn(BuildContext context) async {
+    print("hi handleSignIn");
     try {
       // 檢查用戶是否已登入
       bool isLoggedIn = await _checkIfUserIsLoggedIn();
       if (isLoggedIn) {
+        
         // 用戶已登入，直接導航到首頁
 
         Navigator.pushReplacement(
@@ -195,6 +200,25 @@ class LoginPage extends StatelessWidget {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         String? userId = prefs.getString('user_id');
         if (userId != null){ await NotificationService.init(userId); }
+        /*
+        String? token = await FirebaseMessaging.instance.getToken();
+
+       
+        if (token != null) {
+          print("🧠 上傳 FCM Token: $token");
+
+          
+          await http.post(
+            Uri.parse("https://your-backend.com/api/upload_token"),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'user_id': userId,
+              'fcm_token': token,
+            }),
+          );
+          
+        }*/
+
         // 登入成功後導航到首頁
         Navigator.pushReplacement(
           context,
