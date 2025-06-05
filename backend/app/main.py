@@ -18,6 +18,13 @@ from datetime import datetime, timedelta
 from pytz import timezone
 from firebase_push import send_push_notification
 import json
+# 添加新的 imports
+import torch
+import torch.nn as nn
+from google.cloud import storage
+import tempfile
+import pickle
+import re
 
 app = FastAPI()
 
@@ -3596,3 +3603,293 @@ async def validate_tokens(request: Request):
         error_trace = traceback.format_exc()
         print(error_trace)
         return {"success": False, "message": f"驗證令牌時出錯: {str(e)}", "error_trace": error_trace}
+
+# 模型配置
+MODEL_BUCKET = "dogtor_asset"
+MODEL_PATH = "models/best_textcnn.pt"
+
+# 全局變量存儲已加載的模型
+loaded_model = None
+model_loaded = False
+
+# TextCNN 模型定義（需要與訓練時的架構相同）
+class TextCNN(nn.Module):
+    def __init__(self, vocab_size, embed_size, num_classes, num_filters=100, filter_sizes=[3, 4, 5], dropout=0.5):
+        super(TextCNN, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_size)
+        self.convs = nn.ModuleList([
+            nn.Conv2d(1, num_filters, (filter_size, embed_size))
+            for filter_size in filter_sizes
+        ])
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(len(filter_sizes) * num_filters, num_classes)
+        
+    def forward(self, x):
+        x = self.embedding(x)  # (batch_size, seq_len, embed_size)
+        x = x.unsqueeze(1)  # (batch_size, 1, seq_len, embed_size)
+        
+        conv_outputs = []
+        for conv in self.convs:
+            conv_out = torch.relu(conv(x))  # (batch_size, num_filters, new_seq_len, 1)
+            conv_out = conv_out.squeeze(3)  # (batch_size, num_filters, new_seq_len)
+            pooled = torch.max_pool1d(conv_out, conv_out.size(2))  # (batch_size, num_filters, 1)
+            conv_outputs.append(pooled.squeeze(2))  # (batch_size, num_filters)
+        
+        x = torch.cat(conv_outputs, dim=1)  # (batch_size, len(filter_sizes) * num_filters)
+        x = self.dropout(x)
+        x = self.fc(x)
+        return x
+
+def download_model_from_gcs():
+    """從 Google Cloud Storage 下載模型"""
+    global loaded_model, model_loaded
+    
+    try:
+        print("開始從 Google Cloud Storage 下載模型...")
+        
+        # 初始化 GCS 客戶端
+        client = storage.Client()
+        bucket = client.bucket(MODEL_BUCKET)
+        blob = bucket.blob(MODEL_PATH)
+        
+        # 下載到臨時文件
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pt') as temp_file:
+            blob.download_to_filename(temp_file.name)
+            
+            # 加載模型
+            print(f"正在加載模型: {temp_file.name}")
+            
+            # 加載模型檢查點
+            checkpoint = torch.load(temp_file.name, map_location='cpu')
+            
+            # 從檢查點獲取模型參數
+            model_state = checkpoint.get('model_state_dict', checkpoint)
+            vocab_size = checkpoint.get('vocab_size', 10000)  # 默認值
+            embed_size = checkpoint.get('embed_size', 100)    # 默認值
+            num_classes = checkpoint.get('num_classes', 50)   # 默認值
+            
+            # 如果檢查點中沒有這些參數，嘗試從模型狀態推斷
+            if 'vocab_size' not in checkpoint:
+                vocab_size = model_state['embedding.weight'].shape[0]
+            if 'embed_size' not in checkpoint:
+                embed_size = model_state['embedding.weight'].shape[1]
+            if 'num_classes' not in checkpoint:
+                num_classes = model_state['fc.weight'].shape[0]
+            
+            print(f"模型參數: vocab_size={vocab_size}, embed_size={embed_size}, num_classes={num_classes}")
+            
+            # 創建模型實例
+            model = TextCNN(
+                vocab_size=vocab_size,
+                embed_size=embed_size,
+                num_classes=num_classes
+            )
+            
+            # 加載模型權重
+            model.load_state_dict(model_state)
+            model.eval()
+            
+            loaded_model = {
+                'model': model,
+                'checkpoint': checkpoint,
+                'vocab_size': vocab_size,
+                'embed_size': embed_size,
+                'num_classes': num_classes
+            }
+            
+            model_loaded = True
+            print("✅ 模型加載成功!")
+            
+        # 清理臨時文件
+        os.unlink(temp_file.name)
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ 模型加載失敗: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return False
+
+def preprocess_text(text, vocab_to_idx=None, max_length=512):
+    """預處理文本數據"""
+    try:
+        # 基本文本清理
+        text = text.lower().strip()
+        
+        # 移除特殊字符，保留中文、英文和數字
+        text = re.sub(r'[^\u4e00-\u9fff\w\s]', ' ', text)
+        
+        # 簡單的詞彙化（這裡需要根據實際的詞彙表調整）
+        words = text.split()
+        
+        # 如果沒有詞彙表，創建一個簡單的字符級索引
+        if vocab_to_idx is None:
+            # 字符級處理
+            chars = list(text.replace(' ', ''))
+            # 創建簡單的字符到索引映射
+            unique_chars = set(chars)
+            vocab_to_idx = {char: idx + 1 for idx, char in enumerate(unique_chars)}
+            vocab_to_idx['<UNK>'] = 0
+            
+            indices = [vocab_to_idx.get(char, 0) for char in chars]
+        else:
+            # 詞級處理
+            indices = [vocab_to_idx.get(word, vocab_to_idx.get('<UNK>', 0)) for word in words]
+        
+        # 截斷或填充到固定長度
+        if len(indices) > max_length:
+            indices = indices[:max_length]
+        else:
+            indices.extend([0] * (max_length - len(indices)))
+            
+        return torch.tensor(indices, dtype=torch.long).unsqueeze(0)  # 添加 batch 維度
+        
+    except Exception as e:
+        print(f"文本預處理錯誤: {str(e)}")
+        return None
+
+@app.post("/classify_text")
+async def classify_text(request: Request):
+    """使用 TextCNN 模型對文本進行分類"""
+    global loaded_model, model_loaded
+    
+    try:
+        data = await request.json()
+        text = data.get('text', '')
+        
+        if not text:
+            return {"success": False, "message": "缺少文本輸入"}
+        
+        print(f"收到分類請求，文本長度: {len(text)}")
+        
+        # 如果模型還沒有加載，嘗試加載
+        if not model_loaded:
+            print("模型尚未加載，開始加載...")
+            success = download_model_from_gcs()
+            if not success:
+                return {"success": False, "message": "模型加載失敗"}
+        
+        if loaded_model is None:
+            return {"success": False, "message": "模型未準備就緒"}
+        
+        # 獲取模型和相關信息
+        model = loaded_model['model']
+        checkpoint = loaded_model['checkpoint']
+        
+        # 嘗試從檢查點獲取詞彙表和標籤映射
+        vocab_to_idx = checkpoint.get('vocab_to_idx', None)
+        idx_to_label = checkpoint.get('idx_to_label', None)
+        label_to_idx = checkpoint.get('label_to_idx', None)
+        
+        print(f"詞彙表大小: {len(vocab_to_idx) if vocab_to_idx else 'N/A'}")
+        print(f"標籤數量: {len(idx_to_label) if idx_to_label else 'N/A'}")
+        
+        # 預處理文本
+        processed_text = preprocess_text(text, vocab_to_idx)
+        if processed_text is None:
+            return {"success": False, "message": "文本預處理失敗"}
+        
+        # 模型推理
+        with torch.no_grad():
+            outputs = model(processed_text)
+            probabilities = torch.softmax(outputs, dim=1)
+            predicted_idx = torch.argmax(probabilities, dim=1).item()
+            confidence = probabilities[0][predicted_idx].item()
+        
+        # 獲取預測標籤
+        if idx_to_label and predicted_idx < len(idx_to_label):
+            predicted_label = idx_to_label[predicted_idx]
+        else:
+            predicted_label = f"類別_{predicted_idx}"
+        
+        print(f"預測結果: {predicted_label}, 信心度: {confidence:.4f}")
+        
+        # 獲取前3個預測結果
+        top3_probs, top3_indices = torch.topk(probabilities[0], min(3, probabilities.shape[1]))
+        top3_results = []
+        
+        for i, (prob, idx) in enumerate(zip(top3_probs, top3_indices)):
+            label = idx_to_label[idx.item()] if idx_to_label and idx.item() < len(idx_to_label) else f"類別_{idx.item()}"
+            top3_results.append({
+                "rank": i + 1,
+                "label": label,
+                "confidence": prob.item()
+            })
+        
+        return {
+            "success": True,
+            "predicted_label": predicted_label,
+            "confidence": confidence,
+            "top3_predictions": top3_results,
+            "text_length": len(text)
+        }
+        
+    except Exception as e:
+        print(f"文本分類時出錯: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {"success": False, "message": f"分類失敗: {str(e)}"}
+
+@app.post("/reload_model")
+async def reload_model():
+    """重新加載模型"""
+    global loaded_model, model_loaded
+    
+    try:
+        print("開始重新加載模型...")
+        loaded_model = None
+        model_loaded = False
+        
+        success = download_model_from_gcs()
+        
+        if success:
+            return {"success": True, "message": "模型重新加載成功"}
+        else:
+            return {"success": False, "message": "模型重新加載失敗"}
+            
+    except Exception as e:
+        print(f"重新加載模型時出錯: {str(e)}")
+        return {"success": False, "message": f"重新加載失敗: {str(e)}"}
+
+@app.get("/model_status")
+async def model_status():
+    """檢查模型狀態"""
+    global loaded_model, model_loaded
+    
+    try:
+        if model_loaded and loaded_model:
+            model_info = {
+                "loaded": True,
+                "vocab_size": loaded_model.get('vocab_size'),
+                "embed_size": loaded_model.get('embed_size'), 
+                "num_classes": loaded_model.get('num_classes'),
+                "model_type": "TextCNN"
+            }
+            
+            # 檢查是否有標籤信息
+            checkpoint = loaded_model.get('checkpoint', {})
+            if 'idx_to_label' in checkpoint:
+                model_info["labels"] = checkpoint['idx_to_label']
+            
+            return {"success": True, "model_info": model_info}
+        else:
+            return {
+                "success": True, 
+                "model_info": {"loaded": False, "message": "模型尚未加載"}
+            }
+            
+    except Exception as e:
+        print(f"檢查模型狀態時出錯: {str(e)}")
+        return {"success": False, "message": f"檢查模型狀態失敗: {str(e)}"}
+
+# 在應用啟動時嘗試加載模型（可選）
+@app.on_event("startup")
+async def startup_event():
+    """應用啟動時的初始化"""
+    print("🚀 應用正在啟動...")
+    
+    # 可以選擇在啟動時預加載模型，或者在第一次請求時加載
+    # download_model_from_gcs()
+    
+    print("✅ 應用啟動完成")

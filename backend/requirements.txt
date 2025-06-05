@@ -94,3 +94,5 @@ uvicorn==0.34.0
 websockets==14.2
 yarl==1.18.3
 firebase-admin
+torch
+transformers
