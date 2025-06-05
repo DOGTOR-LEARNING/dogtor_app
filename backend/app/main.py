@@ -2275,16 +2275,19 @@ async def search_users(request: Request):
 if __name__ == "__main__":
     import uvicorn
     
-    # 從環境變數獲取端口，如果沒有則默認使用 8080
+    # 從環境變數獲取端口，默認為 8080
     port = int(os.getenv("PORT", 8080))
     
-    # 啟動服務器，監聽所有網絡接口
+    print(f"🚀 啟動 FastAPI 應用在端口 {port}")
+    
+    # 啟動 uvicorn 服務器
     uvicorn.run(
-        "app.main:app",  # 修改為 "app.main:app"，因為檔案在 app 資料夾中
-        host="0.0.0.0",
-        port=port,
-        reload=False  # 在生產環境中禁用重載
+        app,
+        host="0.0.0.0",  # 監聽所有介面
+        port=port,       # 使用環境變數或默認端口
+        log_level="info"
     )
+
 # 創建聊天歷史記錄表
 @app.post("/create_chat_history_table")
 async def create_chat_history_table():
@@ -3941,3 +3944,20 @@ async def analyze_image(request: Request):
             "success": False,
             "message": f"圖片分析失敗: {str(e)}"
         }
+
+# 添加容器運行配置
+if __name__ == "__main__":
+    import uvicorn
+    
+    # 從環境變數獲取端口，默認為 8080
+    port = int(os.getenv("PORT", 8080))
+    
+    print(f"🚀 啟動 FastAPI 應用在端口 {port}")
+    
+    # 啟動 uvicorn 服務器
+    uvicorn.run(
+        app,
+        host="0.0.0.0",  # 監聽所有介面
+        port=port,       # 使用環境變數或默認端口
+        log_level="info"
+    )
