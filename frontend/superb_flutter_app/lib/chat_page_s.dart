@@ -23,6 +23,9 @@ class _ChatPageState extends State<ChatPage> {
   bool _isKeyboardVisible = false;
   bool _hasSubmittedQuestion = false;
   
+  // 新增圖片解析狀態
+  bool _isAnalyzingImage = false;
+  
   // 用於存儲從API獲取的所有科目
   List<String> _subjects = [];
   // 用於存儲從API獲取的所有章節，按科目分類
@@ -584,7 +587,11 @@ class _ChatPageState extends State<ChatPage> {
       if (bytes.isNotEmpty) {
         setState(() {
           _selectedImage = image;
+          _isAnalyzingImage = true; // 開始圖片解析
         });
+        
+        // 開始圖片分析流程
+        await _analyzeImageWithGemini(bytes);
       } else {
         print('選擇的圖像無效');
       }
@@ -593,6 +600,97 @@ class _ChatPageState extends State<ChatPage> {
       // 即使出錯，仍然設置圖像路徑，讓 Image.file 嘗試直接讀取
       setState(() {
         _selectedImage = image;
+      });
+    }
+  }
+
+  // 新增方法：使用 Gemini API 分析圖片
+  Future<void> _analyzeImageWithGemini(Uint8List imageBytes) async {
+    try {
+      // 將圖片轉換為 base64
+      final base64Image = base64Encode(imageBytes);
+      
+      // 調用後端 API 進行圖片分析
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/analyze_image'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'image_base64': base64Image,
+          'image_mime_type': 'image/jpeg',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data['success']) {
+          final imageDescription = data['description'] as String;
+          print('圖片分析結果: $imageDescription');
+          
+          // 調用分類 API
+          await _classifyText(imageDescription);
+        } else {
+          print('圖片分析失敗: ${data['message']}');
+          setState(() {
+            _isAnalyzingImage = false;
+          });
+        }
+      } else {
+        print('圖片分析 API 請求失敗: ${response.statusCode}');
+        setState(() {
+          _isAnalyzingImage = false;
+        });
+      }
+    } catch (e) {
+      print('圖片分析時出錯: $e');
+      setState(() {
+        _isAnalyzingImage = false;
+      });
+    }
+  }
+
+  // 新增方法：調用分類 API
+  Future<void> _classifyText(String text) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/classify_text'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'text': text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data['success']) {
+          final classificationLabel = data['predicted_label'] as String;
+          final confidence = data['confidence'] as double;
+          
+          print('分類結果: $classificationLabel (信心度: ${(confidence * 100).toStringAsFixed(1)}%)');
+          
+          // 將分類結果輸入到對話框中
+          setState(() {
+            _controller.text = '圖片分析結果: $text\n\n分類標籤: $classificationLabel (信心度: ${(confidence * 100).toStringAsFixed(1)}%)';
+            _isAnalyzingImage = false;
+          });
+        } else {
+          print('文字分類失敗: ${data['message']}');
+          setState(() {
+            _controller.text = '圖片分析結果: $text\n\n分類失敗，請手動輸入問題。';
+            _isAnalyzingImage = false;
+          });
+        }
+      } else {
+        print('分類 API 請求失敗: ${response.statusCode}');
+        setState(() {
+          _controller.text = '圖片分析結果: $text\n\n分類 API 請求失敗，請手動輸入問題。';
+          _isAnalyzingImage = false;
+        });
+      }
+    } catch (e) {
+      print('文字分類時出錯: $e');
+      setState(() {
+        _controller.text = '圖片分析結果: $text\n\n分類時出現錯誤，請手動輸入問題。';
+        _isAnalyzingImage = false;
       });
     }
   }
@@ -796,6 +894,43 @@ class _ChatPageState extends State<ChatPage> {
                               ),
                             ),
 
+            // 圖片解析中的載入動畫
+            if (_isAnalyzingImage)
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: Color(0xFF102031).withOpacity(0.8),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.image_search,
+                            color: Colors.white,
+                            size: 48,
+                          ),
+                          SizedBox(
+                            width: 80,
+                            height: 80,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                      Text('圖片解析中...', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      SizedBox(height: 8),
+                      Text('正在分析圖片內容並進行分類', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    ],
+                  ),
+                ),
+              ),
+
             SafeArea(
               bottom: false,
               child: Column(
@@ -884,15 +1019,23 @@ class _ChatPageState extends State<ChatPage> {
                             ),
                           ),
                           child: TextButton.icon(
-                            icon: Icon(Icons.photo_camera, size: 18, color: Color(0xFF1E3875)),
-                          label: Text(
-                              '拍照',
-                            style: TextStyle(
-                                color: Color(0xFF1E3875),
+                            icon: Icon(
+                              _isAnalyzingImage ? Icons.hourglass_empty : Icons.photo_camera, 
+                              size: 18, 
+                              color: (_hasSubmittedQuestion || _isAnalyzingImage) 
+                                  ? Colors.grey 
+                                  : Color(0xFF1E3875)
+                            ),
+                            label: Text(
+                              _isAnalyzingImage ? '解析中' : '拍照',
+                              style: TextStyle(
+                                color: (_hasSubmittedQuestion || _isAnalyzingImage) 
+                                    ? Colors.grey 
+                                    : Color(0xFF1E3875),
                                 fontSize: 14,
                               ),
                             ),
-                            onPressed: !_hasSubmittedQuestion ? _handleImageSelection : null,
+                            onPressed: (!_hasSubmittedQuestion && !_isAnalyzingImage) ? _handleImageSelection : null,
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.symmetric(horizontal: 12),
                             ),

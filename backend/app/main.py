@@ -25,6 +25,8 @@ from google.cloud import storage
 import tempfile
 import pickle
 import re
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part
 
 app = FastAPI()
 
@@ -3892,3 +3894,50 @@ async def startup_event():
     # download_model_from_gcs()
     
     print("✅ 應用啟動完成")
+
+@app.post("/analyze_image")
+async def analyze_image(request: Request):
+    try:
+        data = await request.json()
+        image_base64 = data.get("image_base64")
+        image_mime_type = data.get("image_mime_type", "image/jpeg")
+        
+        if not image_base64:
+            return {"success": False, "message": "未提供圖片數據"}
+        
+        # 初始化 Vertex AI
+        vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
+        
+        # 創建模型實例
+        model = GenerativeModel("gemini-2.0-flash")
+        
+        # 準備圖片數據
+        image_bytes = base64.b64decode(image_base64)
+        image_part = Part.from_data(image_bytes, mime_type=image_mime_type)
+        
+        # 創建提示詞
+        prompt = """請詳細描述這張圖片中的文字內容和題目。如果這是一道學術題目，請：
+1. 完整轉錄所有文字內容
+2. 識別題目類型（選擇題、填空題、計算題等）
+3. 簡要說明題目的主要內容和要求
+4. 如果有數學公式或特殊符號，請盡量準確描述
+
+請用繁體中文回答。"""
+        
+        # 生成回應
+        response = model.generate_content([prompt, image_part])
+        
+        # 解析回應
+        content = response.text.strip()
+        
+        return {
+            "success": True,
+            "description": content
+        }
+        
+    except Exception as e:
+        print(f"圖片分析錯誤: {str(e)}")
+        return {
+            "success": False,
+            "message": f"圖片分析失敗: {str(e)}"
+        }
