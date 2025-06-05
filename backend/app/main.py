@@ -3612,13 +3612,13 @@ MODEL_PATH = "models/best_textcnn.pt"
 loaded_model = None
 model_loaded = False
 
-# TextCNN 模型定義（需要與訓練時的架構相同）
+# TextCNN 模型定義
 class TextCNN(nn.Module):
     def __init__(self, vocab_size, embed_size, num_classes, num_filters=100, filter_sizes=[3, 4, 5], dropout=0.5):
         super(TextCNN, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size)
         self.convs = nn.ModuleList([
-            nn.Conv2d(1, num_filters, (filter_size, embed_size))
+            nn.Conv1d(embed_size, num_filters, filter_size)  # 修改為 Conv1d，並調整輸入輸出通道
             for filter_size in filter_sizes
         ])
         self.dropout = nn.Dropout(dropout)
@@ -3626,12 +3626,11 @@ class TextCNN(nn.Module):
         
     def forward(self, x):
         x = self.embedding(x)  # (batch_size, seq_len, embed_size)
-        x = x.unsqueeze(1)  # (batch_size, 1, seq_len, embed_size)
+        x = x.permute(0, 2, 1)  # (batch_size, embed_size, seq_len)
         
         conv_outputs = []
         for conv in self.convs:
-            conv_out = torch.relu(conv(x))  # (batch_size, num_filters, new_seq_len, 1)
-            conv_out = conv_out.squeeze(3)  # (batch_size, num_filters, new_seq_len)
+            conv_out = torch.relu(conv(x))  # (batch_size, num_filters, new_seq_len)
             pooled = torch.max_pool1d(conv_out, conv_out.size(2))  # (batch_size, num_filters, 1)
             conv_outputs.append(pooled.squeeze(2))  # (batch_size, num_filters)
         
