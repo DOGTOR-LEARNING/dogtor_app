@@ -18,5 +18,5 @@ RUN mkdir -p /app/Qpics
 ENV PORT=8080
 EXPOSE ${PORT}
 
-# 啟動 FastAPI - 使用 main.py 中的運行配置
-CMD ["python", "main.py"]
+# 啟動 FastAPI
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
