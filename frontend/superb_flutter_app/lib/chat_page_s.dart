@@ -669,7 +669,8 @@ class _ChatPageState extends State<ChatPage> {
           
           // 將分類結果輸入到對話框中
           setState(() {
-            _controller.text = '圖片分析結果: $text\n\n分類標籤: $classificationLabel (信心度: ${(confidence * 100).toStringAsFixed(1)}%)';
+            // _controller.text = '分類標籤: 氣體 (信心度: 93.2%)\n';
+            _controller.text = '分類標籤: 圖片分析結果: $text\n\n分類標籤: $classificationLabel (信心度: ${(confidence * 100).toStringAsFixed(1)}%)';
             _isAnalyzingImage = false;
           });
         } else {

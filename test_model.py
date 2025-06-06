@@ -3,6 +3,7 @@ import torch.nn as nn
 import re
 from typing import List, Optional
 import json
+from transformers import BertTokenizerFast
 
 class TextCNN(nn.Module):
     def __init__(self, vocab_size, embed_size, num_classes, num_filters=100, filter_sizes=[3, 4, 5], dropout=0.5):
@@ -62,47 +63,28 @@ def preprocess_text(text: str, vocab_to_idx: Optional[dict] = None, max_length: 
         
     return torch.tensor(indices, dtype=torch.long).unsqueeze(0)
 
+from transformers import BertTokenizerFast
+
 def test_model(model_path: str, test_texts: List[str]):
-    """測試模型"""
     print(f"正在加載模型: {model_path}")
     
     try:
+        # 加載 BERT tokenizer
+        tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
+        
         # 加載模型檢查點
         checkpoint = torch.load(model_path, map_location='cpu')
-        print("\n=== 模型檢查點信息 ===")
         
         # 從檢查點獲取模型參數
         model_state = checkpoint.get('model_state_dict', checkpoint)
-        vocab_size = checkpoint.get('vocab_size', 10000)
-        embed_size = checkpoint.get('embed_size', 100)
-        num_classes = checkpoint.get('num_classes', 50)
+        vocab_size = tokenizer.vocab_size
+        embed_size = 300  # 與訓練時保持一致
+        num_classes = model_state['fc.weight'].shape[0]
         
-        # 如果檢查點中沒有這些參數，嘗試從模型狀態推斷
-        if 'vocab_size' not in checkpoint:
-            vocab_size = model_state['embedding.weight'].shape[0]
-        if 'embed_size' not in checkpoint:
-            embed_size = model_state['embedding.weight'].shape[1]
-        if 'num_classes' not in checkpoint:
-            num_classes = model_state['fc.weight'].shape[0]
-            
+        print("\n=== 模型檢查點信息 ===")
         print(f"詞彙表大小: {vocab_size}")
         print(f"嵌入維度: {embed_size}")
         print(f"類別數量: {num_classes}")
-        
-        # 檢查是否有詞彙表和標籤映射
-        vocab_to_idx = checkpoint.get('vocab_to_idx', None)
-        idx_to_label = checkpoint.get('idx_to_label', None)
-        
-        if vocab_to_idx:
-            print(f"\n詞彙表大小: {len(vocab_to_idx)}")
-            print("詞彙表示例（前10個）:")
-            for i, (word, idx) in enumerate(list(vocab_to_idx.items())[:10]):
-                print(f"  {word}: {idx}")
-        
-        if idx_to_label:
-            print(f"\n標籤映射:")
-            for idx, label in idx_to_label.items():
-                print(f"  {idx}: {label}")
         
         # 創建模型實例
         model = TextCNN(
@@ -121,22 +103,26 @@ def test_model(model_path: str, test_texts: List[str]):
         for text in test_texts:
             print(f"\n輸入文本: {text}")
             
-            # 預處理文本
-            processed_text = preprocess_text(text, vocab_to_idx)
+            # 使用 BERT tokenizer 處理文本
+            encoding = tokenizer(
+                text,
+                add_special_tokens=True,
+                max_length=128,
+                padding="max_length",
+                truncation=True,
+                return_tensors="pt"
+            )
+            input_ids = encoding['input_ids']
             
             # 模型推理
             with torch.no_grad():
-                outputs = model(processed_text)
+                outputs = model(input_ids)
                 probabilities = torch.softmax(outputs, dim=1)
                 predicted_idx = torch.argmax(probabilities, dim=1).item()
                 confidence = probabilities[0][predicted_idx].item()
             
             # 獲取預測標籤
-            if idx_to_label and predicted_idx < len(idx_to_label):
-                predicted_label = idx_to_label[predicted_idx]
-            else:
-                predicted_label = f"類別_{predicted_idx}"
-            
+            predicted_label = f"類別_{predicted_idx}"
             print(f"預測結果: {predicted_label}")
             print(f"信心度: {confidence:.4f}")
             
@@ -144,13 +130,14 @@ def test_model(model_path: str, test_texts: List[str]):
             top3_probs, top3_indices = torch.topk(probabilities[0], min(3, probabilities.shape[1]))
             print("\n前三個預測結果:")
             for i, (prob, idx) in enumerate(zip(top3_probs, top3_indices)):
-                label = idx_to_label[idx.item()] if idx_to_label and idx.item() < len(idx_to_label) else f"類別_{idx.item()}"
+                label = f"類別_{idx.item()}"
                 print(f"  {i+1}. {label} ({prob.item():.4f})")
-        
+                
     except Exception as e:
         print(f"\n❌ 錯誤: {str(e)}")
         import traceback
         print(traceback.format_exc())
+
 
 if __name__ == "__main__":
     # 模型文件路徑
@@ -161,7 +148,7 @@ if __name__ == "__main__":
         "二次函數的頂點公式是什麼？在座標平面上，二次函數圖形的頂點代表什麼意義？",
         "三角函數的基本性質有哪些？正弦和餘弦函數的關係是什麼？",
         "因式分解的基本方法有哪些？如何用十字相乘法進行因式分解？",
-        "指數函數和對數函數的關係是什麼？它們的圖形有什麼特點？"
+        "人體器官有哪些？"
     ]
     
     # 運行測試
