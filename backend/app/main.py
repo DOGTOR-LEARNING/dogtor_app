@@ -3942,3 +3942,91 @@ async def analyze_image(request: Request):
             "success": False,
             "message": f"圖片分析失敗: {str(e)}"
         }
+
+@app.post("/analyze_quiz_performance")
+async def analyze_quiz_performance(request: Request):
+    """使用 Gemini AI 分析用戶當前答題表現並提供鼓勵和建議"""
+    try:
+        data = await request.json()
+        answer_history = data.get('answer_history', [])
+        subject = data.get('subject', '')
+        knowledge_points = data.get('knowledge_points', '')
+        correct_count = data.get('correct_count', 0)
+        total_count = data.get('total_count', 0)
+        
+        if not answer_history:
+            return {"success": False, "message": "缺少答題資料"}
+        
+        # 初始化 Vertex AI
+        vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
+        
+        # 創建模型實例
+        model = GenerativeModel("gemini-2.0-flash")
+        
+        # 準備分析資料
+        correct_answers = [item for item in answer_history if item['is_correct']]
+        wrong_answers = [item for item in answer_history if not item['is_correct']]
+        
+        # 統計知識點表現
+        knowledge_stats = {}
+        for item in answer_history:
+            kp = item.get('knowledge_point', '未知')
+            if kp not in knowledge_stats:
+                knowledge_stats[kp] = {'correct': 0, 'total': 0}
+            knowledge_stats[kp]['total'] += 1
+            if item['is_correct']:
+                knowledge_stats[kp]['correct'] += 1
+        
+        # 找出表現較弱的知識點
+        weak_points = []
+        for kp, stats in knowledge_stats.items():
+            if stats['total'] > 0:
+                accuracy = stats['correct'] / stats['total']
+                if accuracy < 0.7 and stats['total'] >= 2:  # 正確率低於70%且至少有2題
+                    weak_points.append(f"{kp} ({stats['correct']}/{stats['total']})")
+        
+        # 構建分析提示詞
+        accuracy_percent = (correct_count / total_count * 100) if total_count > 0 else 0
+        
+        prompt = f"""請以溫暖鼓勵的語氣，分析這位學生在這次測驗中的表現：
+
+**測驗資訊：**
+- 科目：{subject}
+- 知識點：{knowledge_points}
+- 成績：{correct_count}/{total_count} ({accuracy_percent:.0f}%)
+
+**知識點表現：**
+"""
+        
+        for kp, stats in knowledge_stats.items():
+            accuracy = (stats['correct'] / stats['total'] * 100) if stats['total'] > 0 else 0
+            prompt += f"- {kp}：{stats['correct']}/{stats['total']} ({accuracy:.0f}%)\n"
+        
+        if wrong_answers:
+            prompt += f"\n**答錯的題目：**\n"
+            for i, item in enumerate(wrong_answers[:5], 1):  # 只分析前5題錯誤
+                prompt += f"{i}. {item['knowledge_point']} - 選了「{item['selected_option']}」，正確答案是「{item['correct_option']}」\n"
+        
+        prompt += f"""
+請用繁體中文提供：
+1. 一句鼓勵的話
+2. 如果有表現較弱的知識點，簡單指出需要加強的地方
+3. 給出1-2個具體的學習建議
+
+請保持正面鼓勵的語氣，控制在70字以內。"""
+        
+        # 生成分析
+        response = model.generate_content(prompt)
+        analysis = response.text.strip()
+        
+        return {
+            "success": True,
+            "analysis": analysis
+        }
+        
+    except Exception as e:
+        print(f"AI 分析錯誤: {str(e)}")
+        return {
+            "success": False,
+            "message": f"分析失敗: {str(e)}"
+        }

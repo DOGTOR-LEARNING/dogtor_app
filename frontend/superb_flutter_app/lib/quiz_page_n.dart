@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert' show utf8;
 import 'dart:convert' show latin1;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 class QuizPage extends StatefulWidget {
   final String chapter;
@@ -39,6 +40,20 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
 
   // 修改 _errorController 的聲明，移除 final 關鍵字
   TextEditingController _errorController = TextEditingController();
+
+  // 打字機動畫相關
+  String _displayedQuestion = "";
+  bool _isTyping = false;
+  List<bool> _optionVisibility = [false, false, false, false];
+  
+  // 光標閃爍相關
+  Timer? _cursorTimer;
+  bool _showCursor = true;
+  
+  // AI 分析相關
+  bool _isAnalyzing = false;
+  String _aiAnalysis = "";
+  List<Map<String, dynamic>> _answerHistory = []; // 記錄答題歷史
 
   // 修改 UI 風格，使其與 chat_page_s.dart 一致
 
@@ -90,6 +105,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     _animationController.dispose();
+    _cursorTimer?.cancel();
     super.dispose();
   }
 
@@ -253,6 +269,13 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
             questions = processedQuestions;
             isLoading = false;
           });
+          
+          // 載入完成後啟動第一題的打字機動畫
+          if (processedQuestions.isNotEmpty) {
+            Future.delayed(Duration(milliseconds: 500), () {
+              _startTypingAnimation();
+            });
+          }
         } else {
           print('Error: ${data['message']}');
           setState(() {
@@ -305,6 +328,17 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       if (isCorrect!) {
         correctAnswersCount++;
       }
+      
+      // 記錄答題歷史，用於 AI 分析
+      _answerHistory.add({
+        'question_id': currentQuestion['id'],
+        'question_text': currentQuestion['question'],
+        'knowledge_point': currentQuestion['knowledge_point'],
+        'selected_option': selectedAnswer,
+        'correct_option': currentQuestion['options'][correctAnswerIndex],
+        'is_correct': isCorrect!,
+        'explanation': currentQuestion['explanation'],
+      });
     });
     
     // 記錄答題情況
@@ -358,20 +392,125 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     }
   }
 
-  void _nextQuestion() {
-    if (currentQuestionIndex < questions.length - 1) {
-      // Reset animation
-      _animationController.reset();
+  // 打字機動畫實現
+  Future<void> _startTypingAnimation() async {
+    if (questions.isEmpty || currentQuestionIndex >= questions.length) return;
+    
+    setState(() {
+      _isTyping = true;
+      _displayedQuestion = "";
+      _optionVisibility = [false, false, false, false];
+    });
+    
+    // 開始光標閃爍
+    _startCursorBlinking();
+    
+    final fullQuestion = questions[currentQuestionIndex]['question'] as String;
+    
+    // 打字機效果 - 一個字一個字顯示
+    for (int i = 0; i <= fullQuestion.length; i++) {
+      if (!mounted) return;
       
       setState(() {
-        currentQuestionIndex++;
-        selectedAnswer = null;
-        isCorrect = null;
-        isExplanationVisible = false; // Reset explanation visibility
+        _displayedQuestion = fullQuestion.substring(0, i);
       });
       
-      // Play enter animation
-      _animationController.forward();
+      // 調整打字速度，中文字符稍慢一些
+      await Future.delayed(Duration(milliseconds: 50));
+    }
+    
+    setState(() {
+      _isTyping = false;
+      _showCursor = false;
+    });
+    
+    // 停止光標閃爍
+    _cursorTimer?.cancel();
+    
+    // 題目打完後，選項依次浮現
+    await _showOptionsSequentially();
+  }
+  
+  // 光標閃爍動畫
+  void _startCursorBlinking() {
+    _cursorTimer?.cancel();
+    _cursorTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
+      if (!_isTyping) {
+        timer.cancel();
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _showCursor = !_showCursor;
+        });
+      }
+    });
+  }
+  
+  // 選項依次浮現動畫
+  Future<void> _showOptionsSequentially() async {
+    final options = questions[currentQuestionIndex]['options'] as List<dynamic>;
+    
+    for (int i = 0; i < options.length && i < 4; i++) {
+      if (!mounted) return;
+      
+      setState(() {
+        _optionVisibility[i] = true;
+      });
+      
+      // 每個選項間隔 200ms 出現
+      await Future.delayed(Duration(milliseconds: 200));
+    }
+  }
+  
+  // 下一題時重新開始動畫
+  void _nextQuestion() {
+    setState(() {
+      currentQuestionIndex++;
+      selectedAnswer = null;
+      isCorrect = null;
+      isExplanationVisible = false;
+    });
+    
+    // 啟動新題目的打字機動畫
+    _startTypingAnimation();
+  }
+
+  // AI 分析答題結果
+  Future<void> _analyzeAnswersWithAI() async {
+    try {
+      final userId = await _getUserId();
+      if (userId == null) {
+        _aiAnalysis = "無法進行個人化分析，請登入後再試。";
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/analyze_quiz_performance'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'answer_history': _answerHistory,
+          'subject': widget.chapter,
+          'knowledge_points': widget.knowledgePoints,
+          'correct_count': correctAnswersCount,
+          'total_count': questions.length,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data['success']) {
+          _aiAnalysis = data['analysis'] ?? "分析完成，但暫無具體建議。";
+        } else {
+          _aiAnalysis = "分析失敗：${data['message']}";
+        }
+      } else {
+        _aiAnalysis = "分析服務暫時無法使用。";
+      }
+    } catch (e) {
+      print('AI 分析錯誤: $e');
+      _aiAnalysis = "分析過程中發生錯誤。";
     }
   }
 
@@ -381,11 +520,24 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       isCalculatingResult = true;
     });
     
-    // 先記錄關卡完成情況
-    _completeLevel().then((_) {
+    // 先記錄關卡完成情況，然後進行 AI 分析
+    _completeLevel().then((_) async {
+      // 開始 AI 分析
+      setState(() {
+        _isAnalyzing = true;
+      });
+      
+      try {
+        await _analyzeAnswersWithAI();
+      } catch (e) {
+        print('AI 分析失敗: $e');
+        _aiAnalysis = "分析系統暫時無法使用，但你已經完成了測驗！";
+      }
+      
       // 計算完成後，重置狀態
       setState(() {
         isCalculatingResult = false;
+        _isAnalyzing = false;
       });
       
       final percentage = (correctAnswersCount / questions.length * 100).round();
@@ -426,31 +578,64 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
               style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 22, fontWeight: FontWeight.bold),
             ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                resultIcon,
-                color: resultColor,
-                size: 64,
-              ),
-              SizedBox(height: 16),
-              Text(
-                '$percentage% 正確率',
-                style: _textStyle(color: resultColor, fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text(
-                '${correctAnswersCount}/${questions.length} 題答對',
-                style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 16),
-              ),
-              SizedBox(height: 16),
-              Text(
-                resultMessage,
-                textAlign: TextAlign.center,
-                style: _textStyle(color: const Color.fromARGB(255, 19, 31, 54), fontSize: 16),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  resultIcon,
+                  color: resultColor,
+                  size: 64,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '$percentage% 正確率',
+                  style: _textStyle(color: resultColor, fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '${correctAnswersCount}/${questions.length} 題答對',
+                  style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 16),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  resultMessage,
+                  textAlign: TextAlign.center,
+                  style: _textStyle(color: const Color.fromARGB(255, 19, 31, 54), fontSize: 16),
+                ),
+                if (_aiAnalysis.isNotEmpty) ...[
+                  SizedBox(height: 20),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.psychology, color: Colors.blue, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'AI 學習分析',
+                              style: _textStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          _aiAnalysis,
+                          style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -842,7 +1027,51 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                   ],
                 ),
               )
-            : questions.isEmpty
+            : _isAnalyzing
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            CircularProgressIndicator(color: accentColor),
+                            SizedBox(height: 16),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.psychology, color: Colors.blue, size: 24),
+                                SizedBox(width: 8),
+                                Text(
+                                  'AI 正在分析你的答題表現...',
+                                  style: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              '請稍候，這需要幾秒鐘',
+                              style: _textStyle(color: Colors.grey, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : questions.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -970,23 +1199,44 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                               
                               // 題目文字 - 使用卡片風格
                               Container(
-                                padding: EdgeInsets.all(16),
+                                width: double.infinity,
+                                padding: EdgeInsets.all(20),
+                                margin: EdgeInsets.symmetric(horizontal: 4),
                                 decoration: BoxDecoration(
                                   color: cardColor,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 4,
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 8,
                                       offset: Offset(0, 2),
                                     ),
                                   ],
                                 ),
-                                child: Text(
-                                  questions[currentQuestionIndex]['question'],
-                                  style: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: RichText(
+                                        text: TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text: _displayedQuestion,
+                                              style: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
+                                            ),
+                                            if (_isTyping && _showCursor)
+                                              TextSpan(
+                                                text: "|",
+                                                style: _textStyle(color: accentColor, fontSize: 18, fontWeight: FontWeight.w600),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              
                               SizedBox(height: 24),
                               
                               // 選項 - 使用更現代的卡片風格
@@ -1024,40 +1274,48 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                                     optionColor = accentColor.withOpacity(0.2);
                                   }
                                   
-                                  return Padding(
-                                    padding: EdgeInsets.only(bottom: 12),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: isCorrect != null ? null : () {
-                                          _handleAnswer(option);
-                                        },
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Container(
-                                          padding: EdgeInsets.all(16),
-                                          decoration: BoxDecoration(
-                                            color: optionColor,
+                                  return AnimatedOpacity(
+                                    opacity: _optionVisibility[index] ? 1.0 : 0.0,
+                                    duration: Duration(milliseconds: 300),
+                                    child: AnimatedSlide(
+                                      offset: _optionVisibility[index] ? Offset.zero : Offset(0, 0.2),
+                                      duration: Duration(milliseconds: 300),
+                                      child: Padding(
+                                        padding: EdgeInsets.only(bottom: 12),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: isCorrect != null || !_optionVisibility[index] ? null : () {
+                                              _handleAnswer(option);
+                                            },
                                             borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color: isSelected ? accentColor : Colors.transparent,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  option,
-                                                  style: _textStyle(color: Colors.black, fontSize: 16, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                                            child: Container(
+                                              padding: EdgeInsets.all(16),
+                                              decoration: BoxDecoration(
+                                                color: optionColor,
+                                                borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: isSelected ? accentColor : Colors.transparent,
+                                                  width: 2,
                                                 ),
                                               ),
-                                              if (trailingIcon != null)
-                                                Icon(
-                                                  trailingIcon,
-                                                  color: iconColor,
-                                                  size: 24,
-                                                ),
-                                            ],
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      option,
+                                                      style: _textStyle(color: Colors.black, fontSize: 16, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                                                    ),
+                                                  ),
+                                                  if (trailingIcon != null)
+                                                    Icon(
+                                                      trailingIcon,
+                                                      color: iconColor,
+                                                      size: 24,
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
