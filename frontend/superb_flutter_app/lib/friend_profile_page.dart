@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 
 class FriendProfilePage extends StatefulWidget {
   final Map<String, dynamic> friend;
@@ -202,24 +203,44 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
       print('學習提醒響應: $jsonData');
       
       if (response.statusCode == 200 && jsonData['success'] == true) {
+        // 成功時的振動反饋
+        HapticFeedback.lightImpact();
+        
         // 顯示成功提示
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(jsonData['message'] ?? '學習提醒已成功發送！'),
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    jsonData['message'] ?? '學習提醒已成功發送！',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
             backgroundColor: FriendProfilePage.progressGreen,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
+            duration: Duration(seconds: 3),
           ),
         );
       } else {
         // 後端返回錯誤但狀態碼是200
         final errorMessage = jsonData['message'] ?? '無法發送提醒通知';
         
+        // 錯誤時的振動反饋
+        HapticFeedback.mediumImpact();
+        
         // 如果是權限或未註冊的問題，顯示特殊處理
         if (errorMessage.contains('尚未註冊推送通知') || 
-            errorMessage.contains('無法接收通知')) {
+            errorMessage.contains('無法接收通知') ||
+            errorMessage.contains('暫時無法接收通知') ||
+            errorMessage.contains('24小時內提醒該好友多次')) {
           _showNotificationPermissionDialog(errorMessage);
         } else {
           throw Exception(errorMessage);
@@ -227,16 +248,44 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
       }
     } catch (e) {
       print('發送學習提醒出錯: $e');
+      
+      // 錯誤時的振動反饋
+      HapticFeedback.heavyImpact();
+      
       // 顯示錯誤提示
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().contains('Exception:') 
-              ? e.toString().split('Exception:')[1].trim() 
-              : '無法發送學習提醒，請稍後再試'),
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  e.toString().contains('Exception:') 
+                      ? e.toString().split('Exception:')[1].trim() 
+                      : '無法發送學習提醒，請稍後再試',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
+          ),
+          duration: Duration(seconds: 4),
+          action: SnackBarAction(
+            label: '重試',
+            textColor: Colors.white,
+            onPressed: () {
+              // 延遲一秒後重試
+              Future.delayed(Duration(seconds: 1), () {
+                if (mounted) {
+                  _sendLearningReminder();
+                }
+              });
+            },
           ),
         ),
       );
@@ -252,27 +301,63 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('無法發送提醒'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.notifications_off, 
+                 color: FriendProfilePage.accentOrange, size: 24),
+            SizedBox(width: 8),
+            Text('無法發送提醒'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(message),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.orange.shade800,
+                ),
+              ),
+            ),
             SizedBox(height: 16),
             Text(
               '可能的原因：',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: FriendProfilePage.textBlue,
+              ),
             ),
             SizedBox(height: 8),
-            Text('• 您的好友尚未登入應用程式'),
-            Text('• 您的好友未允許推送通知權限'),
-            Text('• 您的好友長時間未使用應用程式'),
+            _buildReasonItem('您的好友尚未登入應用程式'),
+            _buildReasonItem('您的好友未允許推送通知權限'),
+            _buildReasonItem('您的好友長時間未使用應用程式'),
+            _buildReasonItem('您在24小時內已提醒過該好友多次'),
             SizedBox(height: 16),
-            Text(
-              '您可以透過其他方式（例如訊息或電話）提醒他們。',
-              style: TextStyle(
-                fontStyle: FontStyle.italic,
-                color: Colors.grey[700],
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: FriendProfilePage.cardBlue,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '💡 建議：您可以透過其他方式（例如訊息或電話）提醒他們。',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: FriendProfilePage.textBlue,
+                  fontSize: 14,
+                ),
               ),
             ),
           ],
@@ -283,6 +368,36 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
             child: Text('我知道了'),
             style: TextButton.styleFrom(
               foregroundColor: FriendProfilePage.primaryBlue,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReasonItem(String reason) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            margin: EdgeInsets.only(top: 8, right: 8),
+            decoration: BoxDecoration(
+              color: FriendProfilePage.accentOrange,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              reason,
+              style: TextStyle(
+                color: Colors.grey[700],
+                height: 1.4,
+              ),
             ),
           ),
         ],

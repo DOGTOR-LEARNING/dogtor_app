@@ -8,42 +8,64 @@ class NotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   static Future<void> init(String userId) async {
-    NotificationSettings settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    try {
+      print("🔧 初始化通知服務，用戶ID: $userId");
+      
+      NotificationSettings settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        criticalAlert: false,
+        provisional: false,
+      );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print("✅ 使用者已授權推播");
+      print("📋 通知權限狀態: ${settings.authorizationStatus}");
 
-      String? token = await _messaging.getToken();
-      print("🔥 FCM token: $token");
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        print("✅ 使用者已授權推播");
 
-      await _uploadTokenIfNeeded(token, userId: userId);
+        String? token = await _messaging.getToken();
+        if (token != null) {
+          print("🔥 FCM token: ${token.substring(0, 20)}...");
 
-      _messaging.onTokenRefresh.listen((newToken) async {
-        print("🔁 Token 更新：$newToken");
-        await _uploadTokenIfNeeded(newToken, userId: userId, isRefresh: true);
-      });
+          await _uploadTokenIfNeeded(token, userId: userId);
 
-      FirebaseMessaging.onMessage.listen((message) {
-        print("📩 前景收到通知：${message.notification?.title}");
-        // TODO: 可搭配 flutter_local_notifications 顯示通知
-      });
+          _messaging.onTokenRefresh.listen((newToken) async {
+            print("🔁 Token 更新：${newToken.substring(0, 20)}...");
+            await _uploadTokenIfNeeded(newToken, userId: userId, isRefresh: true);
+          });
 
-      // ⬇️ 加這段
-      RemoteMessage? initialMessage = await _messaging.getInitialMessage();
-      if (initialMessage != null) {
-        _handleNotificationTap(initialMessage);
+          FirebaseMessaging.onMessage.listen((message) {
+            print("📩 前景收到通知：${message.notification?.title}");
+            // 當應用在前景時收到通知，可以在這裡顯示本地通知
+            if (message.notification != null) {
+              print("📱 通知內容: ${message.notification!.body}");
+            }
+          });
+
+          // 處理應用冷啟動時的通知
+          RemoteMessage? initialMessage = await _messaging.getInitialMessage();
+          if (initialMessage != null) {
+            print("🚀 應用冷啟動收到通知");
+            _handleNotificationTap(initialMessage);
+          }
+
+          // 處理應用在背景時點擊通知
+          FirebaseMessaging.onMessageOpenedApp.listen((message) {
+            print("👆 用戶點擊了背景通知");
+            _handleNotificationTap(message);
+          });
+        } else {
+          print("❌ 無法獲取 FCM token");
+        }
+
+      } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        print("🚫 使用者拒絕授權通知");
+      } else if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        print("❓ 通知權限尚未確定");
       }
-
-      FirebaseMessaging.onMessageOpenedApp.listen((message) {
-        _handleNotificationTap(message);
-      });
-
-    } else {
-      print("🚫 使用者拒絕授權通知");
+    } catch (e) {
+      print("❌ 初始化通知服務失敗: $e");
     }
   }
 

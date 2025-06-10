@@ -2481,6 +2481,8 @@ async def send_learning_reminder(request: Request):
     if not user_id:
         return {"success": False, "message": "Missing user_id"}
     
+    print(f"📬 收到學習提醒請求: user_id={user_id}, sender_id={sender_id}")
+    
     try:
         connection = get_db_connection()
         
@@ -2514,8 +2516,11 @@ async def send_learning_reminder(request: Request):
                     result = cursor.fetchone()
                     reminder_count = result['reminder_count'] if result else 0
                     
+                    print(f"⏰ 24小時內提醒次數: {reminder_count}")
+                    
                     # 如果同一個發送者對同一個用戶在24小時內發送了超過3次提醒，限制發送
                     if reminder_count >= 3:
+                        print(f"🚫 提醒次數超過限制: {reminder_count}/3")
                         return {"success": False, "message": "您已在24小時內提醒該好友多次，請稍後再試"}
                 
                 # 首先檢查是否有 tokens 表
@@ -2531,6 +2536,7 @@ async def send_learning_reminder(request: Request):
                         VALUES (%s, %s, %s, %s, %s)
                     """, (user_id, sender_id, message, now, False))
                     connection.commit()
+                    print("❌ user_tokens 表不存在")
                     return {"success": False, "message": "通知系統尚未設置完成，無法發送提醒"}
                 
                 # 查詢用戶的 firebase token
@@ -2542,6 +2548,7 @@ async def send_learning_reminder(request: Request):
                 """, (user_id,))
                 
                 tokens = cursor.fetchall()
+                print(f"🔍 找到 {len(tokens)} 個推送令牌")
                 
                 if not tokens:
                     # 記錄找不到令牌的情況
@@ -2556,12 +2563,15 @@ async def send_learning_reminder(request: Request):
                     cursor.execute("SELECT name FROM users WHERE user_id = %s", (user_id,))
                     user_exists = cursor.fetchone()
                     if not user_exists:
+                        print(f"❌ 用戶不存在: {user_id}")
                         return {"success": False, "message": "找不到該用戶"}
                     else:
-                        return {"success": False, "message": "該好友尚未註冊推送通知或未登入應用程式，無法發送提醒"}
+                        print(f"⚠️ 用戶存在但沒有推送令牌: {user_id}")
+                        return {"success": False, "message": "該好友尚未註冊推送通知或未登入應用程式，暫時無法接收提醒"}
                 
                 success_count = 0
                 error_message = ""
+                failed_tokens = []
                 
                 # 嘗試使用 messaging 直接發送
                 try:
@@ -2587,8 +2597,13 @@ async def send_learning_reminder(request: Request):
                             success_count += 1
                         except Exception as token_error:
                             print(f"❌ 向令牌 {token[:10]}... 發送失敗：{token_error}")
+                            failed_tokens.append(token[:10])
+                            
                             # 如果錯誤是令牌無效，可以選擇從數據庫中刪除此令牌
-                            if "InvalidRegistration" in str(token_error) or "NotRegistered" in str(token_error):
+                            error_str = str(token_error)
+                            if ("InvalidRegistration" in error_str or 
+                                "NotRegistered" in error_str or
+                                "InvalidArgument" in error_str):
                                 print(f"🗑️ 刪除無效令牌：{token[:10]}...")
                                 cursor.execute("DELETE FROM user_tokens WHERE firebase_token = %s", (token,))
                                 connection.commit()
@@ -2609,19 +2624,34 @@ async def send_learning_reminder(request: Request):
                 
                 connection.commit()
                 
+                # 生成詳細的響應消息
                 if success_count > 0:
-                    return {"success": True, "message": f"已成功發送提醒給用戶", "sent_count": success_count}
+                    success_message = f"✅ 學習提醒已成功發送給好友！"
+                    if len(failed_tokens) > 0:
+                        success_message += f" （部分設備可能無法接收）"
+                    print(f"🎉 發送成功: {success_count}/{len(tokens)}")
+                    return {"success": True, "message": success_message, "sent_count": success_count}
                 else:
-                    return {"success": False, "message": f"發送通知失敗: {error_message}" if error_message else "該好友暫時無法接收通知，請稍後再試"}
+                    failure_reason = "該好友暫時無法接收通知"
+                    if error_message:
+                        if "not registered" in error_message.lower():
+                            failure_reason = "該好友的設備尚未註冊推送通知"
+                        elif "invalid" in error_message.lower():
+                            failure_reason = "該好友的推送設置需要更新"
+                        else:
+                            failure_reason = f"發送通知時發生錯誤"
+                    
+                    print(f"❌ 發送失敗: {failure_reason}")
+                    return {"success": False, "message": f"{failure_reason}，請稍後再試或嘗試其他聯繫方式"}
                 
         finally:
             connection.close()
             
     except Exception as e:
-        print(f"發送學習提醒時出錯: {e}")
+        print(f"💥 發送學習提醒時出錯: {e}")
         import traceback
         print(traceback.format_exc())
-        return {"success": False, "message": f"發送學習提醒時出錯: {str(e)}"}
+        return {"success": False, "message": "系統暫時無法發送提醒，請稍後再試"}
 
 @app.get("/get_learning_days/{user_id}")
 async def get_learning_days(user_id: str):
