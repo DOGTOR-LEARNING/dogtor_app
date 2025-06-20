@@ -51,6 +51,7 @@ dependencies:
   table_calendar: ^3.2.0
   firebase_messaging: ^15.2.4
   flutter_local_notifications: ^16.3.3
+  animated_text_kit: ^4.2.1
 
 
 dev_dependencies:

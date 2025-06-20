@@ -41,6 +41,8 @@
 	<string>需要相機權限來拍攝照片</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要相簿權限來選擇照片</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>需要通知權限來接收重要訊息</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

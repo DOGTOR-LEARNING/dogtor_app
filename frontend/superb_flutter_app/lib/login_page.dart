@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
+import 'onboarding_chat.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'notification_service.dart';
 import 'dart:io';
@@ -170,7 +171,7 @@ class LoginPage extends StatelessWidget {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomePage()),
+          MaterialPageRoute(builder: (context) => OnboardingChat()),
         );
         return;
       }
@@ -222,7 +223,7 @@ class LoginPage extends StatelessWidget {
         // 登入成功後導航到首頁
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomePage()),
+          MaterialPageRoute(builder: (context) => OnboardingChat()),
         );
       }
     } catch (error) {

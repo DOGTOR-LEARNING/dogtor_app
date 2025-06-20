@@ -12,6 +12,7 @@ import 'home_page.dart';
 import 'auth_page.dart';
 import 'mistake_book.dart';
 import 'chat_page_s.dart';
+import 'onboarding_chat.dart';
 
 import 'login_page.dart';
 import 'firebase_options.dart';
@@ -24,6 +25,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -38,6 +41,24 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Initialize Firebase Messaging
+  final messaging = FirebaseMessaging.instance;
+  
+  // Request permission for iOS
+  await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+  
+  // Get APNS token
+  final apnsToken = await messaging.getAPNSToken();
+  print('APNS Token: $apnsToken');
+  
+  // Get FCM token
+  final fcmToken = await messaging.getToken();
+  print('FCM Token: $fcmToken');
+
   // 初始化 Hive
   // 這樣能載入之前的錯題？
   await Hive.initFlutter();
@@ -51,6 +72,8 @@ Future<void> main() async {
 
   runApp(MyApp());
 }
+
+
 
 // MyApp: 應用程序的根組件
 // 負責設置應用的整體主題、顏色方案和字體樣式
@@ -81,7 +104,9 @@ class MyApp extends StatelessWidget {
         '/chat': (context) => ChatPage(),
         '/auth': (context) => AuthPage(),
         '/mistakes': (context) => MistakeBookPage(),
+        '/onboarding': (context) => OnboardingChat(),
       },
     );
   }
 }
+
