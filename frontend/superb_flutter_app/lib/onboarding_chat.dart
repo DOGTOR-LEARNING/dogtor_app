@@ -29,7 +29,12 @@ class _OnboardingChatState extends State<OnboardingChat> {
       'key': 'name',
     },
     {
-      'message': '你最近在學什麼呢？',
+      'message': '你好啊！你現在是幾年級呢？',
+      'isUser': false,
+      'key': 'learning',
+    },
+    {
+      'message': '那你最近都在學些什麼呢？',
       'isUser': false,
       'key': 'learning',
     },
@@ -44,7 +49,7 @@ class _OnboardingChatState extends State<OnboardingChat> {
       'key': null,
     },
     {
-      'message': '好的！感謝你告訴我這些資訊 🐾 我們開始吧！',
+      'message': '好的！感謝你告訴我你的事 🐾 我們開始吧！',
       'isUser': false,
       'key': null,
     },
