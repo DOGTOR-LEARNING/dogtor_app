@@ -138,20 +138,6 @@ async def save_question_to_csv(data):
             writer.writerow(['q_id', 'subject', 'chapter', 'description', 'difficulty', 'simple_answer', 'detailed_answer', 'timestamp'])
         writer.writerow([data['q_id'], data['summary'], data['subject'], data['chapter'], data['description'], data['difficulty'], data['simple_answer'], data['detailed_answer'], data['tag'], data['timestamp']])
 
-# Function to get the next q_id
-async def get_next_q_id():
-    counter_file = 'q_id_counter.txt'
-    if not os.path.exists(counter_file):
-        with open(counter_file, 'w') as f:
-            f.write('0')
-    with open(counter_file, 'r+') as f:
-        current_id = int(f.read().strip())
-        next_id = current_id + 1
-        f.seek(0)
-        f.write(str(next_id))
-        f.truncate()
-    return next_id
-
 # Define a new endpoint to retrieve mistakes
 @app.get("/mistake_book")
 async def get_mistakes():
@@ -168,6 +154,34 @@ async def get_mistakes():
 # Modify the submit_question endpoint to use the new q_id logic
 @app.post("/submit_question")
 async def submit_question(request: dict):
+    system_message = "請你用十個字以內的話總結這個題目的重點，回傳十字總結"
+
+    messages = [
+        {"role": "system", "content": system_message}
+    ]
+
+    if request.image_base64:
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "text", "text": request.user_message},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{request.image_base64}"
+                    }
+                }
+            ]
+        })
+    else:
+        messages.append({"role": "user", "content": request.user_message})
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        max_tokens=1000 # why
+    )
+    
     q_id = await get_next_q_id()
     summary = request.get('summary', '')
     subject = request.get('subject')
@@ -185,20 +199,6 @@ async def submit_question(request: dict):
         image_data = base64.b64decode(image_base64)
         with open(f'Qpics/{q_id}.jpg', 'wb') as image_file:
             image_file.write(image_data)
-
-    # Save question data to CSV
-    await save_question_to_csv({
-        'q_id': q_id,
-        'summary': summary,
-        'subject': subject,
-        'chapter': chapter,
-        'description': description,
-        'difficulty': difficulty,
-        'simple_answer': simple_answer,
-        'detailed_answer': detailed_answer,
-        'tag': tag,
-        'timestamp': timestamp
-    })
 
     return {"status": "success", "message": "Question submitted successfully."}
 
