@@ -22,14 +22,21 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
   @override
   void initState() {
     super.initState();
-    _loadMistakes();
-    //_loadLocalMistakes();
+    //_loadMistakes();
+    //_reloadLocalMistakes();
   }
 
   // Load added mistakes from Hive
   Future<void> _reloadLocalMistakes() async {
     try {
       var box = await Hive.openBox('questionsBox'); // 打開 Hive Box
+      print('📦 Box Length: ${box.length}');
+      print('📦 Keys: ${box.keys}');
+
+      for (var key in box.keys) {
+        final value = box.get(key);
+        print('🔑 $key: $value');
+      }
       List<Map<String, dynamic>> localMistakes = [];
 
       // 迭代 Hive 中的所有項目
@@ -44,7 +51,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
           'simple_answer': value['simple_answer'],
           'detailed_answer': value['detailed_answer'],
           'tag': value['tag'],
-          'timestamp': value['timestamp'],
+          'created_at': value['timestamp'],
           "image_base64": value['image_base64'],
         });
       });
@@ -316,7 +323,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                   
                                   // If we got back true, refresh the mistakes list
                                   if (refreshNeeded == true) {
-                                    _loadMistakes();
+                                    //_loadMistakes();
                                   }
                                 },
                                 child: Padding(

@@ -24,9 +24,11 @@ class AddMistakePage extends StatefulWidget {
 }
 
 class _AddMistakePageState extends State<AddMistakePage> {
+  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _questionController = TextEditingController();
   final TextEditingController _tagController = TextEditingController();
   final TextEditingController _detailedAnswerController = TextEditingController();
+  final TextEditingController _noteController = TextEditingController();
 
   String _selectedTag = "A"; // Default selection for answer options
   String _selectedSubject = "數學"; // Default subject
@@ -34,7 +36,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
   
   final ImagePicker _picker = ImagePicker();
   XFile? _selectedImage; // 用於存儲選擇的圖片
-  String _response = ""; // 存儲 AI 的回應
+  String _response = ""; // 存儲 AI 的標題摘要回應
   Uint8List? _imageBytes; // for web and mobile
   bool _isLoading = false; // 加載狀態
   String _mistakeId = ""; // Store the ID for edits
@@ -223,7 +225,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
     }
   }
 
-  Future<void> _generateAnswer() async {
+  Future<void> _generateSummary() async {
     if (_selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -265,6 +267,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
       final responseData = jsonDecode(utf8.decode(response.bodyBytes));
       setState(() {
         _response = responseData["response"] ?? "No response";
+        _titleController.text = _response; // Set the title field with the AI response
         _isLoading = false; // 停止加載
       });
     } catch (e) {
@@ -371,6 +374,50 @@ class _AddMistakePageState extends State<AddMistakePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Mistake Card Title
+                        // AI response display
+                        Container(
+                          margin: EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "錯題卡標題",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontFamily: 'Medium',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: TextField(
+                                  controller: _titleController,
+                                  style: TextStyle(color: Colors.black87, fontSize: 16),
+                                  decoration: InputDecoration(
+                                    hintText: "想不到適合的標題可以點擊下面的「生成摘要」喔！",
+                                    hintStyle: TextStyle(color: Colors.black54),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.all(12),
+                                  ),
+                                  maxLines: 4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        
                         // FIRST GROUP: Question input and image selection together
                         Container(
                           margin: EdgeInsets.only(bottom: 16),
@@ -508,7 +555,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                       iconColor: Color(0xFFFFA368),
                                       textColor: Colors.white,
                                       onPressed: _selectedImage != null ? () {
-                                        _generateAnswer();
+                                        _generateSummary();
                                       } : null,
                                       disabledColor: Colors.grey.shade700,
                                     ),
@@ -519,40 +566,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                           ),
                         ),
                         
-                        // AI response display
-                        if (_response.isNotEmpty) ...[
-                          Container(
-                            width: double.infinity,
-                            margin: EdgeInsets.only(bottom: 16),
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "AI 回應",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  _response,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                        
                         
                         // SECOND GROUP: Subject, difficulty dropdowns and tag input
                         Container(
@@ -638,7 +652,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                               borderRadius: BorderRadius.circular(12),
                                               dropdownColor: Color(0xFF8BB7E0),
                                               icon: Icon(Icons.arrow_drop_down, color: Color(0xFF102031)),
-                                              style: TextStyle(color: Color(0xFF102031), fontSize: 15),
+                                              style: TextStyle(color: Color(0xFF102031), fontSize: 12),
                                               items: ["Easy", "Medium", "Hard"]
                                                   .map((difficulty) => DropdownMenuItem<String>(
                                                         value: difficulty,
@@ -695,6 +709,157 @@ class _AddMistakePageState extends State<AddMistakePage> {
                         ),
                         
                         // Answer section
+                        // Detailed answer
+                      
+                        // FIRST GROUP: Question input and image selection together
+                        Container(
+                          margin: EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Question input
+                              Text(
+                                "答案",
+                                style: TextStyle(
+                                  color: const Color.fromARGB(255, 255, 255, 255),
+                                  fontSize: 18,
+                                  fontFamily: 'Medium',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: TextField(
+                                  controller: _detailedAnswerController,
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 16.0,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: "輸入詳解",
+                                    hintStyle: TextStyle(color: Colors.black54),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  ),
+                                  maxLines: 5,
+                                  minLines: 1,
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              
+                              // Image section
+                              
+                              SizedBox(height: 8),
+                              
+                              // Image preview
+                              Container(
+                                width: double.infinity,
+                                height: 180,
+                                decoration: BoxDecoration(
+                                  color: Colors.black12,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white24, width: 1),
+                                ),
+                                child: _selectedImage != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: FutureBuilder<Uint8List>(
+                                        future: _selectedImage!.readAsBytes(),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.connectionState == ConnectionState.waiting) {
+                                            return Center(child: CircularProgressIndicator());
+                                          } else if (snapshot.hasError) {
+                                            return Center(child: Text('Error loading image', style: TextStyle(color: Colors.white70)));
+                                          } else if (snapshot.hasData) {
+                                            return Image.memory(
+                                              snapshot.data!,
+                                              fit: BoxFit.contain,
+                                            );
+                                          } else {
+                                            return Center(child: Text('No image selected', style: TextStyle(color: Colors.white70)));
+                                          }
+                                        },
+                                      ),
+                                    )
+                                  : _imageBytes != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.memory(
+                                          _imageBytes!,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          "尚未選擇圖片",
+                                          style: TextStyle(color: Colors.white70),
+                                        ),
+                                      ),
+                              ),
+                              SizedBox(height: 16),
+                              
+                              // Image selection buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildActionButton(
+                                      icon: Icons.camera_alt,
+                                      label: "相機",
+                                      onPressed: () async {
+                                        final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+                                        if (image != null) {
+                                          setState(() {
+                                            _selectedImage = image;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildActionButton(
+                                      icon: Icons.photo_library,
+                                      label: "相簿",
+                                      onPressed: () async {
+                                        final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+                                        if (image != null) {
+                                          setState(() {
+                                            _selectedImage = image;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildActionButton(
+                                      icon: Icons.auto_awesome,
+                                      label: "生成詳解",
+                                      color: Color(0xFF1E3875),
+                                      iconColor: Color(0xFFFFA368),
+                                      textColor: Colors.white,
+                                      onPressed: _selectedImage != null ? () {
+                                        _generateSummary();
+                                      } : null,
+                                      disabledColor: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // note section
                         Container(
                           margin: EdgeInsets.only(bottom: 16),
                           decoration: BoxDecoration(
@@ -706,7 +871,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "答案",
+                                "給自己的小提醒",
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -715,20 +880,16 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                 ),
                               ),
                               SizedBox(height: 12),
-
-                              
-                              // Detailed answer
-                            
                               Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: TextField(
-                                  controller: _detailedAnswerController,
+                                  controller: _noteController,
                                   style: TextStyle(color: Colors.black87, fontSize: 16),
                                   decoration: InputDecoration(
-                                    hintText: "輸入詳解",
+                                    hintText: "可以在這裡輸入卡關的點喔！（選填）",
                                     hintStyle: TextStyle(color: Colors.black54),
                                     border: InputBorder.none,
                                     contentPadding: EdgeInsets.all(12),
