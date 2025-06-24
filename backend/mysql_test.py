@@ -162,6 +162,20 @@ def query_user_tokens():
     except Exception as e:
         print(f"❌ 查詢 user_tokens 時發生錯誤: {e}")
 
+def query_describe():
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                DESCRIBE mistakes;
+            """
+            cursor.execute(sql)
+            results = cursor.fetchall()
+
+            print("🔍 查詢結果：")
+            print(results)
+
+    except Exception as e:
+        print(f"❌ 查詢 user_tokens 時發生錯誤: {e}")
 
 # Query
 try:
@@ -170,7 +184,7 @@ try:
         cursor.execute(sql)
         result = cursor.fetchall() #fetchone
         print(len(result))
-        print(result)
+        #print(result)
         #print("✅ 成功連線！目前時間：", result[0])
 
         cursor.execute("SHOW TABLES;")
@@ -188,7 +202,10 @@ try:
             print("-" * 50)
 
     # 
-    query_user_tokens()
+    #query_user_tokens()
+
+    query_describe()
+    
 
     # 🆕 執行插入 user_heart 初始化（只會補漏的）
     #insert_missing_user_hearts()

@@ -4,4 +4,4 @@ venv/
 .env
 sql-key.json
 /backend/.DS_Store
-/frontend/.DS_Store
+/frontend/.DS_Storefrontend/superb_flutter_app/ios/build/
