@@ -245,7 +245,7 @@ def verify_question(question_data: Dict[str, Any]) -> Tuple[bool, str, str]:
     # 嘗試使用不同的模型進行驗證
     models = [
         ("DeepSeek", verify_question_with_deepseek),
-        ("o3-mini", verify_question_with_o3mini),
+        ("o4-mini", verify_question_with_o3mini),
         ("Gemini", verify_question_with_gemini)
     ]
     
@@ -317,7 +317,7 @@ def verify_question_with_deepseek(question_data: Dict[str, Any]) -> Tuple[bool, 
         return False, "", ""
 
 def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, str, str]:
-    """使用 o3-mini 驗證題目"""
+    """使用 o4-mini 驗證題目"""
     try:
         prompt = f"""
 請驗證以下選擇題的正確性:
@@ -336,9 +336,9 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
 不要提供任何其他解釋或格式。
 """
 
-        # 調用 o3-mini API
+        # 調用 o4-mini API
         response = openai_client.chat.completions.create(
-            model="o3-mini",
+            model="o4-mini",
             messages=[{"role": "user", "content": prompt}],
         )
         
@@ -355,7 +355,7 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
         
         return is_correct, correct_answer, explanation
     except Exception as e:
-        print(f"使用 o3-mini 驗證題目時出錯: {e}")
+        print(f"使用 o4-mini 驗證題目時出錯: {e}")
         return False, "", ""
 
 def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, str, str]:
@@ -404,7 +404,7 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
         return False, "", ""
 
 def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
-    """使用 o3-mini 生成題目解釋"""
+    """使用 o4-mini 生成題目解釋"""
     try:
         prompt = f"""
 請以臺灣中學學習助手的口吻為以下選擇題生成清晰、簡短的解釋:
@@ -421,9 +421,9 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
 解釋應該有教育意義，幫助學生理解相關知識點，且中文字要是繁體中文，如果非常合適的話，可以很少量的使用 emoji 。
 """
 
-        # 調用 o3-mini API
+        # 調用 o4-mini API
         response = openai_client.chat.completions.create(
-            model="o3-mini",  # 改為使用 o3-mini
+            model="o4-mini",  # 改為使用 o4-mini
             messages=[{"role": "user", "content": prompt}],
         )
         
@@ -437,14 +437,14 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
 def generate_explanation(question_data: Dict[str, Any]) -> str:
     """生成題目解釋"""
     try:
-        # 嘗試使用 o3-mini 生成解釋
+        # 嘗試使用 o4-mini 生成解釋
         explanation = generate_explanation_with_o3mini(question_data)
         if explanation and explanation != "無法生成解釋。":
             return explanation
     except Exception as e:
-        print(f"使用 o3-mini 生成解釋時出錯: {e}")
+        print(f"使用 o4-mini 生成解釋時出錯: {e}")
     
-    # 如果 o3-mini 失敗，返回默認解釋
+    # 如果 o4-mini 失敗，返回默認解釋
     return "無法生成解釋。"
 
 def save_question_to_database(connection, knowledge_id: int, question_data: Dict[str, Any], explanation: str) -> bool:

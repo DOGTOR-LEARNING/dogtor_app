@@ -109,7 +109,6 @@ def read_csv_data(csv_file_path: str) -> List[Dict[str, Any]]:
                     "section_num": row[5],
                     "section_name": row[6],
                     "knowledge_points": [kp.strip() for kp in row[7].split('、') if kp.strip()],
-                    "description": row[8] if len(row) > 8 else ""
                 }
                 sections_data.append(section_data)
         
@@ -119,8 +118,38 @@ def read_csv_data(csv_file_path: str) -> List[Dict[str, Any]]:
         print(f"讀取 CSV 文件時出錯: {e}")
         return []
 
-def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dict[str, Any], batch_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    """使用 Gemini 2.0 Flash 為每個知識點生成題目，分批處理知識點"""
+def load_reference_questions(csv_file_path: str = "processing/question_knowledge_point_matching_results.csv") -> Dict[str, List[Dict[str, Any]]]:
+    """從 question_knowledge_point_matching_results.csv 讀取參考題目，按知識點分組"""
+    reference_questions = {}
+    try:
+        with open(csv_file_path, 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            
+            for row in reader:
+                if row['status'] == 'matched' and row['matched_knowledge_point']:
+                    knowledge_point = row['matched_knowledge_point']
+                    
+                    if knowledge_point not in reference_questions:
+                        reference_questions[knowledge_point] = []
+                    
+                    reference_questions[knowledge_point].append({
+                        "ques_no": row['ques_no'],
+                        "subject": row['subject'],
+                        "chapter_name": row['chapter_name'],
+                        "section_name": row['section_name'],
+                        "question_text": row['question_text']
+                    })
+        
+        print(f"成功載入 {len(reference_questions)} 個知識點的參考題目")
+        for kp, questions in reference_questions.items():
+            print(f"  - {kp}: {len(questions)} 題")
+        return reference_questions
+    except Exception as e:
+        print(f"載入參考題目時出錯: {e}")
+        return {}
+
+def generate_questions_with_reference(knowledge_points: List[str], section_data: Dict[str, Any], reference_questions: Dict[str, List[Dict[str, Any]]], batch_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
+    """使用 Gemini 2.5 Flash 參考現有題目為每個知識點生成題目，分批處理知識點"""
     all_questions = {}
     
     # 將知識點分成小批次
@@ -128,32 +157,45 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
         batch_points = knowledge_points[i:i+batch_size]
         print(f"[生成題目] 處理知識點批次 {i//batch_size + 1}/{(len(knowledge_points) + batch_size - 1)//batch_size}: {', '.join(batch_points)}")
         
+        # 為每個知識點收集參考題目
+        reference_text = ""
+        for point in batch_points:
+            if point in reference_questions:
+                reference_text += f"\n\n【知識點：{point} 的參考題目】\n"
+                for j, ref_q in enumerate(reference_questions[point], 1):  # 使用所有參考題目
+                    reference_text += f"{j}. {ref_q['question_text']}\n"
+            else:
+                reference_text += f"\n\n【知識點：{point}】\n（沒有找到相關的參考題目，請根據知識點名稱和小節描述生成適當的題目）\n"
+        
         # 構建提示
         prompt = f"""
-你是一個專業的臺灣教育內容生成器。我需要你為以下教育內容生成選擇題：
+你是一個專業的臺灣教育內容生成器。我需要你參考現有題目為以下教育內容生成選擇題：
 
 年級: {section_data['year_grade']}
-冊數: {section_data['book']}
 章節: {section_data['chapter_num']} {section_data['chapter_name']}
 小節: {section_data['section_num']} {section_data['section_name']}
-小節概述: {section_data['description']}
 
 這個小節包含以下所有知識點:
 {', '.join(section_data['knowledge_points'])}
 
-但在本次請求中，我只需要你為以下知識點生成題目:
+在本次請求中，我需要你為以下知識點生成題目:
 {', '.join(batch_points)}
 
-請為每個指定的知識點生成 20 道選擇題，題型可以是一般的選擇題，或是挖空格選出正確選項的挖空選擇題。每道題有 4 個選項，只有 1 個正確答案。
+參考題目如下：
+{reference_text}
 
-要求:
-1. 題目難度可以從簡單到挑戰，但要適合該年級學生，不要出現太過艱深的題目
-2. 題目要清晰、準確，沒有歧義
-3. 選項要合理，干擾項要有迷惑性
-4. 正確答案必須是 1、2、3、4 中的一個數字
-5. 題目是偏向觀念理解、記憶、應用，計算量不要太大
-6. 題目要能夠引起學生的學習興趣，可以適度加入生活化的元素
-7. 可以非常少量地加入一些有趣的選項，以激發學生探索題庫時的驚喜樂趣，但不要太多，以免影響題目的嚴肅性
+請為每個指定的知識點生成 20 道選擇題，要求：
+
+1. **概念一致性**：生成的題目概念要跟參考題目一樣，涵蓋相同的知識點和概念範圍
+2. **題型要求**：題型可以是一般的選擇題，或是挖空格選出正確選項的挖空選擇題。每道題有 4 個選項，只有 1 個正確答案
+3. **選項範圍**：選項內容不要超出參考題型的範圍，保持與參考題目相似的難度和概念深度
+4. **題目品質**：
+   - 題目要清晰、準確，沒有歧義
+   - 選項要合理，干擾項要有迷惑性
+   - 正確答案必須是 1、2、3、4 中的一個數字
+   - 適合該年級學生，計算量不要太大
+5. **生活化元素**：可以適度加入生活化的元素，引起學生的學習興趣
+6. **特色元素**：可以非常少量地加入一些有趣的選項，以激發學生探索題庫時的驚喜樂趣，但不要太多，以免影響題目的嚴肅性
 
 請按照以下JSON格式返回：
 {{
@@ -172,22 +214,13 @@ def generate_questions_with_gpt4o(knowledge_points: List[str], section_data: Dic
 """
 
         try:
-            print(f"[生成題目] 調用 Gemini 2.0 Flash API")
-            # 調用 GPT-4o API
-            # response = openai_client.chat.completions.create(
-            #     model="gpt-4o",
-            #     messages=[
-            #         {"role": "system", "content": "你是一個專業的臺灣教育題目生成器，專注於生成符合中學學生認知水平的選擇題，中文字一律用繁體中文，不要使用簡體中文。"},
-            #         {"role": "user", "content": prompt}
-            #     ],
-            #     response_format={"type": "json_object"}
-            # )
-
-            # 改用 Gemini 2.0 Flash 生成題目
+            print(f"[生成題目] 調用 Gemini 2.5 Flash API")
+            
+            # 使用 Gemini 2.5 Flash 生成題目
             response = gemini_client.chat.completions.create(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 messages=[
-                    {"role": "system", "content": "你是一個專業的臺灣教育題目生成器，專注於生成符合中學學生認知水平的選擇題，中文字一律用繁體中文，不要使用簡體中文。"},
+                    {"role": "system", "content": "你是一個專業的臺灣教育題目生成器，專注於生成符合中學學生認知水平的選擇題，中文字一律用繁體中文，不要使用簡體中文。請參考提供的參考題目來生成概念一致但內容不同的新題目。"},
                     {"role": "user", "content": prompt}
                 ],
                 response_format={"type": "json_object"}
@@ -275,7 +308,7 @@ def verify_question_with_deepseek(question_data: Dict[str, Any]) -> Tuple[bool, 
         return False, "", ""
 
 def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, str, str]:
-    """使用 o3-mini 驗證題目"""
+    """使用 o4-mini 驗證題目"""
     try:
         prompt = f"""
 請驗證以下選擇題的正確性:
@@ -295,16 +328,16 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
 不要提供任何其他解釋或格式。
 """
 
-        # 調用 o3-mini API
+        # 調用 o4-mini API
         response = openai_client.chat.completions.create(
-            model="o3-mini",
+            model="o4-mini",
             messages=[{"role": "user", "content": prompt}],
         )
         
         # 解析回應
         content = response.choices[0].message.content.strip()
         content = content.strip('"')
-        print("content o3-mini:", content)
+        print("content o4-mini:", content)
         # 判斷結果
         is_correct = False
         if content == "Y" or content == '\"Y\"':
@@ -320,7 +353,7 @@ def verify_question_with_o3mini(question_data: Dict[str, Any]) -> Tuple[bool, st
         
         return is_correct, correct_answer, explanation
     except Exception as e:
-        print(f"使用 o3-mini 驗證題目時出錯: {e}")
+        print(f"使用 o4-mini 驗證題目時出錯: {e}")
         return False, "", ""
 
 def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, str, str]:
@@ -345,13 +378,12 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
 """
 
 
-        # 改用 Gemini 2.0 Flash 生成題目
+        # 改用 Gemini 2.5 Flash 驗證題目
         response = gemini_client.chat.completions.create(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             messages=[
                 {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"}
+            ]
         )
         
         content = response.choices[0].message.content.strip()
@@ -390,7 +422,7 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
         return False, "", ""
 
 def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
-    """使用 o3-mini 生成題目解釋"""
+    """使用 o4-mini 生成題目解釋"""
     try:
         prompt = f"""
 請以臺灣中學學習助理的口吻為以下選擇題生成清晰、簡短的解釋:
@@ -407,9 +439,9 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
 解釋應該有教育意義，幫助學生理解相關知識點，且中文字要是繁體中文，可以非常少量使用合適的 emoji 。
 """
 
-        # 調用 o3-mini API
+        # 調用 Gemini 2.5 Flash API
         response = gemini_client.chat.completions.create(
-            model="gemini-2.0-flash",  # 改為使用 o3-mini
+            model="gemini-2.5-flash",  # 使用 Gemini 2.5 Flash
             messages=[{"role": "user", "content": prompt}],
         )
         
@@ -541,7 +573,7 @@ def process_question(connection, knowledge_id: int, question_data: Dict[str, Any
         # 使用三個模型驗證題目
         print(f"  [驗證 1/3] 使用 DeepSeek 驗證")
         deepseek_result = verify_question_with_deepseek(question_data)
-        print(f"  [驗證 2/3] 使用 o3-mini 驗證")
+        print(f"  [驗證 2/3] 使用 o4-mini 驗證")
         gpt4_result = verify_question_with_o3mini(question_data)
         print(f"  [驗證 3/3] 使用 Gemini 驗證")
         gemini_result = verify_question_with_gemini(question_data)
@@ -550,7 +582,7 @@ def process_question(connection, knowledge_id: int, question_data: Dict[str, Any
         gpt4_correct, gpt4_answer, _ = gpt4_result
         gemini_correct, gemini_answer, _ = gemini_result
         
-        print(f"  [驗證結果] DeepSeek: {deepseek_correct}, o3-mini: {gpt4_correct}, Gemini: {gemini_correct}")
+        print(f"  [驗證結果] DeepSeek: {deepseek_correct}, o4-mini: {gpt4_correct}, Gemini: {gemini_correct}")
         
         # 如果三個模型都認為答案正確
         if deepseek_correct and gpt4_correct and gemini_correct:
@@ -607,9 +639,13 @@ def process_section(subject: str, section_data: Dict[str, Any]):
         knowledge_points = section_data['knowledge_points']
         print(f"[檢查點 2] 小節 {section_data['section_name']} 包含 {len(knowledge_points)} 個知識點")
         
-        # 使用 gemini 分批生成題目
-        print(f"[檢查點 3] 開始使用 Gemini 生成題目")
-        questions_by_point = generate_questions_with_gpt4o(knowledge_points, section_data, batch_size=2)
+        # 載入參考題目
+        print(f"[檢查點 2.5] 載入參考題目")
+        reference_questions = load_reference_questions()
+        
+        # 使用 Gemini 2.5 Flash 參考現有題目生成題目
+        print(f"[檢查點 3] 開始使用 Gemini 2.5 Flash 參考現有題目生成題目")
+        questions_by_point = generate_questions_with_reference(knowledge_points, section_data, reference_questions, batch_size=2)
         print(f"[檢查點 3 完成] 成功生成 {sum(len(qs) for qs in questions_by_point.values())} 個題目")
         
         # 處理每個知識點

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
@@ -482,11 +482,14 @@ async def update_user(user_id: str, user: User):
         connection.close()
 
 @app.post("/admin/import-knowledge-points")
-async def import_knowledge_points(file: UploadFile = File(...)):
+async def import_knowledge_points(
+    subject: str = Form(...),
+    file: UploadFile = File(...)
+):
     """
-    導入知識點 CSV 文件
+    導入知識點和章節 CSV 文件
     """
-    print("開始導入知識點...")
+    print(f"開始導入知識點和章節... 科目: {subject}")
     
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="只接受 CSV 文件")
@@ -500,34 +503,49 @@ async def import_knowledge_points(file: UploadFile = File(...)):
     next(csv_reader, None)
     
     connection = None
-    imported_count = 0
+    imported_knowledge_count = 0
+    imported_chapter_count = 0
     
     try:
         connection = get_db_connection()
         
         for row in csv_reader:
             print(f"處理行: {row}")
-            if len(row) < 4:
+            if len(row) < 8:
                 print(f"跳過無效行: {row}")
                 continue
             
+            year_grade = int(row[1].strip())
+            book = row[2].strip()
+            chapter_num = int(row[3].strip())
             chapter_name = row[4].strip()
             section_num = int(row[5].strip())
             section_name = row[6].strip()
             knowledge_points_str = row[7].strip()
             
-            # 查找 chapter_id
             with connection.cursor() as cursor:
-                sql = "SELECT id FROM chapter_list WHERE chapter_name = %s"
-                cursor.execute(sql, (chapter_name,))
+                # 先檢查並插入章節
+                sql_check_chapter = """
+                SELECT id FROM chapter_list 
+                WHERE subject = %s AND year_grade = %s AND book = %s AND chapter_num = %s
+                """
+                cursor.execute(sql_check_chapter, (subject, year_grade, book, chapter_num))
                 result = cursor.fetchone()
                 
                 if not result:
-                    print(f"找不到章節: {chapter_name}，跳過")
-                    continue
-                
-                chapter_id = result['id']
-                print(f"找到章節 ID: {chapter_id} 對應章節: {chapter_name}")
+                    # 插入新章節
+                    sql_insert_chapter = """
+                    INSERT INTO chapter_list 
+                    (subject, year_grade, book, chapter_num, chapter_name)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(sql_insert_chapter, (subject, year_grade, book, chapter_num, chapter_name))
+                    chapter_id = cursor.lastrowid
+                    imported_chapter_count += 1
+                    print(f"已插入新章節: {chapter_name} (ID: {chapter_id})")
+                else:
+                    chapter_id = result['id']
+                    print(f"找到現有章節 ID: {chapter_id} 對應章節: {chapter_name}")
                 
                 # 分割知識點
                 knowledge_points = [kp.strip() for kp in knowledge_points_str.split('、')]
@@ -538,13 +556,13 @@ async def import_knowledge_points(file: UploadFile = File(...)):
                         continue
                     
                     try:
-                        sql = """
+                        sql_insert_knowledge = """
                         INSERT INTO knowledge_points 
                         (section_num, section_name, point_name, chapter_id)
                         VALUES (%s, %s, %s, %s)
                         """
-                        cursor.execute(sql, (section_num, section_name, point_name, chapter_id))
-                        imported_count += 1
+                        cursor.execute(sql_insert_knowledge, (section_num, section_name, point_name, chapter_id))
+                        imported_knowledge_count += 1
                         print(f"已插入知識點: {point_name}")
                     except pymysql.err.IntegrityError as e:
                         if "Duplicate entry" in str(e):
@@ -567,7 +585,11 @@ async def import_knowledge_points(file: UploadFile = File(...)):
             connection.close()
             print("數據庫連接已關閉")
     
-    return {"message": f"成功導入 {imported_count} 個知識點"}
+    return {
+        "message": f"成功導入 {imported_chapter_count} 個章節和 {imported_knowledge_count} 個知識點",
+        "chapters_imported": imported_chapter_count,
+        "knowledge_points_imported": imported_knowledge_count
+    }
 
 @app.post("/get_questions_by_level")
 async def get_questions_by_level(request: Request):
