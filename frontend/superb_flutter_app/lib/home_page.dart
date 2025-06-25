@@ -168,22 +168,17 @@ void _onItemTapped(int index) {
           AnimatedBuilder(
             animation: _scrollController,
             builder: (context, child) {
-              // 計算背景偏移，使其滾動速度比前景慢
-              // 對於頂部問題，我們需要確保背景不會向下移動過多
               double offset = _scrollController.hasClients ? 
-                  max(0, _scrollController.offset * 0.1) : 0.0; // 使用 max 函數確保不會負值
-              
+                  max(0, _scrollController.offset * 0.1) : 0.0;
               return Stack(
                 children: [
-                  // 底部填充層，防止任何地方出現黑邊
                   Container(
-                    color: Color(0xFF4A90E2), // 藍色底色，與背景圖底色接近
+                    color: Color(0xFF4A90E2),
                     width: double.infinity,
                     height: double.infinity,
                   ),
-                  // 帶偏移的背景圖
                   Positioned(
-                    top: -offset, // 反向偏移，當滾動時背景向上移動
+                    top: -offset,
                     left: 0,
                     right: 0,
                     child: child!,
@@ -193,21 +188,16 @@ void _onItemTapped(int index) {
             },
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // 獲取螢幕尺寸
                 final screenHeight = MediaQuery.of(context).size.height;
                 final screenWidth = MediaQuery.of(context).size.width;
-                // 更大的容器高度
-                final containerHeight = screenHeight*1.6; // 增加高度，確保足夠
-                
+                final containerHeight = screenHeight*1.6;
                 return Container(
-                  // 強制容器高度，確保背景足夠大
                   height: containerHeight,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     image: DecorationImage(
                       image: AssetImage('assets/images/home-background.png'),
                       fit: BoxFit.cover,
-                      // 改為居中對齊，確保頂部和底部都有足夠的內容
                       alignment: Alignment.center,
                     ),
                   ),
@@ -223,269 +213,129 @@ void _onItemTapped(int index) {
               Container(
                 child: Column(
                   children: [
-                    SizedBox(height: 50),
-                    // Dogtor 標題和用戶頭像在同一列
+                    SizedBox(height: 70),
+                    // Dogtor 標題和 bubbles 分離
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          SvgPicture.asset(
-                            'assets/images/dogtor_eng_logo.svg',
-                            width: 120,
-                            height: 24,
-                            color: Color.fromRGBO(
-                              (0.06 * 255).round(),
-                              (0.13 * 255).round(),
-                              (0.19 * 255).round(),
-                              1,
-                            ),
-                          ),
                           Column(
                             mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (context, animation, secondaryAnimation) => UserProfilePage(),
-                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                        const begin = Offset(1.0, 0.0);
-                                        const end = Offset.zero;
-                                        const curve = Curves.easeInOut;
-                                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                                        var offsetAnimation = animation.drive(tween);
-                                        return SlideTransition(
-                                          position: offsetAnimation,
-                                          child: child,
-                                        );
-                                      },
-                                    ),
-                                  ).then((_) {
-                                    _loadUserPhoto();
-                                  });
-                                },
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        spreadRadius: 1,
-                                        blurRadius: 3,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                    image: _userPhotoUrl != null && _userPhotoUrl!.isNotEmpty
-                                        ? DecorationImage(
-                                            image: NetworkImage(_userPhotoUrl!),
-                                            fit: BoxFit.cover,
-                                          )
-                                        : null,
-                                  ),
-                                  child: _userPhotoUrl == null || _userPhotoUrl!.isEmpty
-                                      ? Icon(
-                                          Icons.person,
-                                          color: Colors.blue.shade700,
-                                          size: 24,
-                                        )
-                                      : null,
-                                ),
-                              ),
-                              // 添加好友按鈕
-                              SizedBox(height: 8),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (context, animation, secondaryAnimation) => FriendsPage(),
-                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                        const begin = Offset(1.0, 0.0);
-                                        const end = Offset.zero;
-                                        const curve = Curves.easeInOut;
-                                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                                        var offsetAnimation = animation.drive(tween);
-                                        return SlideTransition(
-                                          position: offsetAnimation,
-                                          child: child,
-                                        );
-                                      },
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        spreadRadius: 1,
-                                        blurRadius: 3,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    Icons.people,
-                                    color: Colors.blue.shade700,
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
-                              
-                              // 添加通知狀態頁面按鈕
-                              SizedBox(height: 8),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (context, animation, secondaryAnimation) => NotificationStatusPage(),
-                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                        const begin = Offset(1.0, 0.0);
-                                        const end = Offset.zero;
-                                        const curve = Curves.easeInOut;
-                                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                                        var offsetAnimation = animation.drive(tween);
-                                        return SlideTransition(
-                                          position: offsetAnimation,
-                                          child: child,
-                                        );
-                                      },
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        spreadRadius: 1,
-                                        blurRadius: 3,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    Icons.notifications,
-                                    color: Colors.purple.shade700,
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
-                              
-                              // 新增心形按鈕
-                              SizedBox(height: 8),
-                              GestureDetector(
-                                onTap: () {
-                                  // Define what happens when the heart button is pressed
-                                  print("Heart button pressed");
-                                  // You can navigate to another page or perform any action here
-                                },
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        spreadRadius: 1,
-                                        blurRadius: 3,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    Icons.favorite,  // Use the heart icon
-                                    color: Colors.red,  // Set the color for the heart icon
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
-                              // 剩餘愛心數量顯示
-                              SizedBox(width: 8), // Space between the heart icon and the number
-                              Text(
-                                '$_userHearts', // Display the heart value
-                                style: TextStyle(
-                                  fontSize: 20, // Adjust the font size as needed
-                                  color: Colors.black, // Set the text color
+                              SvgPicture.asset(
+                                'assets/images/dogtor_eng_logo.svg',
+                                width: 120,
+                                height: 24,
+                                color: Color.fromRGBO(
+                                  (0.06 * 255).round(),
+                                  (0.13 * 255).round(),
+                                  (0.19 * 255).round(),
+                                  1,
                                 ),
                               ),
                             ],
                           ),
+                          // bubbles removed from here
                         ],
                       ),
                     ),
-                    SizedBox(height: 20),
                     // 學科列表
                     Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          _screenHeight = constraints.maxHeight;
-                          return ListView.builder(
-                            controller: _scrollController,
-                            physics: SnappingScrollPhysics(itemExtent: 180), // 使用自定義的吸附式滾動
-                            itemCount: planets.length,
-                            itemBuilder: (context, index) {
-                              return AnimatedBuilder(
-                                animation: _scrollController,
-                                builder: (context, child) {
-                                  double itemPosition = index * 180.0;
-                                  double scrollPosition = _scrollController.hasClients 
-                                      ? _scrollController.offset 
-                                      : 0.0;
-                                  double viewportCenter = constraints.maxHeight * 0.4;
-                                  double size = calculatePlanetSize(
-                                    scrollPosition + viewportCenter,
-                                    itemPosition
-                                  );
-                                  
-                                  bool isLeft = index.isEven;
-                                  
-                                  return Container(
-                                    height: 180,
-                                    padding: EdgeInsets.symmetric(horizontal: 40),
-                                    child: Row(
-                                      mainAxisAlignment: isLeft 
-                                          ? MainAxisAlignment.start 
-                                          : MainAxisAlignment.end,
-                                      children: [
-                                        if (!isLeft) Expanded(
-                                          child: Padding(
-                                            padding: EdgeInsets.only(right: 40),
-                                            child: AnimatedDefaultTextStyle(
-                                              duration: Duration(milliseconds: 100),
-                                              style: Theme.of(context).textTheme.displayMedium!.copyWith(
-                                                fontSize: calculateTextSize(size),
-                                                color: Colors.white,
-                                              ),
-                                              child: Text(
-                                                planets[index]['name'],
-                                                textAlign: TextAlign.end,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        AnimatedContainer(
-                                          duration: Duration(milliseconds: 100),
-                                          width: size,
-                                          height: size,
-                                          child: GestureDetector(
-                                            onTap: () {
+  child: LayoutBuilder(
+    builder: (context, constraints) {
+      _screenHeight = constraints.maxHeight;
+
+      // Constants for your dynamic header
+      const double maxBoxHeight = 200.0;
+      const double minBoxHeight = 80.0;
+
+      return Column(
+        children: [
+          // ─── 1) Dynamic SizedBox Header ───
+          AnimatedBuilder(
+            animation: _scrollController,
+            builder: (context, child) {
+              // How far the user has scrolled
+              final offset = _scrollController.hasClients
+                  ? _scrollController.offset
+                  : 0.0;
+
+              // Compute a height that shrinks from max→min as you scroll
+              final height =
+                  (maxBoxHeight - offset).clamp(minBoxHeight, maxBoxHeight);
+
+              return SizedBox(
+                height: height,
+                child: child, // Your header content
+              );
+            },
+            // This child is shown inside the box
+            child: Container(
+              color: const Color.fromARGB(0, 33, 149, 243).withOpacity(0),
+              alignment: Alignment.center,
+              
+            ),
+          ),
+
+          // ─── 2) Your Snapping Planets List ───
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              physics: SnappingScrollPhysics(itemExtent: 180),
+              itemCount: planets.length,
+              itemBuilder: (context, index) {
+                return AnimatedBuilder(
+                  animation: _scrollController,
+                  builder: (context, child) {
+                    double itemPosition = index * 180.0;
+                    double scrollPosition = _scrollController.hasClients
+                        ? _scrollController.offset
+                        : 0.0;
+                    double viewportCenter = constraints.maxHeight * 0.4;
+                    double size = calculatePlanetSize(
+                      scrollPosition + viewportCenter,
+                      itemPosition,
+                    );
+                    bool isLeft = index.isEven;
+
+                    return Container(
+                      height: 160,
+                      padding: EdgeInsets.symmetric(horizontal: 40),
+                      child: Row(
+                        mainAxisAlignment: isLeft
+                            ? MainAxisAlignment.start
+                            : MainAxisAlignment.end,
+                        children: [
+                          if (!isLeft)
+                            Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(right: 40),
+                                child: AnimatedDefaultTextStyle(
+                                  duration: Duration(milliseconds: 100),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displayMedium!
+                                      .copyWith(
+                                        fontSize: calculateTextSize(size),
+                                        color: Colors.white,
+                                      ),
+                                  child: Text(
+                                    planets[index]['name'],
+                                    textAlign: TextAlign.end,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          AnimatedContainer(
+                            duration: Duration(milliseconds: 100),
+                            width: size,
+                            height: size,
+                            child: GestureDetector(
+                              onTap: () {
                                               print('點擊了 ${planets[index]['name']}');
                                               if (planets[index]['name'] == '自然') {
                                                 Navigator.push(
@@ -543,44 +393,124 @@ void _onItemTapped(int index) {
                                                 );
                                               }
                                             },
-                                            child: Image.asset(
-                                              planets[index]['image'],
-                                              fit: BoxFit.contain,
-                                            ),
-                                          ),
-                                        ),
-                                        if (isLeft) Expanded(
-                                          child: Padding(
-                                            padding: EdgeInsets.only(left: 40),
-                                            child: AnimatedDefaultTextStyle(
-                                              duration: Duration(milliseconds: 100),
-                                              style: Theme.of(context).textTheme.displayMedium!.copyWith(
-                                                fontSize: calculateTextSize(size),
-                                                color: Colors.white,
-                                              ),
-                                              // hello
-                                              child: Text(
-                                                planets[index]['name'],
-                                                textAlign: TextAlign.start,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        },
+                                          
+                              child: Image.asset(
+                                planets[index]['image'],
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+
+                          if (isLeft)
+                            Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(left: 40),
+                                child: AnimatedDefaultTextStyle(
+                                  duration: Duration(milliseconds: 100),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displayMedium!
+                                      .copyWith(
+                                        fontSize: calculateTextSize(size),
+                                        color: Colors.white,
+                                      ),
+                                  child: Text(
+                                    planets[index]['name'],
+                                    textAlign: TextAlign.start,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
-                  ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    },
+  ),
+),
+
+                      ],
                 ),
               ),
               ChatPage(),
             ],
+          ),
+          // Overlay bubbles at the top right
+          Positioned(
+            top: 63,
+            right: 20,
+            child: _BubblesOverlay(
+              userPhotoUrl: _userPhotoUrl,
+              userHearts: _userHearts,
+              onProfileTap: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => UserProfilePage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(1.0, 0.0);
+                      const end = Offset.zero;
+                      const curve = Curves.easeInOut;
+                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                      var offsetAnimation = animation.drive(tween);
+                      return SlideTransition(
+                        position: offsetAnimation,
+                        child: child,
+                      );
+                    },
+                  ),
+                ).then((_) {
+                  _loadUserPhoto();
+                });
+              },
+              onFriendsTap: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => FriendsPage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(1.0, 0.0);
+                      const end = Offset.zero;
+                      const curve = Curves.easeInOut;
+                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                      var offsetAnimation = animation.drive(tween);
+                      return SlideTransition(
+                        position: offsetAnimation,
+                        child: child,
+                      );
+                    },
+                  ),
+                );
+              },
+              onNotificationTap: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => NotificationStatusPage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(1.0, 0.0);
+                      const end = Offset.zero;
+                      const curve = Curves.easeInOut;
+                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                      var offsetAnimation = animation.drive(tween);
+                      return SlideTransition(
+                        position: offsetAnimation,
+                        child: child,
+                      );
+                    },
+                  ),
+                );
+              },
+              onHeartTap: () {
+                print("Heart button pressed");
+              },
+            ),
           ),
           // 自定義底部導航欄
           Positioned(
@@ -971,6 +901,149 @@ class SnappingScrollPhysics extends ScrollPhysics {
       target,
       velocity,
       tolerance: tolerance,
+    );
+  }
+}
+
+class _BubblesOverlay extends StatelessWidget {
+  final String? userPhotoUrl;
+  final int userHearts;
+  final VoidCallback onProfileTap;
+  final VoidCallback onFriendsTap;
+  final VoidCallback onNotificationTap;
+  final VoidCallback onHeartTap;
+
+  const _BubblesOverlay({
+    required this.userPhotoUrl,
+    required this.userHearts,
+    required this.onProfileTap,
+    required this.onFriendsTap,
+    required this.onNotificationTap,
+    required this.onHeartTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        GestureDetector(
+          onTap: onProfileTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 2),
+                ),
+              ],
+              image: userPhotoUrl != null && userPhotoUrl!.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(userPhotoUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: userPhotoUrl == null || userPhotoUrl!.isEmpty
+                ? Icon(
+                    Icons.person,
+                    color: Colors.blue.shade700,
+                    size: 24,
+                  )
+                : null,
+          ),
+        ),
+        SizedBox(height: 8),
+        GestureDetector(
+          onTap: onFriendsTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.people,
+              color: Colors.blue.shade700,
+              size: 24,
+            ),
+          ),
+        ),
+        SizedBox(height: 8),
+        GestureDetector(
+          onTap: onNotificationTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.notifications,
+              color: Colors.purple.shade700,
+              size: 24,
+            ),
+          ),
+        ),
+        SizedBox(height: 8),
+        GestureDetector(
+          onTap: onHeartTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.favorite,
+              color: Colors.red,
+              size: 24,
+            ),
+          ),
+        ),
+        SizedBox(width: 8),
+        Text(
+          '$userHearts',
+          style: TextStyle(
+            fontSize: 20,
+            color: Colors.black,
+          ),
+        ),
+      ],
     );
   }
 }
