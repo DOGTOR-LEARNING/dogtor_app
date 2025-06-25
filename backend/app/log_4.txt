@@ -1,0 +1,32 @@
+COMPLETED:槓桿原理與靜力平衡
+COMPLETED:簡單機械
+COMPLETED:靜電現象
+COMPLETED:電流
+COMPLETED:電壓
+COMPLETED:電阻與歐姆定律
+COMPLETED:地球上的水
+COMPLETED:地貌的改變與平衡
+COMPLETED:地球上的岩石
+COMPLETED:地球構造與板塊運動
+COMPLETED:岩層記錄的地球歷史
+COMPLETED:臺灣的板塊和地震
+COMPLETED:我們的宇宙
+COMPLETED:轉動的地球
+COMPLETED:日地月相對運動
+COMPLETED:認識能源
+COMPLETED:能源的發展與應用
+NOT COMPLETED:電流的熱效應與電能
+    COMPLETED:電與生活
+    COMPLETED:電池
+    COMPLETED:電流的化學效應
+    COMPLETED:磁鐵與磁場
+    COMPLETED:電流的磁效應
+    COMPLETED:電流磁效應的應用
+    COMPLETED:電流與磁場的交互作用
+    COMPLETED:電磁感應
+    COMPLETED:大氣的組成和結構
+    COMPLETED:天氣變化
+    COMPLETED:氣團和鋒面
+    COMPLETED:臺灣的氣象災害
+    COMPLETED:海氣的交互作用與影響
+    COMPLETED:氣候變遷的減緩與調適

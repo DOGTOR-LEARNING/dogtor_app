@@ -96,7 +96,7 @@ def read_csv_data(csv_file_path: str) -> List[Dict[str, Any]]:
             next(reader, None)
             
             for row in reader:
-                if len(row) < 9:  # 確保行有足夠的列
+                if len(row) < 7:  # 確保行有足夠的列
                     print(f"警告: 跳過無效行 {row}")
                     continue
                 
@@ -118,34 +118,76 @@ def read_csv_data(csv_file_path: str) -> List[Dict[str, Any]]:
         print(f"讀取 CSV 文件時出錯: {e}")
         return []
 
-def load_reference_questions(csv_file_path: str = "processing/question_knowledge_point_matching_results.csv") -> Dict[str, List[Dict[str, Any]]]:
+def load_reference_questions(sections_data: List[Dict[str, Any]], csv_file_path: str = "processing/question_knowledge_point_matching_results.csv") -> Dict[str, List[Dict[str, Any]]]:
     """從 question_knowledge_point_matching_results.csv 讀取參考題目，按知識點分組"""
     reference_questions = {}
+    
+    # 先從 sections_data 收集所有知識點
+    all_knowledge_points = set()
+    for section in sections_data:
+        for kp in section['knowledge_points']:
+            all_knowledge_points.add(kp)
+    
+    print(f"收集到 {len(all_knowledge_points)} 個知識點")
+    print(f"知識點列表: {list(all_knowledge_points)[:10]}...")  # 只顯示前10個
+    
     try:
+        print(f"開始讀取參考題目文件: {csv_file_path}")
+        
+        # 檢查文件是否存在
+        if not os.path.exists(csv_file_path):
+            print(f"錯誤：參考題目文件不存在: {csv_file_path}")
+            return {}
+            
         with open(csv_file_path, 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
+            print(f"CSV 列名: {reader.fieldnames}")
+            
+            row_count = 0
+            matched_count = 0
             
             for row in reader:
-                if row['status'] == 'matched' and row['matched_knowledge_point']:
-                    knowledge_point = row['matched_knowledge_point']
+                try:
+                    row_count += 1
+                    if row_count % 1000 == 0:
+                        print(f"已處理 {row_count} 行...")
                     
-                    if knowledge_point not in reference_questions:
-                        reference_questions[knowledge_point] = []
+                    # 檢查必要的欄位是否存在
+                    required_fields = ['matched_knowledge_point', 'question_text']
+                    missing_fields = [field for field in required_fields if field not in row or not row[field]]
+                    if missing_fields:
+                        continue
                     
-                    reference_questions[knowledge_point].append({
-                        "ques_no": row['ques_no'],
-                        "subject": row['subject'],
-                        "chapter_name": row['chapter_name'],
-                        "section_name": row['section_name'],
-                        "question_text": row['question_text']
-                    })
+                    # 檢查這個題目的知識點是否在我們的知識點列表中
+                    matched_kp = row['matched_knowledge_point'].strip()
+                    if matched_kp in all_knowledge_points:
+                        matched_count += 1
+                        
+                        if matched_kp not in reference_questions:
+                            reference_questions[matched_kp] = []
+                        
+                        reference_questions[matched_kp].append({
+                            "subject": row.get('subject', ''),
+                            "chapter_name": row.get('chapter_name', ''),
+                            "section_name": row.get('section_name', ''),
+                            "question_text": row['question_text']
+                        })
+                        
+                except Exception as row_error:
+                    print(f"處理第 {row_count} 行時出錯: {row_error}")
+                    continue
         
         print(f"成功載入 {len(reference_questions)} 個知識點的參考題目")
+        print(f"總共處理了 {row_count} 行，其中 {matched_count} 行成功匹配")
         for kp, questions in reference_questions.items():
             print(f"  - {kp}: {len(questions)} 題")
+        
         return reference_questions
+        
     except Exception as e:
         print(f"載入參考題目時出錯: {e}")
+        import traceback
+        traceback.print_exc()
         return {}
 
 def generate_questions_with_reference(knowledge_points: List[str], section_data: Dict[str, Any], reference_questions: Dict[str, List[Dict[str, Any]]], batch_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
@@ -184,9 +226,9 @@ def generate_questions_with_reference(knowledge_points: List[str], section_data:
 參考題目如下：
 {reference_text}
 
-請為每個指定的知識點生成 20 道選擇題，要求：
+請為每個指定的知識點生成 15 道選擇題，要求：
 
-1. **概念一致性**：生成的題目概念要跟參考題目一樣，涵蓋相同的知識點和概念範圍
+1. **概念一致性**：生成的題目概念要跟參考題目一樣，涵蓋相同的知識點和概念範圍，若參考題目不足時，請預測符合該年級程度該知識點的觀念
 2. **題型要求**：題型可以是一般的選擇題，或是挖空格選出正確選項的挖空選擇題。每道題有 4 個選項，只有 1 個正確答案
 3. **選項範圍**：選項內容不要超出參考題型的範圍，保持與參考題目相似的難度和概念深度
 4. **題目品質**：
@@ -196,6 +238,8 @@ def generate_questions_with_reference(knowledge_points: List[str], section_data:
    - 適合該年級學生，計算量不要太大
 5. **生活化元素**：可以適度加入生活化的元素，引起學生的學習興趣
 6. **特色元素**：可以非常少量地加入一些有趣的選項，以激發學生探索題庫時的驚喜樂趣，但不要太多，以免影響題目的嚴肅性
+7. **格式嚴謹**：如果有指數或是化學式，請直接使用上標或下標文字，不要用 '^' 或 '_' 符號，如：Fe₂O₃，不要 Fe2O3；或是 cm³，不要 cm3
+8. **題型靈活**：題型描述可以靈活，各題型不要過於雷同
 
 請按照以下JSON格式返回：
 {{
@@ -378,9 +422,9 @@ def verify_question_with_gemini(question_data: Dict[str, Any]) -> Tuple[bool, st
 """
 
 
-        # 改用 Gemini 2.5 Flash 驗證題目
+        # 改用 Gemini 2.0 Flash 驗證題目
         response = gemini_client.chat.completions.create(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             messages=[
                 {"role": "user", "content": prompt}
             ]
@@ -425,7 +469,7 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
     """使用 o4-mini 生成題目解釋"""
     try:
         prompt = f"""
-請以臺灣中學學習助理的口吻為以下選擇題生成清晰、簡短的解釋:
+請為以下選擇題生成清晰、簡短的解釋:
 
 題目: {question_data['question']}
 選項:
@@ -435,7 +479,7 @@ def generate_explanation_with_o3mini(question_data: Dict[str, Any]) -> str:
 4. {question_data['options'][3]}
 正確答案: {question_data['answer']}
 
-請向同學提供一個簡短但清楚的解釋，說明這題的主要觀念或是解題關鍵！
+請提供一個簡短但清楚的解釋，說明這題的主要觀念或是解題關鍵！
 解釋應該有教育意義，幫助學生理解相關知識點，且中文字要是繁體中文，可以非常少量使用合適的 emoji 。
 """
 
@@ -495,6 +539,7 @@ def get_or_create_chapter(connection, subject: str, section_data: Dict[str, Any]
             result = cursor.fetchone()
             
             if result:
+                print(f"章節已存在，使用現有章節 ID: {result['id']}")
                 return result['id']
             
             # 創建新章節
@@ -516,9 +561,28 @@ def get_or_create_chapter(connection, subject: str, section_data: Dict[str, Any]
             connection.commit()
             
             # 獲取新創建的章節 ID
-            return cursor.lastrowid
+            chapter_id = cursor.lastrowid
+            print(f"創建新章節，章節 ID: {chapter_id}")
+            return chapter_id
+            
     except Exception as e:
         print(f"獲取或創建章節時出錯: {e}")
+        # 如果是重複鍵錯誤，再次嘗試獲取現有章節
+        if "Duplicate entry" in str(e):
+            try:
+                with connection.cursor() as cursor:
+                    sql = """
+                    SELECT id FROM chapter_list 
+                    WHERE subject = %s AND chapter_name = %s
+                    """
+                    cursor.execute(sql, (subject, section_data['chapter_name']))
+                    result = cursor.fetchone()
+                    if result:
+                        print(f"檢測到重複，使用現有章節 ID: {result['id']}")
+                        return result['id']
+            except Exception as retry_error:
+                print(f"重試獲取章節時出錯: {retry_error}")
+        
         connection.rollback()
         return 0
 
@@ -535,6 +599,7 @@ def get_or_create_knowledge_point(connection, chapter_id: int, section_data: Dic
             result = cursor.fetchone()
             
             if result:
+                print(f"知識點已存在，使用現有知識點 ID: {result['id']}")
                 return result['id']
             
             # 創建新知識點
@@ -555,9 +620,28 @@ def get_or_create_knowledge_point(connection, chapter_id: int, section_data: Dic
             connection.commit()
             
             # 獲取新創建的知識點 ID
-            return cursor.lastrowid
+            knowledge_id = cursor.lastrowid
+            print(f"創建新知識點，知識點 ID: {knowledge_id}")
+            return knowledge_id
+            
     except Exception as e:
         print(f"獲取或創建知識點時出錯: {e}")
+        # 如果是重複鍵錯誤，再次嘗試獲取現有知識點
+        if "Duplicate entry" in str(e):
+            try:
+                with connection.cursor() as cursor:
+                    sql = """
+                    SELECT id FROM knowledge_points 
+                    WHERE section_name = %s AND point_name = %s
+                    """
+                    cursor.execute(sql, (section_data['section_name'], point_name))
+                    result = cursor.fetchone()
+                    if result:
+                        print(f"檢測到重複，使用現有知識點 ID: {result['id']}")
+                        return result['id']
+            except Exception as retry_error:
+                print(f"重試獲取知識點時出錯: {retry_error}")
+        
         connection.rollback()
         return 0
 
@@ -639,9 +723,9 @@ def process_section(subject: str, section_data: Dict[str, Any]):
         knowledge_points = section_data['knowledge_points']
         print(f"[檢查點 2] 小節 {section_data['section_name']} 包含 {len(knowledge_points)} 個知識點")
         
-        # 載入參考題目
-        print(f"[檢查點 2.5] 載入參考題目")
-        reference_questions = load_reference_questions()
+        # 使用全局載入的參考題目
+        print(f"[檢查點 2.5] 使用已載入的參考題目")
+        global reference_questions
         
         # 使用 Gemini 2.5 Flash 參考現有題目生成題目
         print(f"[檢查點 3] 開始使用 Gemini 2.5 Flash 參考現有題目生成題目")
@@ -678,6 +762,7 @@ def process_section(subject: str, section_data: Dict[str, Any]):
     
     except Exception as e:
         print(f"處理小節時出錯: {e}")
+        raise # 重新拋出異常，以便上層函數可以捕獲並記錄為失敗
     finally:
         if connection:
             connection.close()
@@ -687,6 +772,11 @@ def main():
     parser = argparse.ArgumentParser(description='從 CSV 生成題庫並存儲到數據庫')
     parser.add_argument('csv_file', help='輸入的 CSV 文件路徑')
     parser.add_argument('subject', help='學科名稱')
+    parser.add_argument('--start', type=int, default=0, help='開始處理的小節索引 (從0開始)')
+    parser.add_argument('--end', type=int, default=None, help='結束處理的小節索引 (不包含)')
+    parser.add_argument('--skip-existing', action='store_true', help='跳過已存在章節的小節')
+    parser.add_argument('--resume', action='store_true', help='從上次中斷的地方繼續')
+    parser.add_argument('--log-file', default='processing_log.txt', help='處理日誌文件')
     args = parser.parse_args()
     
     # 讀取 CSV 數據
@@ -695,12 +785,99 @@ def main():
         print("沒有找到有效的小節數據，程序退出")
         return
     
-    # 使用線程池處理多個小節
-    with ThreadPoolExecutor(max_workers=1) as executor:  # 限制為 1 以避免 API 限制
-        for section_data in sections_data:
-            executor.submit(process_section, args.subject, section_data)
+    # 計算處理範圍
+    total_sections = len(sections_data)
+    start_idx = args.start
+    end_idx = args.end if args.end is not None else total_sections
     
-    print("所有小節處理完成")
+    # 確保範圍有效
+    start_idx = max(0, min(start_idx, total_sections))
+    end_idx = max(start_idx, min(end_idx, total_sections))
+    
+    print(f"總共 {total_sections} 個小節")
+    print(f"將處理小節 {start_idx} 到 {end_idx-1} (共 {end_idx - start_idx} 個小節)")
+    
+    # 載入或創建處理日誌
+    processed_sections = set()
+    failed_sections = set()
+    
+    if args.resume and os.path.exists(args.log_file):
+        print(f"讀取處理日誌: {args.log_file}")
+        with open(args.log_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('COMPLETED:'):
+                    section_name = line.replace('COMPLETED:', '')
+                    processed_sections.add(section_name)
+                elif line.startswith('FAILED:'):
+                    section_name = line.replace('FAILED:', '')
+                    failed_sections.add(section_name)
+        print(f"已完成: {len(processed_sections)} 個小節")
+        print(f"失敗: {len(failed_sections)} 個小節")
+    
+    # 篩選需要處理的小節
+    sections_to_process = []
+    for i in range(start_idx, end_idx):
+        section_data = sections_data[i]
+        section_name = section_data['section_name']
+        
+        # 檢查是否要跳過已處理的小節
+        if args.resume and section_name in processed_sections:
+            print(f"跳過已完成的小節: {section_name}")
+            continue
+            
+        sections_to_process.append((i, section_data))
+    
+    if not sections_to_process:
+        print("沒有需要處理的小節")
+        return
+    
+    print(f"實際需要處理: {len(sections_to_process)} 個小節")
+    
+    # 載入參考題目（傳遞所有小節數據以收集知識點）
+    print("[初始化] 載入參考題目...")
+    global reference_questions
+    reference_questions = load_reference_questions(sections_data)
+    
+    # 處理小節
+    def process_with_logging(section_info):
+        idx, section_data = section_info
+        section_name = section_data['section_name']
+        try:
+            print(f"\n[{idx+1}/{total_sections}] 開始處理: {section_name}")
+            
+            # 檢查是否要跳過已存在的章節
+            if args.skip_existing:
+                connection = get_db_connection()
+                try:
+                    with connection.cursor() as cursor:
+                        sql = "SELECT id FROM chapter_list WHERE subject = %s AND chapter_name = %s"
+                        cursor.execute(sql, (args.subject, section_data['chapter_name']))
+                        if cursor.fetchone():
+                            print(f"跳過已存在章節的小節: {section_name}")
+                            with open(args.log_file, 'a', encoding='utf-8') as f:
+                                f.write(f"SKIPPED:{section_name}\n")
+                            return
+                finally:
+                    connection.close()
+            
+            # 處理小節
+            process_section(args.subject, section_data)
+            
+            # 記錄成功
+            with open(args.log_file, 'a', encoding='utf-8') as f:
+                f.write(f"COMPLETED:{section_name}\n")
+            
+            print(f"[{idx+1}/{total_sections}] 完成處理: {section_name}")
+            
+        except Exception as e:
+            print(f"[{idx+1}/{total_sections}] 處理失敗: {section_name}, 錯誤: {e}")
+            with open(args.log_file, 'a', encoding='utf-8') as f:
+                f.write(f"FAILED:{section_name}\n")
+    
+    # 序列處理（避免 API 限制）
+    for section_info in sections_to_process:
+        process_with_logging(section_info)
 
 if __name__ == "__main__":
     validate_env_vars()

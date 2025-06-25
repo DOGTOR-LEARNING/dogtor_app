@@ -620,15 +620,56 @@ async def get_questions_by_level(request: Request):
                 # 將知識點字符串拆分為列表
                 knowledge_point_list = []
                 if knowledge_points:
-                    # 嘗試使用頓號（、）分隔
-                    if '、' in knowledge_points:
-                        knowledge_point_list = [kp.strip() for kp in knowledge_points.split('、')]
-                    # 嘗試使用逗號（,）分隔
-                    elif ',' in knowledge_points:
-                        knowledge_point_list = [kp.strip() for kp in knowledge_points.split(',')]
-                    # 如果只有一個知識點
+                    # 檢查是否為章節總複習
+                    if knowledge_points.strip() == "章節所有知識點":
+                        print("檢測到章節總複習，從章節所有知識點中選題")
+                        
+                        # 獲取該章節的所有知識點
+                        if chapter:
+                            cursor.execute("""
+                            SELECT DISTINCT kp.point_name, kp.id
+                            FROM knowledge_points kp
+                            JOIN chapter_list cl ON kp.chapter_id = cl.id
+                            WHERE cl.chapter_name = %s
+                            """, (chapter,))
+                        else:
+                            # 如果沒有提供章節名稱，嘗試從 level_id 獲取
+                            if level_id:
+                                # 首先嘗試從 level_info 表獲取關卡對應的章節 ID
+                                cursor.execute("""
+                                SELECT chapter_id FROM level_info WHERE id = %s
+                                """, (level_id,))
+                                level_result = cursor.fetchone()
+                                
+                                if level_result:
+                                    # 使用章節 ID 獲取所有知識點
+                                    cursor.execute("""
+                                    SELECT DISTINCT point_name, id
+                                    FROM knowledge_points 
+                                    WHERE chapter_id = %s
+                                    """, (level_result['chapter_id'],))
+                                else:
+                                    return {"success": False, "message": f"找不到關卡 ID {level_id} 對應的章節"}
+                            else:
+                                return {"success": False, "message": "章節總複習需要提供章節名稱或關卡ID"}
+                        
+                        chapter_knowledge_points = cursor.fetchall()
+                        if not chapter_knowledge_points:
+                            return {"success": False, "message": "找不到該章節的知識點"}
+                        
+                        knowledge_point_list = [kp['point_name'] for kp in chapter_knowledge_points]
+                        print(f"章節總複習包含 {len(knowledge_point_list)} 個知識點: {knowledge_point_list}")
                     else:
-                        knowledge_point_list = [knowledge_points.strip()]
+                        # 一般情況：將知識點字符串拆分
+                        # 嘗試使用頓號（、）分隔
+                        if '、' in knowledge_points:
+                            knowledge_point_list = [kp.strip() for kp in knowledge_points.split('、')]
+                        # 嘗試使用逗號（,）分隔
+                        elif ',' in knowledge_points:
+                            knowledge_point_list = [kp.strip() for kp in knowledge_points.split(',')]
+                        # 如果只有一個知識點
+                        else:
+                            knowledge_point_list = [knowledge_points.strip()]
 
                 # 獲取知識點的ID
                 knowledge_ids = []
@@ -955,6 +996,7 @@ async def complete_level(request: Request):
         user_id = data.get('user_id')
         level_id = data.get('level_id')
         stars = data.get('stars', 0)
+        ai_comment = data.get('ai_comment') # 獲取 ai_comment
         
         print(f"收到關卡完成請求: user_id={user_id}, level_id={level_id}, stars={stars}")
         
@@ -975,10 +1017,10 @@ async def complete_level(request: Request):
                 
                 # 每次都創建新記錄，不檢查是否已存在
                 insert_sql = """
-                INSERT INTO user_level (user_id, level_id, stars, answered_at) 
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO user_level (user_id, level_id, stars, ai_comment, answered_at) 
+                VALUES (%s, %s, %s, %s, %s)
                 """
-                cursor.execute(insert_sql, (user_id, level_id, stars, current_time))
+                cursor.execute(insert_sql, (user_id, level_id, stars, ai_comment, current_time))
                 
                 connection.commit()
                 

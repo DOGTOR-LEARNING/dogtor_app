@@ -487,13 +487,13 @@ void _onItemTapped(int index) {
                                           child: GestureDetector(
                                             onTap: () {
                                               print('點擊了 ${planets[index]['name']}');
-                                              if (planets[index]['name'] == '理化') {
+                                              if (planets[index]['name'] == '自然') {
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
                                                     builder: (context) => ChapterDetailPage(
-                                                      subject: '理化',
-                                                      csvPath: 'assets/edu_data/level_info/junior_science_level.csv',
+                                                      subject: '自然',
+                                                      csvPath: 'assets/edu_data/level_info/jun_science_level.csv',
                                                     ),
                                                   ),
                                                 );
@@ -515,7 +515,7 @@ void _onItemTapped(int index) {
                                                   MaterialPageRoute(
                                                     builder: (context) => ChapterDetailPage(
                                                       subject: '歷史',
-                                                      csvPath: 'assets/edu_data/level_info/junior_his_level.csv',
+                                                      csvPath: 'assets/edu_data/level_info/jun_his_level.csv',
                                                     ),
                                                   ),
                                                 );
@@ -526,7 +526,7 @@ void _onItemTapped(int index) {
                                                   MaterialPageRoute(
                                                     builder: (context) => ChapterDetailPage(
                                                       subject: '地理',
-                                                      csvPath: 'assets/edu_data/level_info/junior_geo_level.csv',
+                                                      csvPath: 'assets/edu_data/level_info/jun_geo_level.csv',
                                                     ),
                                                   ),
                                                 );
@@ -537,7 +537,7 @@ void _onItemTapped(int index) {
                                                   MaterialPageRoute(
                                                     builder: (context) => ChapterDetailPage(
                                                       subject: '公民',
-                                                      csvPath: 'assets/edu_data/level_info/junior_civ_level.csv',
+                                                      csvPath: 'assets/edu_data/level_info/jun_civ_level.csv',
                                                     ),
                                                   ),
                                                 );
@@ -867,7 +867,7 @@ void _onItemTapped(int index) {
 
   final List<Map<String, dynamic>> planets = [
     {
-      'name': '理化',
+      'name': '自然',
       'image': 'assets/pics/home-island2.png',
     },
     {

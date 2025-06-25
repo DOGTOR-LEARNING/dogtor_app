@@ -213,7 +213,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                             icon: Icon(Icons.arrow_drop_down, color: Color(0xFF102031)),
                             padding: EdgeInsets.symmetric(horizontal: 4),
                             style: TextStyle(color:Color(0xFF102031), fontSize: 15),
-                            items: ["全部", "數學", "國文", "理化", "歷史"]
+                            items: ["全部", "數學", "國文", "自然", "歷史"]
                                 .map((subject) => DropdownMenuItem<String>(
                                       value: subject,
                                       child: Row(

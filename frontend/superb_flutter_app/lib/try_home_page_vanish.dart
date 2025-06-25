@@ -199,7 +199,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _navigateToSubjectPage(String subject) {
     String csvPath = '';
     
-    if (subject == '理化') {
+    if (subject == '自然') {
       csvPath = 'assets/edu_data/level_info/junior_science_level.csv';
     } else if (subject == '化學') {
       csvPath = 'assets/edu_data/level_info/high_chemistry_level.csv';
@@ -782,7 +782,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   final List<Map<String, dynamic>> planets = [
     {
-      'name': '理化',
+      'name': '自然',
       'image': 'assets/pics/home-island2.png',
     },
     {

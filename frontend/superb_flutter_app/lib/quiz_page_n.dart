@@ -148,7 +148,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           'Accept': 'application/json; charset=utf-8'
         },
         body: jsonEncode({
-          'chapter': '',  // 不使用章節過濾
+          'chapter': widget.chapter,  // 傳遞章節名稱，用於章節總複習
           'section': widget.section,  // 使用小節名稱
           'knowledge_points': knowledgePointsStr,  // 使用知識點字符串
           'user_id': await _getUserId(),  // 添加用戶ID
@@ -881,6 +881,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         'user_id': userId,
         'level_id': levelId,
         'stars': _calculateStars(correctAnswersCount, questions.length),  // 根據正確率計算星星數
+        'ai_comment': _aiAnalysis,
       };
       
       print('請求數據: $requestData');
