@@ -794,7 +794,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       'image': 'assets/pics/home-island4.png',
     },
     {
-      'name': '數學',
+      'name': '國中數學',
       'image': 'assets/pics/home-island5.png',
     },
     {

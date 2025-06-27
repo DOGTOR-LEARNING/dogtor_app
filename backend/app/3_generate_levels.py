@@ -187,12 +187,12 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("用法: python generate_levels.py <input_csv_file> [output_csv_file] [points_per_level]")
         print("  input_csv_file: 輸入的 CSV 文件路徑")
-        print("  output_csv_file: 輸出的 CSV 文件路徑 (默認為 'level_info.csv')")
+        print("  output_csv_file: 輸出的 CSV 文件路徑 (默認為 'level.csv')")
         print("  points_per_level: 每個關卡包含的知識點數量 (默認為 3)")
         sys.exit(1)
     
     input_file = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else "level_info.csv"
+    output_file = sys.argv[2] if len(sys.argv) > 2 else "level.csv"
     points_per_level = int(sys.argv[3]) if len(sys.argv) > 3 else 3
     
     if not os.path.exists(input_file):

@@ -23,7 +23,7 @@ class QuestionKnowledgePointMatcher:
         """載入知識點和題庫資料，並檢查已處理的結果"""
         try:
             # 載入知識點資料
-            self.knowledge_points_df = pd.read_csv("processing/jun_science_list.csv")
+            self.knowledge_points_df = pd.read_csv("processing/jun_math_list.csv")
             print(f"載入知識點資料: {len(self.knowledge_points_df)} 筆記錄")
             
             # 載入題庫資料
@@ -77,7 +77,8 @@ class QuestionKnowledgePointMatcher:
     def should_skip_question(self, question_text: str) -> tuple[bool, str]:
         """判斷是否應該跳過這道題目"""
         # 檢查是否提到圖片
-        image_keywords = ['圖為', '圖片', '圖表', '下圖', '右圖', '左圖', '如圖', '圖中', '附圖']
+        # image_keywords = ['圖為', '圖片', '圖表', '下圖', '右圖', '左圖', '如圖', '圖中', '附圖']
+        image_keywords = []
         question_lower = question_text.lower()
         
         for keyword in image_keywords:

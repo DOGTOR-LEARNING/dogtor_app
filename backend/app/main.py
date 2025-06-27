@@ -14,9 +14,36 @@ from typing import Optional
 from pydantic import BaseModel
 import io
 from email.mime.text import MIMEText
-from datetime import datetime, timedelta
-from pytz import timezone
-from firebase_push import send_push_notification
+from datetime import datetime, timedelta, timezone
+# 初始化 Firebase Admin（只需要在這裡初始化一次）
+import firebase_admin
+from firebase_admin import credentials, messaging
+
+# 初始化 Firebase Admin
+try:
+    firebase_admin.get_app()
+    print("✅ Firebase Admin 已經初始化過了")
+except ValueError:
+    # Firebase Admin 尚未初始化
+    cred = credentials.ApplicationDefault()
+    firebase_admin.initialize_app(cred)
+    print("✅ Firebase Admin 初始化成功")
+
+def send_push_notification(token: str, title: str, body: str) -> str:
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            token=token,
+        )
+        response = messaging.send(message)
+        print(f"✅ 已送出推播：{token[:10]}... → {response}")
+        return response
+    except Exception as e:
+        print(f"❌ 發送失敗：{e}")
+        return "error"
 import json
 # 添加新的 imports
 import torch
@@ -2440,10 +2467,29 @@ async def get_chat_history(user_id: str):
         connection.close()
 
 MAX_HEARTS = 5
-RECOVER_DURATION = timedelta(hours=2)
+RECOVER_DURATION = timedelta(hours=4)  # 修改為 4 小時恢復一顆
 
 def calculate_current_hearts(last_updated, stored_hearts):
     now = datetime.utcnow()
+    
+    # 獲取台灣時間（UTC+8）
+    taiwan_timezone = timezone(timedelta(hours=8))
+    now_tw = now.replace(tzinfo=timezone.utc).astimezone(taiwan_timezone)
+    last_updated_tw = last_updated.replace(tzinfo=timezone.utc).astimezone(taiwan_timezone)
+    
+    # 檢查是否需要每日重置（台灣時間 12:00）
+    today_noon = now_tw.replace(hour=12, minute=0, second=0, microsecond=0)
+    yesterday_noon = today_noon - timedelta(days=1)
+    
+    # 如果上次更新在昨天中午之前，且現在過了今天中午，則重置為滿血
+    if last_updated_tw < yesterday_noon and now_tw >= today_noon:
+        return MAX_HEARTS, timedelta(0), 0
+    
+    # 如果今天已經過了中午，且上次更新在今天中午之前，則重置為滿血
+    if now_tw >= today_noon and last_updated_tw < today_noon:
+        return MAX_HEARTS, timedelta(0), 0
+    
+    # 正常的時間恢復邏輯
     elapsed = now - last_updated
     recovered = elapsed // RECOVER_DURATION
     new_hearts = min(MAX_HEARTS, stored_hearts + recovered)
@@ -2639,7 +2685,6 @@ async def send_learning_reminder(request: Request):
                 
                 # 嘗試使用 messaging 直接發送
                 try:
-                    from firebase_admin import messaging
                     
                     for token_row in tokens:
                         token = token_row["firebase_token"]
@@ -3556,7 +3601,6 @@ async def debug_push_notification(request: Request):
                 
                 # 直接使用 messaging 庫
                 try:
-                    from firebase_admin import messaging
                     
                     # 創建消息內容
                     message = messaging.Message(
@@ -3631,7 +3675,7 @@ async def validate_tokens(request: Request):
                 if not tokens:
                     return {"success": False, "message": "找不到用戶的推送通知令牌", "tokens_count": 0}
                 
-                from firebase_admin import messaging
+# messaging 已經在頂部導入
                 valid_tokens = []
                 invalid_tokens = []
                 
@@ -4105,9 +4149,9 @@ async def analyze_quiz_performance(request: Request):
 請用繁體中文提供：
 1. 一句鼓勵的話
 2. 如果有表現較弱的知識點，簡單指出需要加強的地方
-3. 給出1-2個具體的學習建議
+3. 給出1個具體的學習建議
 
-請保持正面鼓勵的語氣，控制在70字以內。"""
+請保持正面鼓勵的語氣，控制在40字以內，可以使用 emoji。"""
         
         # 生成分析
         response = model.generate_content(prompt)

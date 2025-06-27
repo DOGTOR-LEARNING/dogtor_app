@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'quiz_page_n.dart'; // blue & orange theme
 import 'package:google_fonts/google_fonts.dart';
+import 'insufficient_hearts_dialog.dart';  // 引入生命不足對話框
 
 class ChapterDetailPage extends StatefulWidget {
   final String subject;
@@ -374,12 +375,12 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
     return sectionWithChapter['book'] ?? '';
   }
 
-  Future<bool> _checkHeart() async {
+  Future<Map<String, dynamic>> _checkHeart() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('user_id');
 
-      if (userId == null) return false;
+      if (userId == null) return {'hasHearts': false, 'remainingTime': null};
 
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/check_heart'),
@@ -390,14 +391,39 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success']) {
-          return data['hearts'] > 0;
+          Duration? remainingTime;
+          final nextHeartIn = data['next_heart_in'] as String?;
+          
+          if (nextHeartIn != null && nextHeartIn.isNotEmpty) {
+            try {
+              final parts = nextHeartIn.split(':');
+              if (parts.length >= 3) {
+                final hours = int.tryParse(parts[0]) ?? 0;
+                final minutes = int.tryParse(parts[1]) ?? 0;
+                final seconds = int.tryParse(parts[2].split('.')[0]) ?? 0;
+                
+                remainingTime = Duration(
+                  hours: hours,
+                  minutes: minutes,
+                  seconds: seconds,
+                );
+              }
+            } catch (e) {
+              print("解析倒數時間失敗: $e");
+            }
+          }
+          
+          return {
+            'hasHearts': data['hearts'] > 0,
+            'remainingTime': remainingTime,
+          };
         }
       }
     } catch (e) {
       print("檢查體力失敗: $e");
     }
 
-    return false;
+    return {'hasHearts': false, 'remainingTime': null};
   }
 
   Future<void> _consumeHeart() async {
@@ -722,9 +748,11 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                                       child: Icon(Icons.play_arrow, color: Colors.white),
                                                     ),
                                                     onTap: () async {
-                                                      final hasHeart = await _checkHeart();
+                                                      final heartResult = await _checkHeart();
+                                                      final hasHearts = heartResult['hasHearts'] as bool;
+                                                      final remainingTime = heartResult['remainingTime'] as Duration?;
 
-                                                      if (hasHeart) {
+                                                      if (hasHearts) {
                                                         _consumeHeart();
                                                         Navigator.push(
                                                           context,
@@ -740,9 +768,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                                           _loadUserLevelStars();
                                                         });
                                                       } else {
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                            SnackBar(content: Text("體力不足，無法挑戰")),
-                                                          );
+                                                        InsufficientHeartsDialog.show(context, remainingTime);
                                                       }
                                                     },
                                                   ),

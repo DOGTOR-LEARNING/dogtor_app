@@ -6,6 +6,7 @@ import 'dart:convert' show utf8;
 import 'dart:convert' show latin1;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class QuizPage extends StatefulWidget {
   final String chapter;
@@ -520,141 +521,150 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       isCalculatingResult = true;
     });
     
-    // 先記錄關卡完成情況，然後進行 AI 分析
-    _completeLevel().then((_) async {
-      // 開始 AI 分析
-      setState(() {
-        _isAnalyzing = true;
-      });
-      
-      try {
-        await _analyzeAnswersWithAI();
-      } catch (e) {
-        print('AI 分析失敗: $e');
-        _aiAnalysis = "分析系統暫時無法使用，但你已經完成了測驗！";
-      }
-      
-      // 計算完成後，重置狀態
-      setState(() {
-        isCalculatingResult = false;
-        _isAnalyzing = false;
-      });
-      
-      final percentage = (correctAnswersCount / questions.length * 100).round();
-      String resultMessage;
-      Color resultColor;
-      IconData resultIcon;
-      
-      if (percentage >= 90) {
-        resultMessage = "太棒了！你對這個部分掌握得非常好！";
-        resultColor = Color(0xFF4ADE80);
-        resultIcon = Icons.sentiment_very_satisfied;
-      } else if (percentage >= 70) {
-        resultMessage = "做得好！你已經掌握了大部分內容。";
-        resultColor = Color(0xFF4ADE80);
-        resultIcon = Icons.sentiment_satisfied;
-      } else if (percentage >= 50) {
-        resultMessage = "繼續努力！你已經理解了一半的內容。";
-        resultColor = accentColor;
-        resultIcon = Icons.sentiment_neutral;
-      } else {
-        resultMessage = "需要更多練習，不要氣餒！";
-        resultColor = Color(0xFFF87171);
-        resultIcon = Icons.sentiment_dissatisfied;
-      }
-      
-      // 顯示結果對話框
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: secondaryColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Center(
-            child: Text(
-              '測驗結果',
-              style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  resultIcon,
-                  color: resultColor,
-                  size: 64,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  '$percentage% 正確率',
-                  style: _textStyle(color: resultColor, fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  '${correctAnswersCount}/${questions.length} 題答對',
-                  style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 16),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  resultMessage,
-                  textAlign: TextAlign.center,
-                  style: _textStyle(color: const Color.fromARGB(255, 19, 31, 54), fontSize: 16),
-                ),
-                if (_aiAnalysis.isNotEmpty) ...[
-                  SizedBox(height: 20),
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.psychology, color: Colors.blue, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'AI 學習分析',
-                              style: _textStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          _aiAnalysis,
-                          style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // 關閉對話框
-                Navigator.of(context).pop(); // 返回上一頁
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: accentColor,
-              ),
-              child: Text(
-                '返回',
-                style: _textStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-      );
+    // 先進行 AI 分析，再記錄關卡完成情況
+    _performAnalysisAndComplete();
+  }
+
+  Future<void> _performAnalysisAndComplete() async {
+    // 開始 AI 分析
+    setState(() {
+      _isAnalyzing = true;
     });
+    
+    try {
+      await _analyzeAnswersWithAI();
+    } catch (e) {
+      print('AI 分析失敗: $e');
+      _aiAnalysis = "分析系統暫時無法使用，但你已經完成了測驗！";
+    }
+    
+    // AI 分析完成後，記錄關卡完成情況（包含 AI comment）
+    try {
+      await _completeLevel();
+    } catch (e) {
+      print('記錄關卡完成失敗: $e');
+    }
+    
+    // 計算完成後，重置狀態
+    setState(() {
+      isCalculatingResult = false;
+      _isAnalyzing = false;
+    });
+    
+    final percentage = (correctAnswersCount / questions.length * 100).round();
+    String resultMessage;
+    Color resultColor;
+    IconData resultIcon;
+    
+    if (percentage >= 90) {
+      resultMessage = "太棒了！你對這個部分掌握得非常好！";
+      resultColor = Color(0xFF4ADE80);
+      resultIcon = Icons.sentiment_very_satisfied;
+    } else if (percentage >= 70) {
+      resultMessage = "做得好！你已經掌握了大部分內容。";
+      resultColor = Color(0xFF4ADE80);
+      resultIcon = Icons.sentiment_satisfied;
+    } else if (percentage >= 50) {
+      resultMessage = "繼續努力！你已經理解了一半的內容。";
+      resultColor = accentColor;
+      resultIcon = Icons.sentiment_neutral;
+    } else {
+      resultMessage = "需要更多練習，不要氣餒！";
+      resultColor = Color(0xFFF87171);
+      resultIcon = Icons.sentiment_dissatisfied;
+    }
+    
+    // 顯示結果對話框
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: secondaryColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Center(
+          child: Text(
+            '測驗結果',
+            style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                resultIcon,
+                color: resultColor,
+                size: 64,
+              ),
+              SizedBox(height: 16),
+              Text(
+                '$percentage% 正確率',
+                style: _textStyle(color: resultColor, fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '${correctAnswersCount}/${questions.length} 題答對',
+                style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 16),
+              ),
+              SizedBox(height: 16),
+              Text(
+                resultMessage,
+                textAlign: TextAlign.center,
+                style: _textStyle(color: const Color.fromARGB(255, 19, 31, 54), fontSize: 16),
+              ),
+              if (_aiAnalysis.isNotEmpty) ...[
+                SizedBox(height: 20),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.psychology, color: Colors.blue, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'AI 學習分析',
+                            style: _textStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        _aiAnalysis,
+                        style: _textStyle(color: const Color.fromARGB(255, 28, 49, 88), fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // 關閉對話框
+              Navigator.of(context).pop(); // 返回上一頁
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: accentColor,
+            ),
+            child: Text(
+              '返回',
+              style: _textStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // 顯示報告錯誤的對話框
@@ -1218,20 +1228,41 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Expanded(
-                                      child: RichText(
-                                        text: TextSpan(
-                                          children: [
-                                            TextSpan(
-                                              text: _displayedQuestion,
-                                              style: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
-                                            ),
-                                            if (_isTyping && _showCursor)
-                                              TextSpan(
-                                                text: "|",
-                                                style: _textStyle(color: accentColor, fontSize: 18, fontWeight: FontWeight.w600),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          if (_isTyping)
+                                            RichText(
+                                              text: TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text: _displayedQuestion,
+                                                    style: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
+                                                  ),
+                                                  if (_showCursor)
+                                                    TextSpan(
+                                                      text: "|",
+                                                      style: _textStyle(color: accentColor, fontSize: 18, fontWeight: FontWeight.w600),
+                                                    ),
+                                                ],
                                               ),
-                                          ],
-                                        ),
+                                            )
+                                          else
+                                            MarkdownBody(
+                                              data: questions[currentQuestionIndex]['question'] ?? '',
+                                              styleSheet: MarkdownStyleSheet(
+                                                p: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
+                                                h1: _textStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold),
+                                                h2: _textStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+                                                h3: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+                                                code: _textStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.w500),
+                                                codeblockDecoration: BoxDecoration(
+                                                  color: Colors.grey[100],
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                   ],
@@ -1303,9 +1334,16 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                                               child: Row(
                                                 children: [
                                                   Expanded(
-                                                    child: Text(
-                                                      option,
-                                                      style: _textStyle(color: Colors.black, fontSize: 16, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                                                    child: MarkdownBody(
+                                                      data: option,
+                                                      styleSheet: MarkdownStyleSheet(
+                                                        p: _textStyle(color: Colors.black, fontSize: 16, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                                                        code: _textStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.w500),
+                                                        codeblockDecoration: BoxDecoration(
+                                                          color: Colors.grey[100],
+                                                          borderRadius: BorderRadius.circular(4),
+                                                        ),
+                                                      ),
                                                     ),
                                                   ),
                                                   if (trailingIcon != null)
@@ -1434,10 +1472,29 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                     '解釋：',
                     style: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    questions[currentQuestionIndex]['explanation'] ?? '無解釋',
-                    style: _textStyle(color: Colors.black.withOpacity(0.9), fontSize: 16),
+                  SizedBox(height: 8),
+                  MarkdownBody(
+                    data: questions[currentQuestionIndex]['explanation'] ?? '無解釋',
+                    styleSheet: MarkdownStyleSheet(
+                      p: _textStyle(color: Colors.black.withOpacity(0.9), fontSize: 16),
+                      h1: _textStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+                      h2: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+                      h3: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                      code: _textStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.w500),
+                      codeblockDecoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      blockquote: _textStyle(color: Colors.blue[800]!, fontSize: 16),
+                      blockquoteDecoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border(
+                          left: BorderSide(color: Colors.blue, width: 4),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

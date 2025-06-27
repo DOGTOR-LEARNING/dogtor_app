@@ -228,7 +228,7 @@ def generate_questions_with_reference(knowledge_points: List[str], section_data:
 
 請為每個指定的知識點生成 15 道選擇題，要求：
 
-1. **概念一致性**：生成的題目概念要跟參考題目一樣，涵蓋相同的知識點和概念範圍，若參考題目不足時，請預測符合該年級程度該知識點的觀念
+1. **概念一致性**：生成的題目概念要跟參考題目一樣，涵蓋相同的知識點和概念範圍，概念一致即可，計算量不需要太大，要可在短時間內檢驗學生觀念正確性，若參考題目不足時，請預測符合該年級程度該知識點的觀念
 2. **題型要求**：題型可以是一般的選擇題，或是挖空格選出正確選項的挖空選擇題。每道題有 4 個選項，只有 1 個正確答案
 3. **選項範圍**：選項內容不要超出參考題型的範圍，保持與參考題目相似的難度和概念深度
 4. **題目品質**：
@@ -240,6 +240,7 @@ def generate_questions_with_reference(knowledge_points: List[str], section_data:
 6. **特色元素**：可以非常少量地加入一些有趣的選項，以激發學生探索題庫時的驚喜樂趣，但不要太多，以免影響題目的嚴肅性
 7. **格式嚴謹**：如果有指數或是化學式，請直接使用上標或下標文字，不要用 '^' 或 '_' 符號，如：Fe₂O₃，不要 Fe2O3；或是 cm³，不要 cm3
 8. **題型靈活**：題型描述可以靈活，各題型不要過於雷同
+9. **題目圖**：數學相關題目如果可以用 markdown 呈現，有需要圖片如果可以就用 markdown 畫，否則就不要出圖片題，出觀念題用文字呈現即可
 
 請按照以下JSON格式返回：
 {{
@@ -704,9 +705,10 @@ def process_question(connection, knowledge_id: int, question_data: Dict[str, Any
         print(f"  [錯誤] 處理題目時出錯: {e}")
         return False
 
-def process_section(subject: str, section_data: Dict[str, Any]):
+def process_section(subject: str, section_data: Dict[str, Any]) -> List[str]:
     """處理單個小節的所有知識點和題目"""
     connection = None
+    log_details = []
     try:
         print(f"\n===== 開始處理小節: {section_data['section_name']} =====")
         connection = get_db_connection()
@@ -715,8 +717,10 @@ def process_section(subject: str, section_data: Dict[str, Any]):
         print(f"[檢查點 1] 嘗試獲取或創建章節: {section_data['chapter_name']}")
         chapter_id = get_or_create_chapter(connection, subject, section_data)
         if not chapter_id:
-            print(f"無法獲取或創建章節，跳過處理小節: {section_data['section_name']}")
-            return
+            log_message = f"無法獲取或創建章節，跳過處理小節: {section_data['section_name']}"
+            print(log_message)
+            log_details.append(log_message)
+            return log_details
         print(f"[檢查點 1 完成] 成功獲取章節 ID: {chapter_id}")
         
         # 獲取知識點列表
@@ -738,13 +742,23 @@ def process_section(subject: str, section_data: Dict[str, Any]):
             # 獲取或創建知識點
             knowledge_id = get_or_create_knowledge_point(connection, chapter_id, section_data, point_name)
             if not knowledge_id:
-                print(f"無法獲取或創建知識點，跳過處理: {point_name}")
+                log_message = f"知識點 '{point_name}': 無法獲取或创建知識點ID，已跳過。"
+                print(log_message)
+                log_details.append(log_message)
                 continue
             
             print(f"[檢查點 4.1] 成功獲取知識點 ID: {knowledge_id}")
             
             # 處理該知識點的所有題目
             successful_questions = 0
+            total_generated = len(questions)
+
+            if total_generated == 0:
+                log_message = f"知識點 '{point_name}': 未生成任何題目。"
+                print(f"[檢查點 4 完成] {log_message}")
+                log_details.append(log_message)
+                continue
+
             for i, question_data in enumerate(questions):
                 print(f"[檢查點 4.2] 處理題目 {i+1}/{len(questions)}: {question_data['question']}...") #[:30]
                 print("選項A:", question_data['options'][0])
@@ -758,15 +772,20 @@ def process_section(subject: str, section_data: Dict[str, Any]):
                 if process_question(connection, knowledge_id, question_data):
                     successful_questions += 1
             
-            print(f"[檢查點 4 完成] 知識點 {point_name} 成功保存 {successful_questions}/{len(questions)} 個題目")
+            log_message = f"知識點 '{point_name}': 成功保存 {successful_questions}/{total_generated} 個題目"
+            print(f"[檢查點 4 完成] {log_message}")
+            log_details.append(log_message)
     
     except Exception as e:
         print(f"處理小節時出錯: {e}")
+        log_details.append(f"處理小節時出錯: {e}")
         raise # 重新拋出異常，以便上層函數可以捕獲並記錄為失敗
     finally:
         if connection:
             connection.close()
         print(f"===== 完成處理小節: {section_data['section_name']} =====\n")
+    
+    return log_details
 
 def main():
     parser = argparse.ArgumentParser(description='從 CSV 生成題庫並存儲到數據庫')
@@ -862,11 +881,13 @@ def main():
                     connection.close()
             
             # 處理小節
-            process_section(args.subject, section_data)
+            log_details = process_section(args.subject, section_data)
             
             # 記錄成功
             with open(args.log_file, 'a', encoding='utf-8') as f:
                 f.write(f"COMPLETED:{section_name}\n")
+                for detail in log_details:
+                    f.write(f"  - {detail}\n")
             
             print(f"[{idx+1}/{total_sections}] 完成處理: {section_name}")
             
@@ -874,6 +895,7 @@ def main():
             print(f"[{idx+1}/{total_sections}] 處理失敗: {section_name}, 錯誤: {e}")
             with open(args.log_file, 'a', encoding='utf-8') as f:
                 f.write(f"FAILED:{section_name}\n")
+                f.write(f"  ERROR: {str(e)}\n")
     
     # 序列處理（避免 API 限制）
     for section_info in sections_to_process:

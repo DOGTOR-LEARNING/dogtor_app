@@ -14,6 +14,9 @@ import 'package:flutter/rendering.dart';
 import 'user_stats_page.dart';  // Import the UserStatsPage
 import 'friends_page.dart';  // 引入新的好友頁面
 import 'notification_status_page.dart';  // Import the NotificationStatusPage
+import 'heart_display_widget.dart';  // 引入新的生命樹組件
+import 'top_heart_display.dart';  // 引入頂部生命樹組件
+import 'insufficient_hearts_dialog.dart';  // 引入生命不足對話框
 
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -25,19 +28,18 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedIndex = 1;
-  int _userHearts = 0;
   ScrollController _scrollController = ScrollController();
   final double _maxPlanetSize = 200.0;  // 增加最大尺寸
   final double _minPlanetSize = 100.0;  // 增加最小尺寸
   double _screenHeight = 600.0;  // 初始值
   String? _userPhotoUrl;  // 添加用戶頭像 URL 狀態變量
+  TopHeartDisplay? _topHeartDisplay;
   
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUserPhoto();  // 在初始化時加載用戶頭像
-    _loadUserHeart();
     
   }
 
@@ -64,35 +66,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     });
   }
 
-  // 加載剩餘體力
-  Future<bool> _loadUserHeart() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id');
 
-      if (userId == null) return false;
-
-      final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/check_heart'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user_id': userId}),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success']) {
-            setState(() {
-            _userHearts = data['hearts'];  // Update the heart value
-          });
-          return data['hearts'] > 0;
-        }
-      }
-    } catch (e) {
-      print("檢查體力失敗: $e");
-    }
-
-    return false;
-  }
 
   // 計算星球大小的方法
   double calculatePlanetSize(double scrollPosition, double itemPosition) {
@@ -359,6 +333,17 @@ void _onItemTapped(int index) {
                                                   ),
                                                 );
                                               }
+                                              else if (planets[index]['name'] == '國中數學') {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChapterDetailPage(
+                                                      subject: '國中數學',
+                                                      csvPath: 'assets/edu_data/level_info/jun_math_level.csv',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
                                               else if (planets[index]['name'] == '歷史') {
                                                 Navigator.push(
                                                   context,
@@ -441,13 +426,23 @@ void _onItemTapped(int index) {
               ChatPage(),
             ],
           ),
+          // 頂部生命樹顯示 - 右上角
+          Positioned(
+            top: 50,
+            right: 20,
+            child: TopHeartDisplay(
+              onInsufficientHearts: (Duration? remainingTime) {
+                InsufficientHeartsDialog.show(context, remainingTime);
+              },
+            ),
+          ),
+          
           // Overlay bubbles at the top right
           Positioned(
-            top: 63,
+            top: 95, // 調整位置，讓生命顯示在上方
             right: 20,
             child: _BubblesOverlay(
               userPhotoUrl: _userPhotoUrl,
-              userHearts: _userHearts,
               onProfileTap: () {
                 Navigator.push(
                   context,
@@ -505,10 +500,7 @@ void _onItemTapped(int index) {
                       );
                     },
                   ),
-                );
-              },
-              onHeartTap: () {
-                print("Heart button pressed");
+                                );
               },
             ),
           ),
@@ -809,7 +801,7 @@ void _onItemTapped(int index) {
       'image': 'assets/pics/home-island4.png',
     },
     {
-      'name': '數學',
+      'name': '國中數學',
       'image': 'assets/pics/home-island5.png',
     },
     {
@@ -907,19 +899,15 @@ class SnappingScrollPhysics extends ScrollPhysics {
 
 class _BubblesOverlay extends StatelessWidget {
   final String? userPhotoUrl;
-  final int userHearts;
   final VoidCallback onProfileTap;
   final VoidCallback onFriendsTap;
   final VoidCallback onNotificationTap;
-  final VoidCallback onHeartTap;
 
   const _BubblesOverlay({
     required this.userPhotoUrl,
-    required this.userHearts,
     required this.onProfileTap,
     required this.onFriendsTap,
     required this.onNotificationTap,
-    required this.onHeartTap,
   });
 
   @override
@@ -1010,39 +998,7 @@ class _BubblesOverlay extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(height: 8),
-        GestureDetector(
-          onTap: onHeartTap,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.favorite,
-              color: Colors.red,
-              size: 24,
-            ),
-          ),
-        ),
-        SizedBox(width: 8),
-        Text(
-          '$userHearts',
-          style: TextStyle(
-            fontSize: 20,
-            color: Colors.black,
-          ),
-        ),
+
       ],
     );
   }

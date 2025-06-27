@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:convert' show utf8;
 import 'package:http/http.dart' as http;
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/services.dart';
 
 class FriendProfilePage extends StatefulWidget {
@@ -199,7 +201,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
         }),
       );
 
-      final jsonData = json.decode(response.body);
+      final jsonData = json.decode(utf8.decode(response.bodyBytes));
       print('學習提醒響應: $jsonData');
       
       if (response.statusCode == 200 && jsonData['success'] == true) {
