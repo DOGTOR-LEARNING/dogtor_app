@@ -153,81 +153,77 @@ async def chat_with_openai(request: ChatRequest):
     
     return {"response": response.choices[0].message.content}
 
-# Ensure the Qpics directory exists
-os.makedirs('Qpics', exist_ok=True)
 
-# Define a function to save question data to a CSV file
-async def save_question_to_csv(data):
-    file_exists = os.path.isfile('questions.csv')
-    with open('questions.csv', mode='a', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        if not file_exists:
-            writer.writerow(['q_id', 'subject', 'chapter', 'description', 'difficulty', 'simple_answer', 'detailed_answer', 'timestamp'])
-        writer.writerow([data['q_id'], data['summary'], data['subject'], data['chapter'], data['description'], data['difficulty'], data['simple_answer'], data['detailed_answer'], data['tag'], data['timestamp']])
+# ===================== 錯題本 API =====================
+from fastapi import Body
+import pymysql
+import os
+import traceback
+import io, csv
 
-# Define a new endpoint to retrieve mistakes
-@app.get("/mistake_book")
-async def get_mistakes():
-    mistakes = []
-    if os.path.exists('questions.csv'):
-        print("hi from mistake book")
-        with open('questions.csv', mode='r', newline='', encoding='utf-8') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                mistakes.append(row)
-        print(mistakes)
-    return mistakes
+# 上傳錯題（mistake_book）
+@app.post("/add_mistake_book")
+async def add_mistake_book(request: dict = Body(...)):
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            sql = """
+            INSERT INTO mistake_book (
+                user_id, summary, subject, chapter, difficulty, tag, description, answer, created_at, question_image_base64, answer_image_base64
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (
+                request.get('user_id'),
+                request.get('summary'),
+                request.get('subject'),
+                request.get('chapter'),
+                request.get('difficulty'),
+                request.get('tag'),
+                request.get('description'),
+                request.get('answer'),
+                request.get('created_at'),
+                request.get('question_image_base64', ''),
+                request.get('answer_image_base64', ''),
+            ))
+            connection.commit()
+            # 回傳新插入的 id
+            q_id = cursor.lastrowid
+        return {"status": "success", "q_id": q_id}
+    except Exception as e:
+        print(f"[add_mistake_book] Error: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        if 'connection' in locals():
+            connection.close()
 
-# Modify the submit_question endpoint to use the new q_id logic
-@app.post("/submit_question")
-async def submit_question(request: dict):
-    system_message = "請你用十個字以內的話總結這個題目的重點，回傳十字總結"
-
-    messages = [
-        {"role": "system", "content": system_message}
-    ]
-
-    if request.image_base64:
-        messages.append({
-            "role": "user",
-            "content": [
-                {"type": "text", "text": request.user_message},
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{request.image_base64}"
-                    }
-                }
-            ]
-        })
-    else:
-        messages.append({"role": "user", "content": request.user_message})
-
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages,
-        max_tokens=1000 # why
-    )
-    
-    q_id = await get_next_q_id()
-    summary = request.get('summary', '')
-    subject = request.get('subject')
-    chapter = request.get('chapter', '')
-    description = request.get('description')
-    difficulty = request.get('difficulty')
-    simple_answer = request.get('simple_answer', '')
-    detailed_answer = request.get('detailed_answer', '')
-    tag = request.get('tag', '') #給自己的小提醒
-    timestamp = datetime.now().isoformat()
-
-    # Save image if provided
-    image_base64 = request.get('image_base64')
-    if image_base64:
-        image_data = base64.b64decode(image_base64)
-        with open(f'Qpics/{q_id}.jpg', 'wb') as image_file:
-            image_file.write(image_data)
-
-    return {"status": "success", "message": "Question submitted successfully."}
+# 取得所有錯題（get_mistake_book）
+@app.get("/get_mistake_book")
+async def get_mistake_book(user_id: str = None):
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            if user_id:
+                sql = "SELECT * FROM mistake_book WHERE user_id = %s ORDER BY created_at DESC"
+                cursor.execute(sql, (user_id,))
+            else:
+                sql = "SELECT * FROM mistake_book ORDER BY created_at DESC"
+                cursor.execute(sql)
+            results = cursor.fetchall()
+        # 將 bytes 轉成 str（如果有圖片）
+        for r in results:
+            if 'question_image_base64' in r and isinstance(r['question_image_base64'], bytes):
+                r['question_image_base64'] = r['question_image_base64'].decode('utf-8')
+            if 'answer_image_base64' in r and isinstance(r['answer_image_base64'], bytes):
+                r['answer_image_base64'] = r['answer_image_base64'].decode('utf-8')
+        return results
+    except Exception as e:
+        print(f"[get_mistake_book] Error: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        if 'connection' in locals():
+            connection.close()
 
 # 串 GPT 統整問題摘要
 # 回傳摘要、科目

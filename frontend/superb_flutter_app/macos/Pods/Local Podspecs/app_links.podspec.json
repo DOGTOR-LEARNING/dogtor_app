@@ -13,14 +13,14 @@
   "source": {
     "path": "."
   },
-  "source_files": "Classes/**/*",
+  "source_files": "app_links/Sources/app_links/**/*.swift",
   "dependencies": {
     "FlutterMacOS": [
 
     ]
   },
   "platforms": {
-    "osx": "10.13"
+    "osx": "10.14"
   },
   "pod_target_xcconfig": {
     "DEFINES_MODULE": "YES"
@@ -28,7 +28,7 @@
   "swift_versions": "5.0",
   "resource_bundles": {
     "app_links_macos_privacy": [
-      "Resources/PrivacyInfo.xcprivacy"
+      "app_links/Sources/app_links/PrivacyInfo.xcprivacy"
     ]
   },
   "swift_version": "5.0"

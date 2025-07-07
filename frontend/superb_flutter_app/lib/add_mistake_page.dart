@@ -4,10 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-
-import 'dart:typed_data';// Flutter Web only
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive/hive.dart';
 
 class AddMistakePage extends StatefulWidget {
@@ -35,9 +32,13 @@ class _AddMistakePageState extends State<AddMistakePage> {
   String _selectedDifficulty = "Medium"; // Default difficulty
   
   final ImagePicker _picker = ImagePicker();
-  XFile? _selectedImage; // 用於存儲選擇的圖片
+  // 題目區圖片
+  XFile? _questionImage;
+  Uint8List? _questionImageBytes;
+  // 詳解區圖片
+  XFile? _answerImage;
+  Uint8List? _answerImageBytes;
   String _response = ""; // 存儲 AI 的標題摘要回應
-  Uint8List? _imageBytes; // for web and mobile
   bool _isLoading = false; // 加載狀態
   String _mistakeId = ""; // Store the ID for edits
   
@@ -89,27 +90,21 @@ class _AddMistakePageState extends State<AddMistakePage> {
       _mistakeId = mistake['q_id'] ?? ''; // Store the ID for the update request
     });
     
-    // Try to load the existing image
-    _loadExistingImage();
+    // Try to load the existing image for question and answer (如有需求可擴充)
+    // 目前只支援一張圖，這裡可根據資料結構擴充
+    _loadExistingQuestionImage();
+    _loadExistingAnswerImage();
   }
   
-  // Helper method to load the existing image if available
-  Future<void> _loadExistingImage() async {
-    if (_mistakeId.isNotEmpty) {
-      try {
-        final response = await http.get(
-          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/static/${_mistakeId}.jpg')
-        );
-        
-        if (response.statusCode == 200) {
-          setState(() {
-            _imageBytes = response.bodyBytes;
-          });
-        }
-      } catch (e) {
-        print('Error loading existing image: $e');
-      }
-    }
+  // Helper method to load the existing question image if available
+  Future<void> _loadExistingQuestionImage() async {
+    // 若有題目圖片URL，可在此載入
+    // 目前暫不實作
+  }
+  // Helper method to load the existing answer image if available
+  Future<void> _loadExistingAnswerImage() async {
+    // 若有詳解圖片URL，可在此載入
+    // 目前暫不實作
   }
 
   Future<void> _submitData() async {
@@ -128,34 +123,49 @@ class _AddMistakePageState extends State<AddMistakePage> {
       _isLoading = true;
     });
 
-    String? base64Image; // 或者初始化為空字串 ''
-    // If we have a new image selected, upload it
-    if (_selectedImage != null) {
-      final bytes = await _selectedImage!.readAsBytes();
-      base64Image = base64Encode(bytes);
+    String? base64QuestionImage;
+    String? base64AnswerImage;
+    if (_questionImage != null) {
+      final bytes = await _questionImage!.readAsBytes();
+      base64QuestionImage = base64Encode(bytes);
     }
+    if (_answerImage != null) {
+      final bytes = await _answerImage!.readAsBytes();
+      base64AnswerImage = base64Encode(bytes);
+    }
+
+    // 取得 user_id
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String userId = prefs.getString('user_id') ?? "default_user";
+
     try {
       // Construct the request body for question data
       final Map<String, dynamic> requestBody = {
-        "summary": _response,
-        "description": _questionController.text,
-        "simple_answer": _selectedTag,
-        "detailed_answer": _detailedAnswerController.text,
-        "tag": _tagController.text,
+        "user_id": userId, // 您可以根據需要修改user_id邏輯
+        "summary": _response.isEmpty ? _titleController.text : _response,
         "subject": _selectedSubject,
+        "chapter": "", // 可以添加章節選擇器
         "difficulty": _selectedDifficulty,
-        "image_base64": base64Image,
+        "tag": _tagController.text,
+        "description": _questionController.text,
+        "answer": _detailedAnswerController.text,
+        "created_at": DateTime.now().toIso8601String(),
+        "question_image_base64": base64QuestionImage ?? "",
+        "answer_image_base64": base64AnswerImage ?? "",
       };
+      print("Request body: $requestBody");
       
       // If in edit mode, include the ID
       if (widget.isEditMode && _mistakeId.isNotEmpty) {
         requestBody["q_id"] = _mistakeId;
       }
 
+      /*
+      // Cloud端：上傳錯題資訊到後端
       // Choose endpoint based on whether we're editing or creating
       final endpoint = widget.isEditMode 
           ? "https://superb-backend-1041765261654.asia-east1.run.app/update_question"
-          : "https://superb-backend-1041765261654.asia-east1.run.app/submit_question";
+          : "https://superb-backend-1041765261654.asia-east1.run.app/add_mistake_book";
           
       final response = await http.post(
         Uri.parse(endpoint),
@@ -167,31 +177,39 @@ class _AddMistakePageState extends State<AddMistakePage> {
         print("API error: ${response.body}");
         throw Exception('伺服器錯誤: ${response.statusCode}');
       }
+      
 
       print("hi submitted response");
-      //print(response);
-
       final responseData = jsonDecode(utf8.decode(response.bodyBytes));
+      
+      // 取得回傳的q_id或生成一個唯一ID
+      String questionId;
+      if (widget.isEditMode) {
+        questionId = _mistakeId;
+      } else {
+        questionId = responseData["q_id"]?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+      }
+      
       setState(() {
         _response = responseData["status"] ?? "No response";
         _isLoading = false;
       });
       print(_response);
+      */
       
-      // 儲存錯題資訊到 Hive
-      var box = await Hive.openBox('questionsBox'); // 打開 Box
-      //requestBody['q_id']
-      await box.put("2", {
+      // Local端：儲存錯題資訊到 Hive
+      var box = await Hive.openBox('questionsBox');
+      await box.put(questionId, {
         'summary': requestBody['summary'],
         'subject': requestBody['subject'],
-        'chapter': '', // 如果有章節資訊，可以在這裡填寫
+        'chapter': requestBody['chapter'],
         'description': requestBody['description'],
         'difficulty': requestBody['difficulty'],
-        'simple_answer': requestBody['simple_answer'],
-        'detailed_answer': requestBody['detailed_answer'],
+        'answer': requestBody['answer'],
         'tag': requestBody['tag'],
-        'timestamp': DateTime.now().toIso8601String(), // 當前時間作為時間戳
-        "image_base64": base64Image,
+        'created_at': requestBody['created_at'],
+        'question_image_base64': base64QuestionImage ?? "",
+        'answer_image_base64': base64AnswerImage ?? "",
       });
 
       print("已儲存錯題資訊到 Hive");
@@ -226,10 +244,11 @@ class _AddMistakePageState extends State<AddMistakePage> {
   }
 
   Future<void> _generateSummary() async {
-    if (_selectedImage == null) {
+    // 這個方法只針對題目區圖片生成摘要
+    if (_questionImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('請選擇一張圖片'),
+          content: Text('請先在題目區選擇一張圖片'),
           backgroundColor: Colors.red,
         )
       );
@@ -241,9 +260,9 @@ class _AddMistakePageState extends State<AddMistakePage> {
     });
 
     try {
-      final bytes = await _selectedImage!.readAsBytes();
+      final bytes = await _questionImage!.readAsBytes();
       setState(() {
-        _imageBytes = bytes; // Set the image bytes for display
+        _questionImageBytes = bytes; // Set the image bytes for display
       });
       
       final base64Image = base64Encode(bytes);
@@ -467,7 +486,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                               
                               SizedBox(height: 8),
                               
-                              // Image preview
+                              // Image preview for question
                               Container(
                                 width: double.infinity,
                                 height: 180,
@@ -476,11 +495,11 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: Colors.white24, width: 1),
                                 ),
-                                child: _selectedImage != null
+                                child: _questionImage != null
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
                                       child: FutureBuilder<Uint8List>(
-                                        future: _selectedImage!.readAsBytes(),
+                                        future: _questionImage!.readAsBytes(),
                                         builder: (context, snapshot) {
                                           if (snapshot.connectionState == ConnectionState.waiting) {
                                             return Center(child: CircularProgressIndicator());
@@ -497,11 +516,11 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                         },
                                       ),
                                     )
-                                  : _imageBytes != null
+                                  : _questionImageBytes != null
                                     ? ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
                                         child: Image.memory(
-                                          _imageBytes!,
+                                          _questionImageBytes!,
                                           fit: BoxFit.contain,
                                         ),
                                       )
@@ -514,7 +533,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                               ),
                               SizedBox(height: 16),
                               
-                              // Image selection buttons
+                              // Image selection buttons for question
                               Row(
                                 children: [
                                   Expanded(
@@ -525,7 +544,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                         final XFile? image = await _picker.pickImage(source: ImageSource.camera);
                                         if (image != null) {
                                           setState(() {
-                                            _selectedImage = image;
+                                            _questionImage = image;
                                           });
                                         }
                                       },
@@ -540,7 +559,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                         final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
                                         if (image != null) {
                                           setState(() {
-                                            _selectedImage = image;
+                                            _questionImage = image;
                                           });
                                         }
                                       },
@@ -554,7 +573,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                       color: Color(0xFF1E3875),
                                       iconColor: Color(0xFFFFA368),
                                       textColor: Colors.white,
-                                      onPressed: _selectedImage != null ? () {
+                                      onPressed: _questionImage != null ? () {
                                         _generateSummary();
                                       } : null,
                                       disabledColor: Colors.grey.shade700,
@@ -760,7 +779,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                               
                               SizedBox(height: 8),
                               
-                              // Image preview
+                              // Image preview for answer
                               Container(
                                 width: double.infinity,
                                 height: 180,
@@ -769,11 +788,11 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: Colors.white24, width: 1),
                                 ),
-                                child: _selectedImage != null
+                                child: _answerImage != null
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
                                       child: FutureBuilder<Uint8List>(
-                                        future: _selectedImage!.readAsBytes(),
+                                        future: _answerImage!.readAsBytes(),
                                         builder: (context, snapshot) {
                                           if (snapshot.connectionState == ConnectionState.waiting) {
                                             return Center(child: CircularProgressIndicator());
@@ -790,11 +809,11 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                         },
                                       ),
                                     )
-                                  : _imageBytes != null
+                                  : _answerImageBytes != null
                                     ? ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
                                         child: Image.memory(
-                                          _imageBytes!,
+                                          _answerImageBytes!,
                                           fit: BoxFit.contain,
                                         ),
                                       )
@@ -807,7 +826,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                               ),
                               SizedBox(height: 16),
                               
-                              // Image selection buttons
+                              // Image selection buttons for answer
                               Row(
                                 children: [
                                   Expanded(
@@ -818,7 +837,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                         final XFile? image = await _picker.pickImage(source: ImageSource.camera);
                                         if (image != null) {
                                           setState(() {
-                                            _selectedImage = image;
+                                            _answerImage = image;
                                           });
                                         }
                                       },
@@ -833,26 +852,13 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                         final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
                                         if (image != null) {
                                           setState(() {
-                                            _selectedImage = image;
+                                            _answerImage = image;
                                           });
                                         }
                                       },
                                     ),
                                   ),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    child: _buildActionButton(
-                                      icon: Icons.auto_awesome,
-                                      label: "生成詳解",
-                                      color: Color(0xFF1E3875),
-                                      iconColor: Color(0xFFFFA368),
-                                      textColor: Colors.white,
-                                      onPressed: _selectedImage != null ? () {
-                                        _generateSummary();
-                                      } : null,
-                                      disabledColor: Colors.grey.shade700,
-                                    ),
-                                  ),
+                                  // 詳解區不提供AI摘要
                                 ],
                               ),
                             ],

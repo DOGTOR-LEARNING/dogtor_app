@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:io';
 import 'add_mistake_page.dart';
 
 import 'package:hive/hive.dart';
@@ -22,8 +21,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
   @override
   void initState() {
     super.initState();
-    //_loadMistakes();
-    //_reloadLocalMistakes();
+    _reloadLocalMistakes(); // 每次進入頁面時從Hive讀取本地錯題
   }
 
   // Load added mistakes from Hive
@@ -48,10 +46,9 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
           'chapter': value['chapter'],
           'description': value['description'],
           'difficulty': value['difficulty'],
-          'simple_answer': value['simple_answer'],
-          'detailed_answer': value['detailed_answer'],
+          'answer': value['answer'] ?? value['detailed_answer'] ?? '', // 支援舊格式的向後相容
           'tag': value['tag'],
-          'created_at': value['timestamp'],
+          'created_at': value['created_at'] ?? value['timestamp'] ?? '', // 支援舊格式的向後相容
           "image_base64": value['image_base64'],
         });
       });
@@ -67,26 +64,72 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
     }
   }
 
-  // Load mistakes from cloud sql
-  Future<void> _loadMistakes() async {
+  // 從雲端同步錯題資料到本地Hive
+  Future<void> _syncMistakesFromCloud() async {
     try {
-      final response = await http.get(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/mistake_book'));
+      // 顯示載入中對話框
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: Color(0xFF102031),
+            content: Row(
+              children: [
+                CircularProgressIndicator(color: Colors.blue),
+                SizedBox(width: 20),
+                Text('同步中...', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+          );
+        },
+      );
+
+      final response = await http.get(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_mistake_book'));
+      
+      Navigator.pop(context); // 關閉載入對話框
+      
       if (response.statusCode == 200) {
-        setState(() {
-          _mistakes = (jsonDecode(utf8.decode(response.bodyBytes)) as List)
-              .map((mistake) => Map<String, dynamic>.from(mistake))
-              .toList();
-          _filteredMistakes = _mistakes; // Initially show all mistakes
-          print("hi from load mistakes");
-          //print(len(_mistakes));
-          print(_mistakes[5]);
-        });
+        final cloudMistakes = (jsonDecode(utf8.decode(response.bodyBytes)) as List)
+            .map((mistake) => Map<String, dynamic>.from(mistake))
+            .toList();
+
+        // 開啟Hive box並更新資料
+        var box = await Hive.openBox('questionsBox');
+        
+        for (var cloudMistake in cloudMistakes) {
+          await box.put(cloudMistake['q_id'].toString(), {
+            'summary': cloudMistake['summary'] ?? '',
+            'subject': cloudMistake['subject'] ?? '',
+            'chapter': cloudMistake['chapter'] ?? '',
+            'description': cloudMistake['description'] ?? '',
+            'difficulty': cloudMistake['difficulty'] ?? 'Medium',
+            'answer': cloudMistake['answer'] ?? '',
+            'tag': cloudMistake['tag'] ?? '',
+            'created_at': cloudMistake['created_at'] ?? DateTime.now().toIso8601String(),
+            'image_base64': '', // 雲端不存圖片，保持空字串
+          });
+        }
+
+        // 重新載入本地資料
+        await _reloadLocalMistakes();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('同步完成！已更新 ${cloudMistakes.length} 筆錯題'),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
-        throw Exception('Failed to load mistakes');
+        throw Exception('同步失敗：狀態碼 ${response.statusCode}');
       }
     } catch (e) {
+      Navigator.pop(context); // 確保關閉載入對話框
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading mistakes: $e')),
+        SnackBar(
+          content: Text('同步錯誤: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -260,6 +303,50 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                           ),
                         ),
                       ),
+
+                      SizedBox(width: 12),
+
+                      // 同步按鈕
+                      Container(
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade500,
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(25),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(25),
+                            onTap: _syncMistakesFromCloud,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.sync, color: Colors.white, size: 20),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '同步',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -274,9 +361,9 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                       final Uint8List? imageBytes = mistake['image_base64'] != null && mistake['image_base64'].isNotEmpty
                           ? base64Decode(mistake['image_base64'])
                           : null;
-                      final currentDate = mistake['timestamp'].split('T')[0];
+                      final currentDate = mistake['created_at']?.split('T')[0] ?? '';
                       final nextDate = (index > 0)
-                          ? _filteredMistakes[_filteredMistakes.length - index]['timestamp'].split('T')[0]
+                          ? _filteredMistakes[_filteredMistakes.length - index]['created_at']?.split('T')[0] ?? ''
                           : null;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,7 +581,6 @@ class MistakeDetailPage extends StatefulWidget {
 }
 
 class _MistakeDetailPageState extends State<MistakeDetailPage> {
-  bool _showDetailedAnswer = false;
 
   Future<bool> _checkImageExistence(mistake) async {
     final url = 'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg';
@@ -690,9 +776,9 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                   ],
 
                   // Detailed answer section with local state management
-                  if (widget.mistake['detailed_answer'] != null) ...[
+                  if (widget.mistake['answer'] != null && widget.mistake['answer'].isNotEmpty) ...[
                     _DetailedAnswerSection(
-                      detailedAnswer: widget.mistake['detailed_answer'],
+                      detailedAnswer: widget.mistake['answer'],
                     ),
                   ],
                   
