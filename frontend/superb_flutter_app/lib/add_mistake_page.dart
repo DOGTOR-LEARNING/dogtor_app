@@ -226,9 +226,13 @@ class _AddMistakePageState extends State<AddMistakePage> {
         'created_at': requestBody['created_at'],
         'question_image_base64': base64QuestionImage ?? "",
         'answer_image_base64': base64AnswerImage ?? "",
+        'is_sync': false, // 預設為未同步狀態
       });
 
       print("已儲存錯題資訊到 Hive");
+
+      // 嘗試同步到雲端
+      await _syncToCloud(questionId, requestBody, base64QuestionImage, base64AnswerImage);
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -256,6 +260,57 @@ class _AddMistakePageState extends State<AddMistakePage> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  // 同步到雲端的方法
+  Future<void> _syncToCloud(String questionId, Map<String, dynamic> requestBody, String? base64QuestionImage, String? base64AnswerImage) async {
+    try {
+      // 準備同步到雲端的請求
+      final syncRequestBody = Map<String, dynamic>.from(requestBody);
+      syncRequestBody['question_image_base64'] = base64QuestionImage ?? "";
+      syncRequestBody['answer_image_base64'] = base64AnswerImage ?? "";
+
+      // 發送 POST 請求到 add_mistake_book API
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/add_mistake_book'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(syncRequestBody),
+      );
+
+      if (response.statusCode == 200) {
+        // 雲端同步成功，解析回應獲取雲端 ID
+        final responseData = jsonDecode(response.body);
+        final cloudId = responseData['q_id']?.toString();
+        
+        var box = await Hive.openBox('questionsBox');
+        
+        if (cloudId != null && cloudId != questionId) {
+          // 如果雲端 ID 不同於本地 ID，需要更新本地儲存
+          var existingData = box.get(questionId);
+          if (existingData != null) {
+            // 刪除舊的本地 ID 記錄
+            await box.delete(questionId);
+            // 用雲端 ID 重新儲存，並標記為已同步
+            existingData['is_sync'] = true;
+            await box.put(cloudId, existingData);
+          }
+        } else {
+          // 如果 ID 相同或沒有雲端 ID，只更新同步狀態
+          var existingData = box.get(questionId);
+          if (existingData != null) {
+            existingData['is_sync'] = true;
+            await box.put(questionId, existingData);
+          }
+        }
+        print("已成功同步到雲端");
+      } else {
+        print("雲端同步失敗：狀態碼 ${response.statusCode}");
+        // 不拋出異常，讓用戶操作繼續，稍後會有自動同步機制
+      }
+    } catch (e) {
+      print("雲端同步錯誤: $e");
+      // 不拋出異常，讓用戶操作繼續，稍後會有自動同步機制
     }
   }
 

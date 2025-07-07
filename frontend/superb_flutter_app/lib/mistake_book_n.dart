@@ -55,6 +55,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
           'answer_image_base64': value['answer_image_base64'] ?? '',
           // 保留舊欄位以向後相容
           "image_base64": value['image_base64'] ?? value['question_image_base64'] ?? '',
+          'is_sync': value['is_sync'] ?? false, // 同步狀態
         });
       });
 
@@ -62,10 +63,99 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
         _mistakes = localMistakes; // 更新錯題列表
         _filteredMistakes = _mistakes; // 初始顯示所有錯題
       });
+
+      // 自動同步未同步的資料
+      await _autoSyncUnsyncedData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading local mistakes: $e')),
       );
+    }
+  }
+
+  // 自動同步未同步的資料
+  Future<void> _autoSyncUnsyncedData() async {
+    try {
+      var box = await Hive.openBox('questionsBox');
+      List<String> unsyncedIds = [];
+      
+      // 找出所有未同步的資料
+      box.toMap().forEach((key, value) {
+        if (value['is_sync'] == false || value['is_sync'] == null) {
+          unsyncedIds.add(key.toString());
+        }
+      });
+
+      if (unsyncedIds.isEmpty) {
+        print("沒有需要同步的資料");
+        return;
+      }
+
+      print("發現 ${unsyncedIds.length} 筆未同步資料，開始自動同步...");
+
+      // 逐一同步未同步的資料
+      for (String qId in unsyncedIds) {
+        var mistakeData = box.get(qId);
+        if (mistakeData != null) {
+          await _syncSingleMistake(qId, mistakeData, box);
+        }
+      }
+
+      print("自動同步完成");
+    } catch (e) {
+      print("自動同步錯誤: $e");
+      // 不顯示錯誤給用戶，因為這是背景自動同步
+    }
+  }
+
+  // 同步單筆錯題到雲端
+  Future<void> _syncSingleMistake(String qId, Map<dynamic, dynamic> mistakeData, var box) async {
+    try {
+      final requestBody = {
+        'summary': mistakeData['summary'] ?? '',
+        'subject': mistakeData['subject'] ?? '',
+        'chapter': mistakeData['chapter'] ?? '',
+        'description': mistakeData['description'] ?? '',
+        'difficulty': mistakeData['difficulty'] ?? 'Medium',
+        'answer': mistakeData['answer'] ?? '',
+        'tag': mistakeData['tag'] ?? '',
+        'note': mistakeData['note'] ?? '',
+        'created_at': mistakeData['created_at'] ?? DateTime.now().toIso8601String(),
+        'question_image_base64': mistakeData['question_image_base64'] ?? '',
+        'answer_image_base64': mistakeData['answer_image_base64'] ?? '',
+        'user_id': 'default_user', // 預設用戶ID
+      };
+
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/add_mistake_book'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode == 200) {
+        // 同步成功，解析回應獲取雲端 ID
+        final responseData = jsonDecode(response.body);
+        final cloudId = responseData['q_id']?.toString();
+        
+        if (cloudId != null && cloudId != qId) {
+          // 如果雲端 ID 不同於本地 ID，需要更新本地儲存
+          // 刪除舊的本地 ID 記錄
+          await box.delete(qId);
+          // 用雲端 ID 重新儲存，並標記為已同步
+          mistakeData['is_sync'] = true;
+          await box.put(cloudId, mistakeData);
+          print("錯題 $qId 同步成功，更新為雲端 ID: $cloudId");
+        } else {
+          // 如果 ID 相同或沒有雲端 ID，只更新同步狀態
+          mistakeData['is_sync'] = true;
+          await box.put(qId, mistakeData);
+          print("錯題 $qId 同步成功");
+        }
+      } else {
+        print("錯題 $qId 同步失敗：狀態碼 ${response.statusCode}");
+      }
+    } catch (e) {
+      print("錯題 $qId 同步錯誤: $e");
     }
   }
 
@@ -103,7 +193,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
         var box = await Hive.openBox('questionsBox');
         
         for (var cloudMistake in cloudMistakes) {
-          await box.put(cloudMistake['q_id'].toString(), {
+          await box.put(cloudMistake['id'].toString(), {
             'summary': cloudMistake['summary'] ?? '',
             'subject': cloudMistake['subject'] ?? '',
             'chapter': cloudMistake['chapter'] ?? '',
@@ -118,6 +208,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
             'answer_image_base64': cloudMistake['answer_image_base64'] ?? '',
             // 保留舊欄位以向後相容
             'image_base64': cloudMistake['question_image_base64'] ?? '',
+            'is_sync': true, // 從雲端同步的資料標記為已同步
           });
         }
 
@@ -597,6 +688,121 @@ class MistakeDetailPage extends StatefulWidget {
 
 class _MistakeDetailPageState extends State<MistakeDetailPage> {
 
+  // 刪除確認對話框
+  Future<void> _showDeleteConfirmationDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Color(0xFF102031),
+          title: Text(
+            '確認刪除',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            '確定要刪除這道錯題嗎？此操作無法復原。',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text(
+                '取消',
+                style: TextStyle(color: Colors.white70),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text(
+                '刪除',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _deleteMistake();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 刪除錯題
+  Future<void> _deleteMistake() async {
+    try {
+      // 顯示載入中對話框
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: Color(0xFF102031),
+            content: Row(
+              children: [
+                CircularProgressIndicator(color: Colors.blue),
+                SizedBox(width: 20),
+                Text('刪除中...', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+          );
+        },
+      );
+
+      String qId = widget.mistake['q_id']?.toString() ?? '';
+
+      // 先從本地 Hive 刪除
+      var box = await Hive.openBox('questionsBox');
+      await box.delete(qId);
+
+      // 呼叫後端 delete_mistake_book API
+      final response = await http.delete(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/delete_mistake_book/$qId'),
+      );
+
+      Navigator.pop(context); // 關閉載入對話框
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('錯題刪除成功！'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // 返回上一頁並告知需要重新載入
+        Navigator.pop(context, true);
+      } else {
+        // 如果雲端刪除失敗，還原本地資料（重新儲存）
+        await box.put(qId, {
+          'summary': widget.mistake['summary'],
+          'subject': widget.mistake['subject'],
+          'chapter': widget.mistake['chapter'],
+          'description': widget.mistake['description'],
+          'difficulty': widget.mistake['difficulty'],
+          'answer': widget.mistake['answer'],
+          'tag': widget.mistake['tag'],
+          'note': widget.mistake['note'],
+          'created_at': widget.mistake['created_at'],
+          'question_image_base64': widget.mistake['question_image_base64'],
+          'answer_image_base64': widget.mistake['answer_image_base64'],
+          'is_sync': widget.mistake['is_sync'] ?? false,
+        });
+        
+        throw Exception('雲端刪除失敗：狀態碼 ${response.statusCode}');
+      }
+    } catch (e) {
+      Navigator.pop(context); // 確保關閉載入對話框
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('刪除錯誤: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -634,6 +840,19 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
               '編輯',
               style: TextStyle(
                 color: Colors.white, 
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              await _showDeleteConfirmationDialog();
+            },
+            child: Text(
+              '刪除',
+              style: TextStyle(
+                color: Colors.red, 
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
