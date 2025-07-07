@@ -226,6 +226,24 @@ async def get_mistake_book(user_id: str = None):
         if 'connection' in locals():
             connection.close()
 
+# 刪除錯題（delete_mistake_book）
+@app.delete("/delete_mistake_book/{q_id}")
+async def delete_mistake_book(q_id: int):
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            sql = "DELETE FROM mistake_book WHERE id = %s"
+            cursor.execute(sql, (q_id,))
+            connection.commit()
+            return {"status": "success", "message": f"已刪除錯題 ID: {q_id}"}
+    except Exception as e:
+        print(f"[delete_mistake_book] Error: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        if 'connection' in locals():
+            connection.close()
+
 # 串 GPT 統整問題摘要
 # 回傳摘要、科目
 @app.post("/summarize")
