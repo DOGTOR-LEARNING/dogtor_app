@@ -169,8 +169,8 @@ async def add_mistake_book(request: dict = Body(...)):
         with connection.cursor() as cursor:
             sql = """
             INSERT INTO mistake_book (
-                user_id, summary, subject, chapter, difficulty, tag, description, answer, created_at, question_image_base64, answer_image_base64
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                user_id, summary, subject, chapter, difficulty, tag, description, answer, note, created_at, question_image_base64, answer_image_base64
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(sql, (
                 request.get('user_id'),
@@ -181,6 +181,7 @@ async def add_mistake_book(request: dict = Body(...)):
                 request.get('tag'),
                 request.get('description'),
                 request.get('answer'),
+                request.get('note'),
                 request.get('created_at'),
                 request.get('question_image_base64', ''),
                 request.get('answer_image_base64', ''),

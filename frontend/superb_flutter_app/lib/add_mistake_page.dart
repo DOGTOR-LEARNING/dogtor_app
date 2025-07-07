@@ -57,9 +57,11 @@ class _AddMistakePageState extends State<AddMistakePage> {
     final mistake = widget.mistakeToEdit!;
     
     // Populate text fields
+    _titleController.text = mistake['summary'] ?? '';  // 錯題卡標題
     _questionController.text = mistake['description'] ?? '';
     _tagController.text = mistake['tag'] ?? '';
-    _detailedAnswerController.text = mistake['detailed_answer'] ?? '';
+    _detailedAnswerController.text = mistake['answer'] ?? mistake['detailed_answer'] ?? '';  // 答案
+    _noteController.text = mistake['note'] ?? '';  // 給自己的小提醒
     
     // Make sure we have valid default values that exist in our dropdown lists
     setState(() {
@@ -149,6 +151,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
         "tag": _tagController.text,
         "description": _questionController.text,
         "answer": _detailedAnswerController.text,
+        "note": _noteController.text, // 給自己的小提醒
         "created_at": DateTime.now().toIso8601String(),
         "question_image_base64": base64QuestionImage ?? "",
         "answer_image_base64": base64AnswerImage ?? "",
@@ -182,6 +185,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
       print("hi submitted response");
       final responseData = jsonDecode(utf8.decode(response.bodyBytes));
       
+      /*
       // 取得回傳的q_id或生成一個唯一ID
       String questionId;
       if (widget.isEditMode) {
@@ -189,6 +193,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
       } else {
         questionId = responseData["q_id"]?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
       }
+      */
       
       setState(() {
         _response = responseData["status"] ?? "No response";
@@ -196,6 +201,16 @@ class _AddMistakePageState extends State<AddMistakePage> {
       });
       print(_response);
       */
+      
+      // 生成錯題 ID
+      String questionId;
+      if (widget.isEditMode && _mistakeId.isNotEmpty) {
+        // 編輯模式：使用現有的 ID
+        questionId = _mistakeId;
+      } else {
+        // 新增模式：生成新的 ID（使用時間戳 + 隨機數確保唯一性）
+        questionId = DateTime.now().millisecondsSinceEpoch.toString();
+      }
       
       // Local端：儲存錯題資訊到 Hive
       var box = await Hive.openBox('questionsBox');
@@ -207,6 +222,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
         'difficulty': requestBody['difficulty'],
         'answer': requestBody['answer'],
         'tag': requestBody['tag'],
+        'note': requestBody['note'], // 給自己的小提醒
         'created_at': requestBody['created_at'],
         'question_image_base64': base64QuestionImage ?? "",
         'answer_image_base64': base64AnswerImage ?? "",

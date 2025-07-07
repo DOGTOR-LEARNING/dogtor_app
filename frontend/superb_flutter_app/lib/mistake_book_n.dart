@@ -48,8 +48,13 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
           'difficulty': value['difficulty'],
           'answer': value['answer'] ?? value['detailed_answer'] ?? '', // 支援舊格式的向後相容
           'tag': value['tag'],
+          'note': value['note'] ?? '', // 給自己的小提醒
           'created_at': value['created_at'] ?? value['timestamp'] ?? '', // 支援舊格式的向後相容
-          "image_base64": value['image_base64'],
+          // 支援新的分離圖片欄位，同時向後相容舊格式
+          'question_image_base64': value['question_image_base64'] ?? value['image_base64'] ?? '',
+          'answer_image_base64': value['answer_image_base64'] ?? '',
+          // 保留舊欄位以向後相容
+          "image_base64": value['image_base64'] ?? value['question_image_base64'] ?? '',
         });
       });
 
@@ -106,8 +111,13 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
             'difficulty': cloudMistake['difficulty'] ?? 'Medium',
             'answer': cloudMistake['answer'] ?? '',
             'tag': cloudMistake['tag'] ?? '',
+            'note': cloudMistake['note'] ?? '', // 給自己的小提醒
             'created_at': cloudMistake['created_at'] ?? DateTime.now().toIso8601String(),
-            'image_base64': '', // 雲端不存圖片，保持空字串
+            // 同步時使用新的分離圖片欄位
+            'question_image_base64': cloudMistake['question_image_base64'] ?? '',
+            'answer_image_base64': cloudMistake['answer_image_base64'] ?? '',
+            // 保留舊欄位以向後相容
+            'image_base64': cloudMistake['question_image_base64'] ?? '',
           });
         }
 
@@ -421,14 +431,19 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            mistake['q_id'],
-                                            style: TextStyle(
-                                              color: Color(0xFF102031),
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w600,
+                                          Expanded(
+                                            child: Text(
+                                              mistake['description'] ?? mistake['summary'] ?? '無標題',
+                                              style: TextStyle(
+                                                color: Color(0xFF102031),
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
+                                          SizedBox(width: 8),
                                           // Stars for difficulty
                                           Text(
                                             '${'★' * _getDifficultyStars(mistake['difficulty'])}',
@@ -582,21 +597,6 @@ class MistakeDetailPage extends StatefulWidget {
 
 class _MistakeDetailPageState extends State<MistakeDetailPage> {
 
-  Future<bool> _checkImageExistence(mistake) async {
-    final url = 'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg';
-
-    try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      return false;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -693,14 +693,14 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            if(widget.mistake['subject'] != '')...[
+                            if(widget.mistake['subject'] != null && widget.mistake['subject'] != '')...[
                               _buildChipTag(widget.mistake['subject']),
                             ],
-                            if(widget.mistake['chapter'] != '')...[
+                            if(widget.mistake['chapter'] != null && widget.mistake['chapter'] != '')...[
                               _buildChipTag(widget.mistake['chapter']),
                             ],
-                            if(widget.mistake['tags'] != null)...[
-                              _buildChipTag(widget.mistake['tags']),
+                            if(widget.mistake['tag'] != null && widget.mistake['tag'] != '')...[
+                              _buildChipTag(widget.mistake['tag']),
                             ],
                           ],
                         ),
@@ -732,35 +732,6 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                           ),
                           SizedBox(height: 12),
                           
-                          // Image inside the description section
-                          FutureBuilder<bool>(
-                            future: _checkImageExistence(widget.mistake),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return Center(
-                                  child: Container(
-                                    height: 60,
-                                    child: CircularProgressIndicator(color: Colors.white),
-                                  )
-                                );
-                              } else if (snapshot.hasError || snapshot.data != true) {
-                                return SizedBox.shrink(); // No image to display
-                              } else {
-                                return Container(
-                                  margin: EdgeInsets.only(bottom: 16),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      'https://superb-backend-1041765261654.asia-east1.run.app/static/${widget.mistake['q_id']}.jpg',
-                                      width: double.infinity,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                          
                           // Description text
                           Text(
                             widget.mistake['description'],
@@ -770,6 +741,22 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                               height: 1.5,
                             ),
                           ),
+                          
+                          // 題目圖片（從 Hive 讀取）
+                          if (widget.mistake['question_image_base64'] != null && 
+                              widget.mistake['question_image_base64'].isNotEmpty) ...[
+                            Container(
+                              margin: EdgeInsets.only(top: 16),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.memory(
+                                  base64Decode(widget.mistake['question_image_base64']),
+                                  width: double.infinity,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -779,6 +766,53 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                   if (widget.mistake['answer'] != null && widget.mistake['answer'].isNotEmpty) ...[
                     _DetailedAnswerSection(
                       detailedAnswer: widget.mistake['answer'],
+                      answerImageBase64: widget.mistake['answer_image_base64'],
+                    ),
+                  ],
+
+                  // 給自己的小提醒區域
+                  if (widget.mistake['note'] != null && widget.mistake['note'].isNotEmpty) ...[
+                    Container(
+                      width: double.infinity,
+                      margin: EdgeInsets.only(bottom: 20),
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.lightbulb_outline,
+                                color: Colors.orange,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                '給自己的小提醒',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            widget.mistake['note'],
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                   
@@ -823,8 +857,12 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
 // Create a separate stateful widget for the detailed answer section
 class _DetailedAnswerSection extends StatefulWidget {
   final String detailedAnswer;
+  final String? answerImageBase64;
 
-  _DetailedAnswerSection({required this.detailedAnswer});
+  _DetailedAnswerSection({
+    required this.detailedAnswer,
+    this.answerImageBase64,
+  });
 
   @override
   _DetailedAnswerSectionState createState() => _DetailedAnswerSectionState();
@@ -898,13 +936,34 @@ class _DetailedAnswerSectionState extends State<_DetailedAnswerSection> {
                 padding: EdgeInsets.only(
                   top: _showDetailedAnswer ? 16 : 0,
                 ),
-                child: Text(
-                  widget.detailedAnswer,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                    height: 1.5,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 詳解文字
+                    Text(
+                      widget.detailedAnswer,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        height: 1.5,
+                      ),
+                    ),
+                    // 詳解圖片（如果有的話）
+                    if (widget.answerImageBase64 != null && 
+                        widget.answerImageBase64!.isNotEmpty) ...[
+                      Container(
+                        margin: EdgeInsets.only(top: 16),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.memory(
+                            base64Decode(widget.answerImageBase64!),
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
