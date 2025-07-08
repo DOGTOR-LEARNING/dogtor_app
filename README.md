@@ -53,7 +53,31 @@ Dogtor 是一款支援 iOS / Android 的跨平台 AI 學習 App，專為國高�
 
 ---
 
-## 👨‍💻 Author
+## � Version Management
+
+This project follows [Semantic Versioning (SemVer)](https://semver.org/) starting from version 0.1.0.
+
+### Current Version
+- **App**: 0.3.0+3 (Ready for testing)
+- **Backend**: v2.0.0 (Modularized architecture)
+
+### Quick Commands
+```bash
+# Check current version status
+./scripts/status.sh
+
+# Bump version (patch/minor/major)
+./scripts/version.sh patch
+
+# View version history
+cat CHANGELOG.md
+```
+
+For detailed release information, see [CHANGELOG.md](CHANGELOG.md) and [Version Info](docs/VERSION_INFO.md).
+
+---
+
+## �👨‍💻 Author
 
 Created with ❤️ by [Pierre Chen](https://github.com/ntupierre)  
 Founder @ Superb Education | B.B.A in Information Management, NTU
