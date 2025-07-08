@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "啟動重構後的 FastAPI 服務器",
+			"type": "shell",
+			"command": "python -m uvicorn app.main_new:app --reload --host 0.0.0.0 --port 8000",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

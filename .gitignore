@@ -5,3 +5,7 @@ venv/
 sql-key.json
 /backend/.DS_Store
 /frontend/.DS_Storefrontend/superb_flutter_app/ios/build/
+/frontend/superb_flutter_app/build/
+/frontend/superb_flutter_app/ios
+
+/frontend/superb_flutter_app/macos/Pods/

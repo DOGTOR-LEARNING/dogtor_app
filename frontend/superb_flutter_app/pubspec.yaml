@@ -13,7 +13,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 
-version: 1.0.0+1
+# Current version follows Semantic Versioning (SemVer)
+# Format: MAJOR.MINOR.PATCH+BUILD_NUMBER
+# Example: 1.0.0+1 means version 1.0.0 with build number 1
+version: 0.3.0+3
 
 environment:
   sdk: ^3.6.0

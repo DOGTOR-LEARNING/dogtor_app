@@ -4,7 +4,7 @@ import 'dart:ui';  // 添加這行來引入 ImageFilter
 import 'dart:math';  // 添加這行來引入 pow 函數
 import 'main.dart';  // 引入原來的 AI 問問題頁面
 import 'auth_page.dart';  // Import the AuthPage
-import 'mistake_book.dart';  // Import the MistakeBookPage
+import 'mistake_book_n.dart';  // Import the MistakeBookPage
 // import 'chapter_detail_page.dart';  // 默認深藍色
 import 'chapter_detail_page_n.dart';  // 藍橘配色
 import 'chat_page_s.dart';

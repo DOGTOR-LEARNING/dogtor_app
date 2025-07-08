@@ -414,7 +414,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
           }
           
           return {
-            'hasHearts': data['hearts'] > 0,
+            'hasHearts': data['hearts'] > -10,
             'remainingTime': remainingTime,
           };
         }
