@@ -1260,6 +1260,11 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                                                   color: Colors.grey[100],
                                                   borderRadius: BorderRadius.circular(8),
                                                 ),
+                                                // 添加表格樣式
+                                                tableHead: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                                                tableBody: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.normal),
+                                                tableBorder: TableBorder.all(color: const Color.fromARGB(255, 37, 37, 37)!, width: 1),
+                                                tableColumnWidth: const FlexColumnWidth(1.0),
                                               ),
                                             ),
                                         ],
@@ -1343,6 +1348,11 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                                                           color: Colors.grey[100],
                                                           borderRadius: BorderRadius.circular(4),
                                                         ),
+                                                        // 添加表格樣式
+                                                        tableHead: _textStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
+                                                        tableBody: _textStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.normal),
+                                                        tableBorder: TableBorder.all(color: Colors.grey[400]!, width: 1),
+                                                        tableColumnWidth: const FlexColumnWidth(1.0),
                                                       ),
                                                     ),
                                                   ),
@@ -1365,6 +1375,9 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                               
                               SizedBox(height: 24),
                               
+                              // 添加額外的底部間距，為詳解預留空間
+                              if (isCorrect != null && isExplanationVisible)
+                                SizedBox(height: 150),
                             ],
                           ),
                         ),
@@ -1435,7 +1448,9 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           if (isCorrect != null && isExplanationVisible)
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(16),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.4, // 限制最大高度為螢幕的40%
+              ),
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border(
@@ -1445,58 +1460,66 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
                   ),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        isCorrect! ? Icons.check_circle : Icons.cancel,
-                        color: isCorrect! ? Color(0xFF4ADE80) : Color(0xFFF87171),
-                        size: 24,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        isCorrect! ? '答對了！' : '答錯了！',
-                        style: _textStyle(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isCorrect! ? Icons.check_circle : Icons.cancel,
                           color: isCorrect! ? Color(0xFF4ADE80) : Color(0xFFF87171),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold
+                          size: 24,
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    '解釋：',
-                    style: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  MarkdownBody(
-                    data: questions[currentQuestionIndex]['explanation'] ?? '無解釋',
-                    styleSheet: MarkdownStyleSheet(
-                      p: _textStyle(color: Colors.black.withOpacity(0.9), fontSize: 16),
-                      h1: _textStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
-                      h2: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
-                      h3: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
-                      code: _textStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.w500),
-                      codeblockDecoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      blockquote: _textStyle(color: Colors.blue[800]!, fontSize: 16),
-                      blockquoteDecoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border(
-                          left: BorderSide(color: Colors.blue, width: 4),
+                        SizedBox(width: 8),
+                        Text(
+                          isCorrect! ? '答對了！' : '答錯了！',
+                          style: _textStyle(
+                            color: isCorrect! ? Color(0xFF4ADE80) : Color(0xFFF87171),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold
+                          ),
                         ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      '解釋：',
+                      style: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    MarkdownBody(
+                      data: questions[currentQuestionIndex]['explanation'] ?? '無解釋',
+                      styleSheet: MarkdownStyleSheet(
+                        p: _textStyle(color: Colors.black.withOpacity(0.9), fontSize: 16),
+                        h1: _textStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+                        h2: _textStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+                        h3: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                        code: _textStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.w500),
+                        codeblockDecoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        blockquote: _textStyle(color: Colors.blue[800]!, fontSize: 16),
+                        blockquoteDecoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border(
+                            left: BorderSide(color: Colors.blue, width: 4),
+                          ),
+                        ),
+                        // 添加表格樣式
+                        tableHead: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                        tableBody: _textStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.normal),
+                        tableBorder: TableBorder.all(color: Colors.grey[400]!, width: 1),
+                        tableColumnWidth: const FlexColumnWidth(1.0),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           // 添加底部導航圖片
