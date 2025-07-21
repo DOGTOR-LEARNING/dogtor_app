@@ -151,7 +151,7 @@ async def update_user(user_id: str, user: User):
         connection.close()
 
 
-@router.post("/register-token", response_model=StandardResponse)
+@router.post("/register_token", response_model=StandardResponse)
 async def register_token(request: RegisterTokenRequest):
     """註冊推播 token"""
     try:

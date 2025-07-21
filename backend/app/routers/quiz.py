@@ -277,7 +277,7 @@ async def get_questions_by_level(request: QuestionRequest):
         )
 
 
-@router.post("/record-answer", response_model=RecordAnswerResponse)
+@router.post("/record_answer", response_model=RecordAnswerResponse)
 async def record_answer(request: RecordAnswerRequest):
     """記錄用戶答題情況"""
     try:
@@ -345,7 +345,7 @@ async def record_answer(request: RecordAnswerRequest):
         )
 
 
-@router.post("/complete-level", response_model=CompleteLevelResponse)
+@router.post("/complete_level", response_model=CompleteLevelResponse)
 async def complete_level(request: CompleteLevelRequest):
     """記錄關卡完成情況"""
     try:
