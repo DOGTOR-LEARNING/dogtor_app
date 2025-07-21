@@ -2,8 +2,8 @@
 統計分析相關 API
 """
 from fastapi import APIRouter, HTTPException, Body
-from ..database import get_db_connection
-from ..models import UserStatsRequest, MonthlyProgressRequest, SubjectAbilitiesRequest, LearningDaysResponse, StandardResponse
+from database import get_db_connection
+from models import UserStatsRequest, MonthlyProgressRequest, SubjectAbilitiesRequest, LearningDaysResponse, StandardResponse
 from typing import Dict, Any, List
 import traceback
 from datetime import datetime, timedelta

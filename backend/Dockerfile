@@ -8,14 +8,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 複製 app 目錄下所有檔案到 container /app
-COPY ./app/ /app/
+# 複製整個 app 目錄到 container
+COPY ./app/ ./
 
 # 設定環境變數與暴露 port
 ENV PORT=8080
 EXPOSE ${PORT}
 
-# 設定 PYTHONPATH
+# 設定 PYTHONPATH 讓 Python 能找到模組
 ENV PYTHONPATH=/app
 
 # 啟動 FastAPI

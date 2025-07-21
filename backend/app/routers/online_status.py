@@ -2,7 +2,7 @@
 在線狀態管理路由
 """
 from fastapi import APIRouter, HTTPException
-from app.models import (
+from models import (
     UserOnlineStatusRequest, 
     UpdateOnlineStatusRequest,
     StandardResponse

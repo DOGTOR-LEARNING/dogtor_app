@@ -3,8 +3,8 @@
 """
 from fastapi import APIRouter, HTTPException
 from typing import Optional
-from ..models import User, RegisterTokenRequest, StandardResponse
-from ..database import get_db_connection
+from models import User, RegisterTokenRequest, StandardResponse
+from database import get_db_connection
 import traceback
 
 

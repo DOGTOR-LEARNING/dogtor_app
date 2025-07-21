@@ -2,7 +2,7 @@
 對戰模式路由
 """
 from fastapi import APIRouter, HTTPException
-from app.models import (
+from models import (
     StartBattleRequest, 
     BattleResponse,
     BattleQuestionRequest,

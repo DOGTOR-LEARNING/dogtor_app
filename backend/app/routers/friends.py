@@ -2,8 +2,8 @@
 好友系統相關 API
 """
 from fastapi import APIRouter, HTTPException, Body
-from ..database import get_db_connection
-from ..models import FriendRequest, FriendResponse, SearchUsersRequest, StandardResponse
+from database import get_db_connection
+from models import FriendRequest, FriendResponse, SearchUsersRequest, StandardResponse
 from typing import Dict, Any
 import traceback
 

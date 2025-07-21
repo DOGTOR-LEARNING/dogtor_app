@@ -2,8 +2,8 @@
 推播通知相關 API
 """
 from fastapi import APIRouter, HTTPException, Body
-from ..database import get_db_connection
-from ..models import PushNotificationRequest, LearningReminderRequest, RegisterTokenRequest, StandardResponse
+from database import get_db_connection
+from models import PushNotificationRequest, LearningReminderRequest, RegisterTokenRequest, StandardResponse
 from typing import Dict, Any
 import traceback
 import firebase_admin
