@@ -1,51 +1,15 @@
 """
 數據模型定義 - 包含完整的範例和欄位說明用於 Swagger UI
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
 class ChatRequest(BaseModel):
     """AI 聊天請求模型"""
-    user_message: Optional[str] = Field(
-        None, 
-        description="用戶輸入的文字訊息",
-        example="請幫我解釋牛頓第一定律"
-    )
-    image_base64: Optional[str] = Field(
-        None, 
-        description="Base64 編碼的圖片數據",
-        example="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ..."
-    )
-    subject: Optional[str] = Field(
-        None, 
-        description="科目名稱",
-        example="物理"
-    )
-    chapter: Optional[str] = Field(
-        None, 
-        description="章節名稱", 
-        example="力學"
-    )
-    user_name: Optional[str] = Field(
-        None, 
-        description="用戶姓名",
-        example="小明"
-    )
-    user_introduction: Optional[str] = Field(
-        None, 
-        description="用戶自我介紹",
-        example="我是高二學生，對物理有興趣但數學基礎較弱"
-    )
-    year_grade: Optional[str] = Field(
-        None, 
-        description="年級",
-        example="G11"
-    )
-
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_message": "請幫我解釋牛頓第一定律",
                 "subject": "物理",
@@ -54,6 +18,43 @@ class ChatRequest(BaseModel):
                 "year_grade": "G11"
             }
         }
+    )
+    
+    user_message: Optional[str] = Field(
+        None, 
+        description="用戶輸入的文字訊息",
+        examples=["請幫我解釋牛頓第一定律", "什麼是二次函數？"]
+    )
+    image_base64: Optional[str] = Field(
+        None, 
+        description="Base64 編碼的圖片數據",
+        examples=["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ..."]
+    )
+    subject: Optional[str] = Field(
+        None, 
+        description="科目名稱",
+        examples=["物理", "數學", "化學"]
+    )
+    chapter: Optional[str] = Field(
+        None, 
+        description="章節名稱", 
+        examples=["力學", "二次函數", "有機化學"]
+    )
+    user_name: Optional[str] = Field(
+        None, 
+        description="用戶姓名",
+        examples=["小明", "小華"]
+    )
+    user_introduction: Optional[str] = Field(
+        None, 
+        description="用戶自我介紹",
+        examples=["我是高二學生，對物理有興趣但數學基礎較弱"]
+    )
+    year_grade: Optional[str] = Field(
+        None, 
+        description="年級",
+        examples=["G11", "G12", "G10"]
+    )
 
 
 class ChatResponse(BaseModel):
@@ -535,16 +536,157 @@ class UserStatsRequest(BaseModel):
 
 class MonthlyProgressRequest(BaseModel):
     """月度進度請求模型"""
-    user_id: str = Field(description="用戶 ID", example="user_12345")
+    user_id: str = Field(description="用戶 ID", examples=["user_12345"])
 
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "user_12345"
             }
         }
+    )
+
     year: int
     month: int
+
+
+# 新增：用戶在線狀態相關模型
+class UserOnlineStatusRequest(BaseModel):
+    """用戶在線狀態請求模型"""
+    user_id: str = Field(description="用戶 ID", examples=["user_12345"])
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "user_id": "user_12345"
+            }
+        }
+    )
+
+
+class UpdateOnlineStatusRequest(BaseModel):
+    """更新在線狀態請求模型"""
+    user_id: str = Field(description="用戶 ID", examples=["user_12345"])
+    is_online: bool = Field(description="是否在線", examples=[True, False])
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "user_id": "user_12345",
+                "is_online": True
+            }
+        }
+    )
+
+
+# 新增：對戰模式相關模型
+class StartBattleRequest(BaseModel):
+    """發起對戰請求模型"""
+    challenger_id: str = Field(description="發起者用戶 ID", examples=["user_12345"])
+    opponent_id: str = Field(description="對手用戶 ID", examples=["user_67890"])
+    chapter: str = Field(description="選擇的章節", examples=["二次函數", "力學"])
+    subject: str = Field(description="科目", examples=["數學", "物理"])
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "challenger_id": "user_12345",
+                "opponent_id": "user_67890",
+                "chapter": "二次函數",
+                "subject": "數學"
+            }
+        }
+    )
+
+
+class BattleResponse(BaseModel):
+    """對戰回應模型"""
+    success: bool = Field(description="是否成功", examples=[True, False])
+    battle_id: Optional[str] = Field(None, description="對戰 ID", examples=["battle_123"])
+    message: str = Field(description="回應訊息", examples=["對戰房間已建立", "發起對戰失敗"])
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "success": True,
+                "battle_id": "battle_123",
+                "message": "對戰房間已建立"
+            }
+        }
+    )
+
+
+class BattleQuestionRequest(BaseModel):
+    """對戰題目請求模型"""
+    battle_id: str = Field(description="對戰 ID", examples=["battle_123"])
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "battle_id": "battle_123"
+            }
+        }
+    )
+
+
+class BattleAnswerRequest(BaseModel):
+    """對戰答題請求模型"""
+    battle_id: str = Field(description="對戰 ID", examples=["battle_123"])
+    user_id: str = Field(description="用戶 ID", examples=["user_12345"])
+    question_id: int = Field(description="題目 ID", examples=[101])
+    answer: str = Field(description="選擇的答案", examples=["A", "B", "C", "D"])
+    answer_time: float = Field(description="答題時間（秒）", examples=[3.5, 8.2])
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "battle_id": "battle_123",
+                "user_id": "user_12345",
+                "question_id": 101,
+                "answer": "A",
+                "answer_time": 3.5
+            }
+        }
+    )
+
+
+class BattleResultRequest(BaseModel):
+    """對戰結果請求模型"""
+    battle_id: str = Field(description="對戰 ID", examples=["battle_123"])
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "battle_id": "battle_123"
+            }
+        }
+    )
+
+
+class BattleResultResponse(BaseModel):
+    """對戰結果回應模型"""
+    success: bool = Field(description="是否成功", examples=[True])
+    challenger_score: int = Field(description="發起者分數", examples=[850])
+    opponent_score: int = Field(description="對手分數", examples=[720])
+    winner_id: Optional[str] = Field(None, description="獲勝者 ID", examples=["user_12345"])
+    battle_summary: Dict[str, Any] = Field(description="對戰摘要", examples=[{}])
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "success": True,
+                "challenger_score": 850,
+                "opponent_score": 720,
+                "winner_id": "user_12345",
+                "battle_summary": {
+                    "total_questions": 5,
+                    "challenger_correct": 4,
+                    "opponent_correct": 3,
+                    "battle_duration": 180.5
+                }
+            }
+        }
+    )
 
 
 class SubjectAbilitiesRequest(BaseModel):

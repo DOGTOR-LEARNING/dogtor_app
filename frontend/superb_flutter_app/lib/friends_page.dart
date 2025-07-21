@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_svg/flutter_svg.dart';
 import 'friend_profile_page.dart';
+import 'battle_prepare_page.dart'; // 啟用對戰準備頁面導入
 
 class FriendsPage extends StatefulWidget {
   @override
@@ -19,6 +19,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
   bool _isLoading = true;
+  Map<String, bool> _onlineStatus = {}; // 新增：存儲好友在線狀態
 
   // 定義主題顏色
   final Color primaryBlue = Color(0xFF319cb6);  // 新的主藍色
@@ -88,6 +89,9 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             }
             _isLoading = false;
           });
+          
+          // 獲取好友在線狀態
+          await _loadFriendsOnlineStatus();
         } else {
           setState(() {
             _isLoading = false;
@@ -112,6 +116,51 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         SnackBar(content: Text('加載好友列表時出錯: $e')),
       );
     }
+  }
+
+  // 新增：獲取好友在線狀態
+  Future<void> _loadFriendsOnlineStatus() async {
+    if (_friendsList.isEmpty) return;
+
+    try {
+      final friendIds = _friendsList.map((friend) => friend['user_id'] as String).toList();
+      
+      final response = await http.post(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/online/batch_status'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(friendIds),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        if (data['success']) {
+          setState(() {
+            _onlineStatus.clear();
+            for (String userId in friendIds) {
+              if (data['users_status'].containsKey(userId)) {
+                _onlineStatus[userId] = data['users_status'][userId]['is_online'] ?? false;
+              }
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('獲取在線狀態錯誤: $e');
+    }
+  }
+
+  // 新增：發起對戰
+  void _startBattle(Map<String, dynamic> friend) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BattlePreparePage(
+          opponentId: friend['user_id'],
+          opponentName: friend['name'] ?? friend['nickname'] ?? '未知用戶',
+          opponentPhotoUrl: friend['photo_url'],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadPendingRequests() async {
@@ -358,7 +407,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       // 首先嘗試使用請求ID
-      if (requestId != null && requestId.isNotEmpty) {
+      if (requestId.isNotEmpty) {
         final response = await http.post(
           Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/respond_friend_request'),
           headers: {
@@ -440,7 +489,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   Future<void> _respondToFriendRequest(String requestId, String status) async {
     print('處理好友請求，請求ID: $requestId, 狀態: $status');
     
-    if (requestId == null || requestId.isEmpty) {
+    if (requestId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('無效的請求ID'),
@@ -619,22 +668,42 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             ),
             child: ListTile(
               contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              leading: CircleAvatar(
-                radius: 25,
-                backgroundImage: friend['photo_url'] != null && friend['photo_url'].isNotEmpty
-                    ? NetworkImage(friend['photo_url'])
-                    : null,
-                child: friend['photo_url'] == null || friend['photo_url'].isEmpty
-                    ? Text(
-                        (friend['name'] ?? friend['nickname'] ?? '?')[0].toUpperCase(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-                backgroundColor: primaryBlue,
+              leading: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 25,
+                    backgroundImage: friend['photo_url'] != null && friend['photo_url'].isNotEmpty
+                        ? NetworkImage(friend['photo_url'])
+                        : null,
+                    child: friend['photo_url'] == null || friend['photo_url'].isEmpty
+                        ? Text(
+                            (friend['name'] ?? friend['nickname'] ?? '?')[0].toUpperCase(),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                    backgroundColor: primaryBlue,
+                  ),
+                  // 在線狀態指示器
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: (_onlineStatus[friend['user_id']] ?? false) 
+                            ? Colors.green 
+                            : Colors.grey,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               title: Text(
                 '${friend['nickname'] ?? ''}${friend['nickname'] != null && friend['name'] != null ? ' (' : ''}${friend['name'] ?? ''}${friend['nickname'] != null && friend['name'] != null ? ')' : ''}',
@@ -674,6 +743,15 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                       ),
                     ),
                 ],
+              ),
+              trailing: IconButton(
+                icon: Icon(
+                  Icons.sports_esports,
+                  color: accentOrange,
+                  size: 28,
+                ),
+                onPressed: () => _startBattle(friend),
+                tooltip: '發起對戰',
               ),
               onTap: () {
                 Navigator.push(

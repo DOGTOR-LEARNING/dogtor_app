@@ -2,15 +2,123 @@
 題目與測驗相關 API
 """
 from fastapi import APIRouter, HTTPException, Request
-from typing import Optional
+from typing import Optional, List
 from ..models import QuestionRequest, QuestionResponse, RecordAnswerRequest, RecordAnswerResponse, CompleteLevelRequest, CompleteLevelResponse, StandardResponse
 from ..database import get_db_connection
 import json
 import traceback
+import random
 from datetime import datetime
 
 
 router = APIRouter(prefix="/quiz", tags=["Quiz & Questions"])
+
+
+@router.get("/random_chapter")
+async def get_random_chapter(subject: Optional[str] = None):
+    """獲取隨機章節"""
+    try:
+        connection = get_db_connection()
+        
+        with connection.cursor() as cursor:
+            if subject:
+                # 根據科目獲取隨機章節
+                cursor.execute("""
+                    SELECT DISTINCT chapter_name, subject 
+                    FROM chapter_list 
+                    WHERE subject = %s 
+                    ORDER BY RAND() 
+                    LIMIT 1
+                """, (subject,))
+            else:
+                # 獲取任意隨機章節
+                cursor.execute("""
+                    SELECT DISTINCT chapter_name, subject 
+                    FROM chapter_list 
+                    ORDER BY RAND() 
+                    LIMIT 1
+                """)
+            
+            result = cursor.fetchone()
+            
+            if result:
+                return {
+                    "success": True,
+                    "chapter": result[0],
+                    "subject": result[1]
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "找不到可用的章節"
+                }
+                
+    except Exception as e:
+        print(f"獲取隨機章節錯誤: {e}")
+        raise HTTPException(status_code=500, detail="獲取隨機章節失敗")
+    finally:
+        if connection:
+            connection.close()
+
+
+@router.get("/subjects")
+async def get_available_subjects():
+    """獲取可用的科目列表"""
+    try:
+        connection = get_db_connection()
+        
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT DISTINCT subject 
+                FROM chapter_list 
+                ORDER BY subject
+            """)
+            
+            results = cursor.fetchall()
+            subjects = [row[0] for row in results]
+            
+            return {
+                "success": True,
+                "subjects": subjects
+            }
+                
+    except Exception as e:
+        print(f"獲取科目列表錯誤: {e}")
+        raise HTTPException(status_code=500, detail="獲取科目列表失敗")
+    finally:
+        if connection:
+            connection.close()
+
+
+@router.get("/chapters/{subject}")
+async def get_chapters_by_subject(subject: str):
+    """根據科目獲取章節列表"""
+    try:
+        connection = get_db_connection()
+        
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT DISTINCT chapter_name 
+                FROM chapter_list 
+                WHERE subject = %s 
+                ORDER BY chapter_num
+            """, (subject,))
+            
+            results = cursor.fetchall()
+            chapters = [row[0] for row in results]
+            
+            return {
+                "success": True,
+                "chapters": chapters,
+                "subject": subject
+            }
+                
+    except Exception as e:
+        print(f"獲取章節列表錯誤: {e}")
+        raise HTTPException(status_code=500, detail="獲取章節列表失敗")
+    finally:
+        if connection:
+            connection.close()
 
 
 @router.post("/questions", response_model=QuestionResponse)

@@ -3,11 +3,9 @@ import 'dart:convert';
 import 'dart:convert' show utf8;
 import 'package:http/http.dart' as http;
 import 'package:flutter/cupertino.dart';
-import 'package:intl/intl.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/services.dart';
+import 'battle_prepare_page.dart';
 
 class FriendProfilePage extends StatefulWidget {
   final Map<String, dynamic> friend;
@@ -36,18 +34,17 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
   };
   bool isLoading = true;
   bool isSendingNotification = false;
+  bool isOnline = false; // 新增：好友在線狀態
   
   // 學習記錄日期集合
   Set<DateTime> _learningDays = {};
-  DateTime _focusedDay = DateTime.now();
-  DateTime _selectedDay = DateTime.now();
-  CalendarFormat _calendarFormat = CalendarFormat.month;
 
   @override
   void initState() {
     super.initState();
     _fetchLearningStats();
     _fetchLearningDays();
+    _fetchOnlineStatus(); // 新增：獲取在線狀態
   }
 
   // 獲取學習天數記錄
@@ -104,6 +101,40 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
     final result = _learningDays.contains(normalizedDay);
     print('檢查日期 $normalizedDay 是否學習: $result');
     return result;
+  }
+
+  // 新增：獲取好友在線狀態
+  Future<void> _fetchOnlineStatus() async {
+    try {
+      final String userId = widget.friend['user_id'];
+      final response = await http.get(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/online/status/$userId'),
+        headers: {'Accept': 'application/json; charset=utf-8'},
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        setState(() {
+          isOnline = data['is_online'] ?? false;
+        });
+      }
+    } catch (e) {
+      print('獲取在線狀態錯誤: $e');
+    }
+  }
+
+  // 新增：發起對戰
+  void _startBattle() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BattlePreparePage(
+          opponentId: widget.friend['user_id'],
+          opponentName: widget.friend['name'] ?? widget.friend['nickname'] ?? '未知用戶',
+          opponentPhotoUrl: widget.friend['photo_url'],
+        ),
+      ),
+    );
   }
 
   Future<void> _fetchLearningStats() async {
@@ -466,35 +497,56 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
               ),
               child: Column(
                 children: [
-                  // 用戶頭像
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: FriendProfilePage.primaryBlue.withOpacity(0.3),
-                          blurRadius: 15,
-                          spreadRadius: 2,
-                        )
-                      ],
-                    ),
-                    child: CircleAvatar(
-                      radius: 60,
-                      backgroundColor: FriendProfilePage.primaryBlue,
-                      backgroundImage: widget.friend['photo_url'] != null && widget.friend['photo_url'].isNotEmpty
-                          ? NetworkImage(widget.friend['photo_url'])
-                          : null,
-                      child: widget.friend['photo_url'] == null || widget.friend['photo_url'].isEmpty
-                          ? Text(
-                              (widget.friend['name'] ?? widget.friend['nickname'] ?? '?')[0].toUpperCase(),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 40,
-                                fontWeight: FontWeight.bold,
-                              ),
+                  // 用戶頭像（帶在線狀態指示器）
+                  Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: FriendProfilePage.primaryBlue.withOpacity(0.3),
+                              blurRadius: 15,
+                              spreadRadius: 2,
                             )
-                          : null,
-                    ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 60,
+                          backgroundColor: FriendProfilePage.primaryBlue,
+                          backgroundImage: widget.friend['photo_url'] != null && widget.friend['photo_url'].isNotEmpty
+                              ? NetworkImage(widget.friend['photo_url'])
+                              : null,
+                          child: widget.friend['photo_url'] == null || widget.friend['photo_url'].isEmpty
+                              ? Text(
+                                  (widget.friend['name'] ?? widget.friend['nickname'] ?? '?')[0].toUpperCase(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                      // 在線狀態指示器
+                      Positioned(
+                        right: 8,
+                        bottom: 8,
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: isOnline ? Colors.green : Colors.grey,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 24),
                   // 用戶名稱
@@ -598,6 +650,40 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                       content: widget.friend['introduction'].toString(),
                     ),
                 ],
+              ),
+            ),
+            
+            // 對戰按鈕區域
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _startBattle,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: FriendProfilePage.accentOrange,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 3,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.flash_on, size: 24),
+                      SizedBox(width: 8),
+                      Text(
+                        '發起對戰',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from datetime import datetime
-from .database import get_db_connection
+from database import get_db_connection
 import os
 import uvicorn
 
@@ -14,7 +14,7 @@ import uvicorn
 load_dotenv()
 
 # 導入路由模組
-from .routers import hearts, mistake_book, users, ai, quiz, friends, stats, notifications, admin
+from .routers import hearts, mistake_book, users, ai, quiz, friends, stats, notifications, admin, online_status, battle
 
 # 創建 FastAPI 應用
 app = FastAPI(
@@ -44,6 +44,8 @@ app.include_router(friends.router)
 app.include_router(stats.router)
 app.include_router(notifications.router)
 app.include_router(admin.router)
+app.include_router(online_status.router)  # 新增：在線狀態路由
+app.include_router(battle.router)  # 新增：對戰模式路由
 
 # 健康檢查端點
 @app.get("/", tags=["Health"])
