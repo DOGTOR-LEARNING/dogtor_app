@@ -2,6 +2,8 @@
 __pycache__/
 venv/
 .env
+.env.local
+*.pyc
 sql-key.json
 /backend/.DS_Store
 /frontend/.DS_Storefrontend/superb_flutter_app/ios/build/

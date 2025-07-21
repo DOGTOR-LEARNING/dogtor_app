@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # MySQL 資料庫服務
+  mysql:
+    image: mysql:8.0
+    container_name: superb_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: dogtor
+      MYSQL_USER: dogtor-dev
+      MYSQL_PASSWORD: Jingzhan1347!
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - superb_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # FastAPI 後端服務
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: superb_api
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=dogtor-dev
+      - DB_PASSWORD=Jingzhan1347!
+      - DB_NAME=dogtor
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - superb_network
+    volumes:
+      - ./app:/app  # 開發時可以即時更新代碼
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+
+  # 可選：phpMyAdmin 管理界面
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: superb_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: dogtor-dev
+      PMA_PASSWORD: Jingzhan1347!
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+    networks:
+      - superb_network
+
+volumes:
+  mysql_data:
+
+networks:
+  superb_network:
+    driver: bridge
