@@ -15,5 +15,8 @@ COPY ./app/ /app/
 ENV PORT=8080
 EXPOSE ${PORT}
 
+# 設定 PYTHONPATH
+ENV PYTHONPATH=/app
+
 # 啟動 FastAPI
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
