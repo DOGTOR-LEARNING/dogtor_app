@@ -14,7 +14,7 @@ import uvicorn
 load_dotenv()
 
 # 導入路由模組
-from .routers import hearts, mistake_book, users, ai, quiz, friends, stats, notifications, admin, online_status, battle
+from routers import hearts, mistake_book, users, ai, quiz, friends, stats, notifications, admin, online_status, battle
 
 # 創建 FastAPI 應用
 app = FastAPI(
