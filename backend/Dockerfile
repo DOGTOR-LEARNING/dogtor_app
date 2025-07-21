@@ -11,9 +11,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 複製 app 目錄下所有檔案到 container /app
 COPY ./app/ /app/
 
-# 建立需要的資料夾
-RUN mkdir -p /app/Qpics
-
 # 設定環境變數與暴露 port
 ENV PORT=8080
 EXPOSE ${PORT}

@@ -1,220 +1,548 @@
 """
-數據模型定義
+數據模型定義 - 包含完整的範例和欄位說明用於 Swagger UI
 """
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
 class ChatRequest(BaseModel):
-    user_message: Optional[str] = None
-    image_base64: Optional[str] = None
-    subject: Optional[str] = None
-    chapter: Optional[str] = None
-    user_name: Optional[str] = None
-    user_introduction: Optional[str] = None
-    year_grade: Optional[str] = None
+    """AI 聊天請求模型"""
+    user_message: Optional[str] = Field(
+        None, 
+        description="用戶輸入的文字訊息",
+        example="請幫我解釋牛頓第一定律"
+    )
+    image_base64: Optional[str] = Field(
+        None, 
+        description="Base64 編碼的圖片數據",
+        example="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ..."
+    )
+    subject: Optional[str] = Field(
+        None, 
+        description="科目名稱",
+        example="物理"
+    )
+    chapter: Optional[str] = Field(
+        None, 
+        description="章節名稱", 
+        example="力學"
+    )
+    user_name: Optional[str] = Field(
+        None, 
+        description="用戶姓名",
+        example="小明"
+    )
+    user_introduction: Optional[str] = Field(
+        None, 
+        description="用戶自我介紹",
+        example="我是高二學生，對物理有興趣但數學基礎較弱"
+    )
+    year_grade: Optional[str] = Field(
+        None, 
+        description="年級",
+        example="G11"
+    )
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_message": "請幫我解釋牛頓第一定律",
+                "subject": "物理",
+                "chapter": "力學",
+                "user_name": "小明",
+                "year_grade": "G11"
+            }
+        }
+
+
+class ChatResponse(BaseModel):
+    """AI 聊天回應模型"""
+    response: str = Field(
+        description="AI 生成的回應內容",
+        example="**牛頓第一定律**（慣性定律）指出：物體在沒有外力作用時，會保持靜止或等速直線運動的狀態..."
+    )
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "response": "**牛頓第一定律**（慣性定律）指出：物體在沒有外力作用時，會保持靜止或等速直線運動的狀態。這個定律說明了物體具有慣性，傾向於維持其現有的運動狀態。"
+            }
+        }
 
 
 class User(BaseModel):
-    user_id: str
-    email: Optional[str] = None
-    name: Optional[str] = None
-    photo_url: Optional[str] = None
-    created_at: Optional[str] = None
-    nickname: Optional[str] = None
-    year_grade: Optional[str] = None
-    introduction: Optional[str] = None
+    """用戶資訊模型"""
+    user_id: str = Field(description="用戶唯一識別碼", example="user_12345")
+    email: Optional[str] = Field(None, description="電子郵件", example="user@example.com")
+    name: Optional[str] = Field(None, description="用戶姓名", example="王小明")
+    photo_url: Optional[str] = Field(None, description="頭像 URL", example="https://example.com/avatar.jpg")
+    created_at: Optional[str] = Field(None, description="建立時間", example="2025-07-21T10:30:00Z")
+    nickname: Optional[str] = Field(None, description="暱稱", example="小明")
+    year_grade: Optional[str] = Field(None, description="年級", example="G11")
+    introduction: Optional[str] = Field(None, description="自我介紹", example="我是高二學生，喜歡數學和物理")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "email": "student@example.com",
+                "name": "王小明",
+                "nickname": "小明",
+                "year_grade": "G11",
+                "introduction": "我是高二學生，喜歡數學和物理"
+            }
+        }
 
 
 class FriendRequest(BaseModel):
-    requester_id: str
-    addressee_id: str
+    """好友請求模型"""
+    requester_id: str = Field(description="請求者用戶 ID", example="user_12345")
+    addressee_id: str = Field(description="接收者用戶 ID", example="user_67890")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "requester_id": "user_12345",
+                "addressee_id": "user_67890"
+            }
+        }
 
 
 class FriendResponse(BaseModel):
-    request_id: str
-    status: str  # accepted, rejected, blocked
+    """好友請求回應模型"""
+    request_id: str = Field(description="請求 ID", example="req_123")
+    status: str = Field(description="回應狀態", example="accepted", enum=["accepted", "rejected", "blocked"])
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "request_id": "req_123",
+                "status": "accepted"
+            }
+        }
 
 
 class HeartCheckRequest(BaseModel):
-    user_id: str
+    """愛心檢查請求模型"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345"
+            }
+        }
 
 
 class HeartCheckResponse(BaseModel):
-    success: bool
-    hearts: int
-    next_heart_in: Optional[str] = None
+    """愛心檢查回應模型"""
+    success: bool = Field(description="是否成功", example=True)
+    hearts: int = Field(description="當前愛心數量", example=3)
+    next_heart_in: Optional[str] = Field(None, description="下一顆愛心恢復時間", example="2025-07-21T14:30:00Z")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "hearts": 3,
+                "next_heart_in": "2025-07-21T14:30:00Z"
+            }
+        }
 
 
 class ConsumeHeartRequest(BaseModel):
-    user_id: str
+    """愛心消耗請求模型"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+    hearts_to_consume: int = Field(1, description="要消耗的愛心數量", example=1)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "hearts_to_consume": 1
+            }
+        }
 
 
 class ConsumeHeartResponse(BaseModel):
-    success: bool
-    hearts: int
+    """愛心消耗回應模型"""
+    success: bool = Field(description="是否成功", example=True)
+    hearts: int = Field(description="剩餘愛心數量", example=2)
+    message: str = Field(description="回應訊息", example="愛心消耗成功")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "hearts": 2,
+                "message": "愛心消耗成功"
+            }
+        }
 
 
 class MistakeBookRequest(BaseModel):
-    user_id: Optional[str] = None
-    summary: Optional[str] = None
-    subject: Optional[str] = None
-    chapter: Optional[str] = None
-    difficulty: Optional[str] = None
-    tag: Optional[str] = None
-    description: Optional[str] = None
-    answer: Optional[str] = None
-    note: Optional[str] = None
-    created_at: Optional[str] = None
-    question_image_base64: Optional[str] = None
-    answer_image_base64: Optional[str] = None
+    """錯題本請求模型"""
+    user_id: Optional[str] = Field(None, description="用戶 ID", example="user_12345")
+    summary: Optional[str] = Field(None, description="題目摘要", example="二次函數的頂點公式")
+    subject: Optional[str] = Field(None, description="科目", example="數學")
+    chapter: Optional[str] = Field(None, description="章節", example="二次函數")
+    difficulty: Optional[str] = Field(None, description="難度", example="中等")
+    tag: Optional[str] = Field(None, description="標籤", example="函數")
+    description: Optional[str] = Field(None, description="題目描述", example="求 f(x) = x² - 4x + 3 的頂點坐標")
+    answer: Optional[str] = Field(None, description="答案", example="頂點坐標為 (2, -1)")
+    note: Optional[str] = Field(None, description="筆記", example="使用配方法或頂點公式")
+    created_at: Optional[str] = Field(None, description="建立時間", example="2025-07-21T10:30:00Z")
+    question_image_base64: Optional[str] = Field(None, description="題目圖片 Base64", example="data:image/jpeg;base64,...")
+    answer_image_base64: Optional[str] = Field(None, description="解答圖片 Base64", example="data:image/jpeg;base64,...")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "summary": "二次函數的頂點公式",
+                "subject": "數學",
+                "chapter": "二次函數",
+                "difficulty": "中等",
+                "description": "求 f(x) = x² - 4x + 3 的頂點坐標",
+                "answer": "頂點坐標為 (2, -1)",
+                "note": "使用配方法或頂點公式"
+            }
+        }
 
 
 class MistakeBookResponse(BaseModel):
-    status: str
-    q_id: Optional[int] = None
+    """錯題本回應模型"""
+    status: str = Field(description="狀態", example="success")
+    q_id: Optional[int] = Field(None, description="題目 ID", example=123)
+    message: Optional[str] = Field(None, description="回應訊息", example="錯題新增成功")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "status": "success",
+                "q_id": 123,
+                "message": "錯題新增成功"
+            }
+        }
 
 
-class QuestionRequest(BaseModel):
-    chapter: Optional[str] = None
-    section: Optional[str] = None
-    knowledge_points: Optional[str] = None
-    user_id: Optional[str] = None
-    level_id: Optional[str] = None
-
-
-class QuestionResponse(BaseModel):
-    success: bool
-    questions: Optional[List[dict]] = None
-    message: Optional[str] = None
-
-
-class RecordAnswerRequest(BaseModel):
-    user_id: str
-    question_id: int
-    is_correct: bool
-
-
-class RecordAnswerResponse(BaseModel):
-    success: bool
-    message: str
-
-
-class CompleteLevelRequest(BaseModel):
-    user_id: str
-    level_id: str
-    stars: int
-    ai_comment: Optional[str] = None
+# 這些舊定義已被下方增強版本替代，已移除
 
 
 class RecordAnswerRequest(BaseModel):
-    user_id: str
-    question_id: int
-    is_correct: bool
+    """記錄答題請求模型"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+    question_id: int = Field(description="題目 ID", example=101)
+    is_correct: bool = Field(description="是否正確", example=True)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "question_id": 101,
+                "is_correct": True
+            }
+        }
 
 
 class QuestionRequest(BaseModel):
-    user_id: str
-    chapter: str
-    section: str
-    knowledge_points: str
-    level_id: str
+    """題目請求模型"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+    chapter: str = Field(description="章節", example="二次函數")
+    section: str = Field(description="小節", example="頂點公式")
+    knowledge_points: str = Field(description="知識點", example="配方法")
+    level_id: str = Field(description="關卡 ID", example="level_001")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "chapter": "二次函數",
+                "section": "頂點公式",
+                "knowledge_points": "配方法",
+                "level_id": "level_001"
+            }
+        }
 
 
 class QuestionResponse(BaseModel):
-    success: bool
-    questions: Optional[List[dict]] = None
-    level_info: Optional[dict] = None
-    message: Optional[str] = None
+    """題目回應模型"""
+    success: bool = Field(description="是否成功", example=True)
+    questions: Optional[List[dict]] = Field(
+        None,
+        description="題目列表",
+        example=[
+            {
+                "id": 101,
+                "question_text": "求 f(x) = x² - 4x + 3 的頂點坐標",
+                "options": ["(2, -1)", "(2, 1)", "(-2, -1)", "(-2, 1)"],
+                "correct_answer": "A",
+                "difficulty": "中等"
+            }
+        ]
+    )
+    level_info: Optional[dict] = Field(
+        None,
+        description="關卡資訊",
+        example={
+            "level_id": "level_001",
+            "level_name": "二次函數基礎",
+            "total_questions": 5,
+            "required_score": 80
+        }
+    )
+    message: Optional[str] = Field(None, description="回應訊息", example="題目獲取成功")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "questions": [
+                    {
+                        "id": 101,
+                        "question_text": "求 f(x) = x² - 4x + 3 的頂點坐標",
+                        "options": ["(2, -1)", "(2, 1)", "(-2, -1)", "(-2, 1)"],
+                        "correct_answer": "A",
+                        "difficulty": "中等"
+                    }
+                ],
+                "level_info": {
+                    "level_id": "level_001",
+                    "level_name": "二次函數基礎",
+                    "total_questions": 5,
+                    "required_score": 80
+                },
+                "message": "題目獲取成功"
+            }
+        }
 
 
 class RecordAnswerResponse(BaseModel):
-    success: bool
-    message: str
+    """記錄答題回應模型"""
+    success: bool = Field(description="是否成功", example=True)
+    message: str = Field(description="回應訊息", example="答題記錄成功")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "message": "答題記錄成功"
+            }
+        }
 
 
 class CompleteLevelRequest(BaseModel):
-    user_id: str
-    level_id: str
-    stars: int
-    ai_comment: Optional[str] = None
+    """完成關卡請求模型"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+    level_id: str = Field(description="關卡 ID", example="level_001")
+    stars: int = Field(description="獲得星數", example=3, ge=0, le=3)
+    ai_comment: Optional[str] = Field(None, description="AI 評語", example="表現優秀！完全掌握了二次函數的概念")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "level_id": "level_001",
+                "stars": 3,
+                "ai_comment": "表現優秀！完全掌握了二次函數的概念"
+            }
+        }
 
 
 class CompleteLevelResponse(BaseModel):
-    success: bool
-    message: str
+    """完成關卡回應模型"""
+    success: bool = Field(description="是否成功", example=True)
+    message: str = Field(description="回應訊息", example="關卡完成記錄成功")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "message": "關卡完成記錄成功"
+            }
+        }
 
 
 class SearchUsersRequest(BaseModel):
-    query: str
-    current_user_id: str
+    """搜尋用戶請求模型"""
+    query: str = Field(description="搜尋關鍵字", example="王小明")
+    current_user_id: str = Field(description="當前用戶 ID", example="user_12345")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "query": "王小明",
+                "current_user_id": "user_12345"
+            }
+        }
 
 
 class LearningReminderRequest(BaseModel):
-    user_id: str
-    message: Optional[str] = "你的朋友提醒你該學習了！"
-    sender_id: Optional[str] = None
+    """學習提醒請求模型"""
+    user_id: str = Field(description="被提醒的用戶 ID", example="user_67890")
+    message: Optional[str] = Field(
+        "你的朋友提醒你該學習了！",
+        description="提醒訊息",
+        example="該複習數學了！"
+    )
+    sender_id: Optional[str] = Field(None, description="發送者 ID", example="user_12345")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_67890",
+                "message": "該複習數學了！",
+                "sender_id": "user_12345"
+            }
+        }
 
 
 class TokenRegisterRequest(BaseModel):
-    user_id: str
-    token: str
+    """推播 Token 註冊請求模型"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+    token: str = Field(description="Firebase 推播 Token", example="fGH3k2m1...")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "token": "fGH3k2m1L8n9P4q7R2t5W8x1Z4c6V9b2"
+            }
+        }
 
 
 class TestPushRequest(BaseModel):
-    token: str
-    title: Optional[str] = "Dogtor 通知"
-    body: Optional[str] = "這是測試推播"
+    """測試推播請求模型"""
+    token: str = Field(description="Firebase 推播 Token", example="fGH3k2m1...")
+    title: Optional[str] = Field("Dogtor 通知", description="推播標題", example="學習提醒")
+    body: Optional[str] = Field("這是測試推播", description="推播內容", example="您有新的學習任務待完成")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "token": "fGH3k2m1L8n9P4q7R2t5W8x1Z4c6V9b2",
+                "title": "學習提醒",
+                "body": "您有新的學習任務待完成"
+            }
+        }
 
 
 class ClassifyTextRequest(BaseModel):
-    text: str
+    """文本分類請求模型"""
+    text: str = Field(description="待分類的文本", example="解一元二次方程式 x² - 5x + 6 = 0")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "text": "解一元二次方程式 x² - 5x + 6 = 0"
+            }
+        }
 
 
 class ClassifyTextResponse(BaseModel):
-    success: bool
-    predicted_class: Optional[str] = None
-    confidence: Optional[float] = None
-    message: Optional[str] = None
+    """文本分類回應模型"""
+    success: bool = Field(description="是否成功", example=True)
+    predicted_class: Optional[str] = Field(None, description="預測類別", example="數學")
+    confidence: Optional[float] = Field(None, description="信心度", example=0.95, ge=0, le=1)
+    message: Optional[str] = Field(None, description="回應訊息", example="分類成功")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "predicted_class": "數學",
+                "confidence": 0.95,
+                "message": "分類成功"
+            }
+        }
 
 
 class AnalyzeQuizRequest(BaseModel):
-    user_id: str
-    answers: List[dict]
-    correct_count: int
-    total_count: int
+    """測驗分析請求模型"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+    answers: List[dict] = Field(
+        description="答題記錄",
+        example=[
+            {"question_id": 101, "user_answer": "A", "correct_answer": "A", "is_correct": True},
+            {"question_id": 102, "user_answer": "B", "correct_answer": "C", "is_correct": False}
+        ]
+    )
+    correct_count: int = Field(description="答對題數", example=8, ge=0)
+    total_count: int = Field(description="總題數", example=10, ge=0)
 
-
-class ClassifyTextRequest(BaseModel):
-    text: str
-
-
-class ClassifyTextResponse(BaseModel):
-    success: bool
-    predictions: Optional[List[dict]] = None
-    confidence: Optional[float] = None
-    message: Optional[str] = None
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "answers": [
+                    {"question_id": 101, "user_answer": "A", "correct_answer": "A", "is_correct": True},
+                    {"question_id": 102, "user_answer": "B", "correct_answer": "C", "is_correct": False}
+                ],
+                "correct_count": 8,
+                "total_count": 10
+            }
+        }
 
 
 class AnalyzeQuizResponse(BaseModel):
-    success: bool
-    ai_comment: Optional[str] = None
-    message: Optional[str] = None
+    """測驗分析回應模型"""
+    success: bool = Field(description="是否成功", example=True)
+    ai_comment: Optional[str] = Field(
+        None,
+        description="AI 評語",
+        example="表現良好！建議加強練習二次函數的應用題型"
+    )
+    message: Optional[str] = Field(None, description="回應訊息", example="分析完成")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "ai_comment": "表現良好！建議加強練習二次函數的應用題型",
+                "message": "分析完成"
+            }
+        }
 
 
 class SearchUsersRequest(BaseModel):
-    search_term: str
-    current_user_id: str
+    """搜尋用戶請求模型（重複定義，待整合）"""
+    search_term: str = Field(description="搜尋關鍵字", example="李小華")
+    current_user_id: str = Field(description="當前用戶 ID", example="user_12345")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "search_term": "李小華",
+                "current_user_id": "user_12345"
+            }
+        }
 
 
 class UserStatsRequest(BaseModel):
-    user_id: str
-    time_range: Optional[str] = "week"
+    """用戶統計請求模型"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+    time_range: Optional[str] = Field("week", description="時間範圍", example="week")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "time_range": "week"
+            }
+        }
 
 
 class MonthlyProgressRequest(BaseModel):
-    user_id: str
+    """月度進度請求模型"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345"
+            }
+        }
     year: int
     month: int
 

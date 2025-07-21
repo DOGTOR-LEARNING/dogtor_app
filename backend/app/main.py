@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from datetime import datetime
+from .database import get_db_connection
 import os
 import uvicorn
 
@@ -13,7 +14,7 @@ import uvicorn
 load_dotenv()
 
 # 導入路由模組
-from routers import hearts, mistake_book, users, ai, quiz, friends, stats, notifications, admin
+from .routers import hearts, mistake_book, users, ai, quiz, friends, stats, notifications, admin
 
 # 創建 FastAPI 應用
 app = FastAPI(
@@ -32,12 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# 靜態文件服務
-try:
-    app.mount("/static", StaticFiles(directory="Qpics"), name="static")
-except Exception as e:
-    print(f"警告: 無法掛載靜態文件目錄: {e}")
 
 # 註冊路由
 app.include_router(hearts.router)
@@ -64,7 +59,6 @@ async def root():
 @app.get("/health", tags=["Health"])
 async def health_check():
     """詳細健康檢查"""
-    from database import get_db_connection
     try:
         # 測試資料庫連線
         connection = get_db_connection()

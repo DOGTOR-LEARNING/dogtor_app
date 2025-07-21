@@ -3,8 +3,8 @@
 """
 from fastapi import APIRouter, HTTPException, Request
 from typing import Optional
-from models import QuestionRequest, QuestionResponse, RecordAnswerRequest, RecordAnswerResponse, CompleteLevelRequest, CompleteLevelResponse, StandardResponse
-from database import get_db_connection
+from ..models import QuestionRequest, QuestionResponse, RecordAnswerRequest, RecordAnswerResponse, CompleteLevelRequest, CompleteLevelResponse, StandardResponse
+from ..database import get_db_connection
 import json
 import traceback
 from datetime import datetime

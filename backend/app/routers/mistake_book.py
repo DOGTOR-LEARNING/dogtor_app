@@ -3,8 +3,8 @@
 """
 from fastapi import APIRouter, HTTPException, Body
 from typing import Optional
-from models import MistakeBookRequest, MistakeBookResponse, StandardResponse
-from database import get_db_connection
+from ..models import MistakeBookRequest, MistakeBookResponse, StandardResponse
+from ..database import get_db_connection
 import traceback
 
 

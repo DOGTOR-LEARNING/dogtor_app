@@ -2,8 +2,8 @@
 管理員功能相關 API
 """
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Body
-from database import get_db_connection
-from models import ImportKnowledgePointsRequest, StandardResponse
+from ..database import get_db_connection
+from ..models import ImportKnowledgePointsRequest, StandardResponse
 from typing import Dict, Any
 import traceback
 import csv

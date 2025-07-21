@@ -3,8 +3,8 @@ AI 相關 API
 """
 from fastapi import APIRouter, HTTPException
 from openai import OpenAI
-from models import ChatRequest, ClassifyTextRequest, ClassifyTextResponse, AnalyzeQuizRequest, AnalyzeQuizResponse
-from database import get_openai_client
+from ..models import ChatRequest, ClassifyTextRequest, ClassifyTextResponse, AnalyzeQuizRequest, AnalyzeQuizResponse
+#from ..database import get_openai_client
 import os
 from dotenv import load_dotenv
 import traceback

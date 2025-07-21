@@ -3,8 +3,8 @@
 """
 from fastapi import APIRouter, HTTPException
 from datetime import datetime, timedelta, timezone
-from models import HeartCheckRequest, HeartCheckResponse, ConsumeHeartRequest, ConsumeHeartResponse
-from database import get_db_connection
+from ..models import HeartCheckRequest, HeartCheckResponse, ConsumeHeartRequest, ConsumeHeartResponse
+from ..database import get_db_connection
 import traceback
 
 
