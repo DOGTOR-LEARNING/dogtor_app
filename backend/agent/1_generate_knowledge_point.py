@@ -16,9 +16,9 @@ genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # 定義檔案路徑
-sections_path = "processing/jun_math_chapter_list.csv"
-questions_path = "processing/question_bank.csv"
-output_path = "processing/knowledge_points_output.csv"
+sections_path = "processing/high_chem_chapter_list.csv"
+questions_path = "processing/high_chem_qbank.csv"
+output_path = "processing/chem_knowledge_points_output.csv"
 
 # 更新系統訊息，要求生成2-7個知識點
 system_message = "請根據以下屬於同一個小節的題目，請從這些題目中大致歸納出2到7個重要的、出現頻率高的知識點，知識點只需要是名詞，不需要解釋，知識點名詞要具有高度辨識度，可以明確表達這個知識點所代表的知識，如：生命現象，就可以知道這個知識點會涵蓋生長、生殖、感應、代謝，但也請注意不要過度分類，如：實驗儀器、實驗器材是類似概念，顯微鏡構造、顯微鏡分類等可以統整成一個顯微鏡的類型與構造。請用頓號「、」分隔知識點。請只回傳知識點，不要有任何其他文字或換行符號。"
