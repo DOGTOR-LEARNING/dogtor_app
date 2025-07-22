@@ -77,6 +77,47 @@ async def initialize_user_knowledge_scores(user_id: str, connection):
         print(f"初始化知識點分數時出錯: {str(e)}")
         print(traceback.format_exc())
 
+@router.post("/create", response_model=StandardResponse)
+async def create_user(user: User):
+    """創建新用戶"""
+    connection = None
+    try:
+        print(f"正在創建用戶: {user.user_id}")
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # 檢查用戶是否已存在
+            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user.user_id,))
+            existing_user = cursor.fetchone()
+            
+            if existing_user:
+                raise HTTPException(status_code=400, detail="User already exists")
+            
+            # 插入新用戶
+            sql = """
+            INSERT INTO users (user_id, email, name, photo_url, created_at)
+            VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (
+                user.user_id,
+                user.email,
+                user.name,
+                user.photo_url,
+                user.created_at
+            ))
+            connection.commit()
+            
+            print(f"用戶 {user.user_id} 創建成功")
+            return StandardResponse(
+                success=True,
+                message="User created successfully"
+            )
+    except Exception as e:
+        print(f"創建用戶失敗: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"創建用戶失敗: {str(e)}")
+    finally:
+        if connection:
+            connection.close()
 
 @router.get("/check")
 async def check_user(user_id: str):

@@ -13,17 +13,17 @@ import 'dart:io';
 
 class LoginPage extends StatelessWidget {
   // 使用您的 Google 客戶端 ID
-  final String clientId = '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com';
+  final String clientId = '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com';
   
   // 初始化 GoogleSignIn，並傳遞 clientId
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com',
+    clientId: '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com',
     // clientId: Platform.isIOS
     //   ? '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com'
     //   : null,
     scopes: ['email'],
-    serverClientId: '426092249907-jgnr6rj7mr3gtjuuo0u6jsmifi7a822s.apps.googleusercontent.com', // ✅ 正解！
-    // serverClientId: '1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com',
+    serverClientId: '1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com', // 使用新項目的 Web 客戶端 ID
+    // serverClientId: '426092249907-jgnr6rj7mr3gtjuuo0u6jsmifi7a822s.apps.googleusercontent.com', // 舊項目 ID，已停用
   );
   
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -35,6 +35,7 @@ class LoginPage extends StatelessWidget {
   Future<bool> _checkIfUserIsLoggedIn() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? userId = prefs.getString('user_id');
+    print("📱 用戶 ID: $userId");
     if (userId != null){ await NotificationService.init(userId); } //取得FCM token
     return userId != null;
   }
@@ -101,7 +102,7 @@ class LoginPage extends StatelessWidget {
         if (!exists) {
           // 用戶不存在，創建新用戶
           print("用戶不存在，正在創建新用戶...");
-          final createUrl = '$apiUrl/users';
+          final createUrl = '$apiUrl/users/create';
           print("創建用戶請求 URL: $createUrl");
           
           final createResponse = await http.post(
@@ -163,6 +164,12 @@ class LoginPage extends StatelessWidget {
   Future<void> _handleSignIn(BuildContext context) async {
     print("hi handleSignIn");
     try {
+
+      // 清除 Google Sign-In 的 cache
+      //await _googleSignIn.signOut();
+      //print("✅ Google Sign-In cache 已清除");
+      
+      
       // 檢查用戶是否已登入
       bool isLoggedIn = await _checkIfUserIsLoggedIn();
       if (isLoggedIn) {
@@ -175,56 +182,62 @@ class LoginPage extends StatelessWidget {
         );
         return;
       }
+      
+
+      print("開始 Google 登入");
 
       // 使用 Google 登入
+      print("🔍 嘗試執行 Google Sign-In...");
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        print("Google sign-in was canceled.");
+        print("❌ Google Sign-In 被取消或失敗");
         return; // 用戶取消了登入
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      print("✅ Google Sign-In 成功: ${googleUser.email}");
 
-      // 創建一個新的憑證
+      // 獲取 Google 認證
+      print("🔍 嘗試獲取 Google Authentication...");
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      print("✅ Google Authentication 成功: Access Token: ${googleAuth.accessToken}, ID Token: ${googleAuth.idToken}");
+
+      // 創建 Firebase 憑證
+      print("🔍 嘗試創建 Firebase 憑證...");
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
       // 使用 Firebase 登入
+      print("🔍 嘗試使用 Firebase 登入...");
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
       
       if (user != null) {
+        print("✅ Firebase 登入成功: UID: ${user.uid}, Email: ${user.email}");
+
         // 檢查用戶是否存在於數據庫，如果不存在則創建
+        print("🔍 嘗試檢查並創建用戶在數據庫...");
         await _checkAndCreateUserInDatabase(user);
+
         SharedPreferences prefs = await SharedPreferences.getInstance();
         String? userId = prefs.getString('user_id');
-        if (userId != null){ await NotificationService.init(userId); }
-        /*
-        String? token = await FirebaseMessaging.instance.getToken();
+        print("💾 SharedPreferences 中的用戶 ID: $userId");
 
-       
-        if (token != null) {
-          print("🧠 上傳 FCM Token: $token");
-
-          
-          await http.post(
-            Uri.parse("https://your-backend.com/api/upload_token"),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'user_id': userId,
-              'fcm_token': token,
-            }),
-          );
-          
-        }*/
+        if (userId != null) {
+          print("🔍 嘗試初始化通知服務...");
+          await NotificationService.init(userId);
+          print("✅ 通知服務初始化成功");
+        }
 
         // 登入成功後導航到首頁
+        print("🏠 導航到首頁...");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => OnboardingChat()),
         );
+      } else {
+        print("❌ Firebase 用戶為 null");
       }
     } catch (error) {
       print("Login failed: $error");

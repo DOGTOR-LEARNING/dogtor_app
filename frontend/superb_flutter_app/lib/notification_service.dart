@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,12 +12,19 @@ class NotificationService {
     try {
       print("🔧 初始化通知服務，用戶ID: $userId");
       
+      print("📱 用戶 ID: $userId");
       NotificationSettings settings = await _messaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
         criticalAlert: false,
         provisional: false,
+      ).timeout(
+        Duration(seconds: 10),
+        onTimeout: () {
+          print("⚠️ 權限請求超時");
+          throw TimeoutException('權限請求超時', Duration(seconds: 10));
+        },
       );
 
       print("📋 通知權限狀態: ${settings.authorizationStatus}");

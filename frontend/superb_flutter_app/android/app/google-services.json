@@ -14,7 +14,7 @@
       },
       "oauth_client": [
         {
-          "client_id": "1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com",
+          "client_id": "1041765261654-s7e073o7vthea7tir7mqtkaiq2343dlt.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -29,6 +29,13 @@
             {
               "client_id": "1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.dogtor.superbFlutterApp"
+              }
             }
           ]
         }

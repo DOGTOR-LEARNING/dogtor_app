@@ -12,15 +12,15 @@ from datetime import datetime
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
-# 初始化 Firebase Admin（如果尚未初始化）
+# 初始化 Firebase Admin（使用同專案的預設憑證）
 try:
     firebase_admin.get_app()
     print("✅ Firebase Admin 已經初始化過了")
 except ValueError:
-    # Firebase Admin 尚未初始化
+    # Firebase Admin 尚未初始化，使用 ApplicationDefault 憑證
     cred = credentials.ApplicationDefault()
     firebase_admin.initialize_app(cred)
-    print("✅ Firebase Admin 初始化成功")
+    print("✅ Firebase Admin 初始化成功 (使用預設憑證)")
 
 
 def send_push_notification(token: str, title: str, body: str) -> str:

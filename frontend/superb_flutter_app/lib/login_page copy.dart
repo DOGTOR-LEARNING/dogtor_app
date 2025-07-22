@@ -8,11 +8,11 @@ import 'home_page.dart';
 
 class LoginPage extends StatelessWidget {
   // 使用您的 Google 客戶端 ID
-  final String clientId = '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com';
+  final String clientId = '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com';
   
   // 初始化 GoogleSignIn，並傳遞 clientId
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com',
+    clientId: '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com',
   );
   
   final FirebaseAuth _auth = FirebaseAuth.instance;
