@@ -52,7 +52,7 @@ async def check_heart(request: HeartCheckRequest):
         with connection.cursor() as cursor:
             # 檢查用戶愛心記錄
             cursor.execute(
-                "SELECT hearts, last_heart_update FROM user_heart WHERE user_id = %s", 
+                "SELECT hearts, last_updated FROM user_heart WHERE user_id = %s", 
                 (request.user_id,)
             )
             result = cursor.fetchone()
@@ -61,7 +61,7 @@ async def check_heart(request: HeartCheckRequest):
                 # 新用戶，創建愛心記錄
                 now = datetime.utcnow()
                 cursor.execute(
-                    "INSERT INTO user_heart (user_id, hearts, last_heart_update) VALUES (%s, %s, %s)",
+                    "INSERT INTO user_heart (user_id, hearts, last_updated) VALUES (%s, %s, %s)",
                     (request.user_id, MAX_HEARTS, now)
                 )
                 connection.commit()
@@ -73,14 +73,14 @@ async def check_heart(request: HeartCheckRequest):
             
             # 計算當前愛心數量
             stored_hearts = result['hearts']
-            last_updated = result['last_heart_update']
+            last_updated = result['last_updated']
             current_hearts, time_since_last, recovered = calculate_current_hearts(last_updated, stored_hearts)
             
             # 如果愛心有恢復，更新資料庫
             if recovered > 0:
                 new_update_time = datetime.utcnow() - time_since_last
                 cursor.execute(
-                    "UPDATE user_heart SET hearts = %s, last_heart_update = %s WHERE user_id = %s",
+                    "UPDATE user_heart SET hearts = %s, last_updated = %s WHERE user_id = %s",
                     (current_hearts, new_update_time, request.user_id)
                 )
                 connection.commit()
@@ -123,7 +123,7 @@ async def consume_heart(request: ConsumeHeartRequest):
             now = datetime.utcnow()
             
             cursor.execute(
-                "UPDATE user_heart SET hearts = %s, last_heart_update = %s WHERE user_id = %s",
+                "UPDATE user_heart SET hearts = %s, last_updated = %s WHERE user_id = %s",
                 (new_hearts, now, request.user_id)
             )
             connection.commit()
