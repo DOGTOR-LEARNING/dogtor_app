@@ -11,3 +11,12 @@ sql-key.json
 /frontend/superb_flutter_app/ios
 
 /frontend/superb_flutter_app/macos/Pods/
+
+/backend/agent/tools/mdb/hphy_mdbs/
+
+# Machine Learning Models (now managed by Git LFS)
+# *.pt  - tracked by LFS
+# *.mdb - tracked by LFS
+*.pt
+*.mdb
+
