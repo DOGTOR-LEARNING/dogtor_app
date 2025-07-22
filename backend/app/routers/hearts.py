@@ -52,7 +52,7 @@ async def check_heart(request: HeartCheckRequest):
         with connection.cursor() as cursor:
             # 檢查用戶愛心記錄
             cursor.execute(
-                "SELECT hearts, last_heart_update FROM user_hearts WHERE user_id = %s", 
+                "SELECT hearts, last_heart_update FROM user_heart WHERE user_id = %s", 
                 (request.user_id,)
             )
             result = cursor.fetchone()
