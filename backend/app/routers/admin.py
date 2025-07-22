@@ -25,92 +25,102 @@ async def import_knowledge_points(
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="只接受 CSV 文件")
     
+    # 讀取上傳的文件內容
+    contents = await file.read()
+    csv_file = io.StringIO(contents.decode('utf-8'))
+    csv_reader = csv.reader(csv_file)
+    
+    # 跳過標題行（如果有）
+    next(csv_reader, None)
+    
+    connection = None
+    imported_knowledge_count = 0
+    imported_chapter_count = 0
+    
     try:
-        # 讀取上傳的文件內容
-        contents = await file.read()
-        csv_file = io.StringIO(contents.decode('utf-8'))
-        csv_reader = csv.reader(csv_file)
-        
-        # 跳過標題行（如果有）
-        next(csv_reader, None)
-        
         connection = get_db_connection()
-        imported_knowledge_count = 0
-        imported_chapter_count = 0
         
-        with connection.cursor() as cursor:
-            for row in csv_reader:
-                if len(row) < 3:  # 假設 CSV 格式：章節,小節,知識點
-                    continue
+        for row in csv_reader:
+            print(f"處理行: {row}")
+            if len(row) < 8:
+                print(f"跳過無效行: {row}")
+                continue
+            
+            year_grade = int(row[1].strip())
+            book = row[2].strip()
+            chapter_num = int(row[3].strip())
+            chapter_name = row[4].strip()
+            section_num = int(row[5].strip())
+            section_name = row[6].strip()
+            knowledge_points_str = row[7].strip()
+            
+            with connection.cursor() as cursor:
+                # 先檢查並插入章節
+                sql_check_chapter = """
+                SELECT id FROM chapter_list 
+                WHERE subject = %s AND year_grade = %s AND book = %s AND chapter_num = %s
+                """
+                cursor.execute(sql_check_chapter, (subject, year_grade, book, chapter_num))
+                result = cursor.fetchone()
                 
-                chapter = row[0].strip()
-                section = row[1].strip()
-                knowledge_point = row[2].strip()
-                
-                if not chapter or not section or not knowledge_point:
-                    continue
-                
-                try:
-                    # 檢查並插入章節
-                    sql = """
-                    SELECT id FROM chapters 
-                    WHERE subject = %s AND chapter_name = %s
+                if not result:
+                    # 插入新章節
+                    sql_insert_chapter = """
+                    INSERT INTO chapter_list 
+                    (subject, year_grade, book, chapter_num, chapter_name)
+                    VALUES (%s, %s, %s, %s, %s)
                     """
-                    cursor.execute(sql, (subject, chapter))
-                    chapter_result = cursor.fetchone()
+                    cursor.execute(sql_insert_chapter, (subject, year_grade, book, chapter_num, chapter_name))
+                    chapter_id = cursor.lastrowid
+                    imported_chapter_count += 1
+                    print(f"已插入新章節: {chapter_name} (ID: {chapter_id})")
+                else:
+                    chapter_id = result['id']
+                    print(f"找到現有章節 ID: {chapter_id} 對應章節: {chapter_name}")
+                
+                # 分割知識點
+                knowledge_points = [kp.strip() for kp in knowledge_points_str.split('、')]
+                
+                # 插入每個知識點
+                for point_name in knowledge_points:
+                    if not point_name:
+                        continue
                     
-                    if not chapter_result:
-                        sql = """
-                        INSERT INTO chapters (subject, chapter_name, created_at)
-                        VALUES (%s, %s, NOW())
-                        """
-                        cursor.execute(sql, (subject, chapter))
-                        chapter_id = cursor.lastrowid
-                        imported_chapter_count += 1
-                        print(f"新增章節: {subject} - {chapter}")
-                    else:
-                        chapter_id = chapter_result['id']
-                    
-                    # 檢查並插入知識點
-                    sql = """
-                    SELECT COUNT(*) as count FROM knowledge_points 
-                    WHERE subject = %s AND chapter_name = %s AND section_name = %s AND point_name = %s
-                    """
-                    cursor.execute(sql, (subject, chapter, section, knowledge_point))
-                    kp_result = cursor.fetchone()
-                    
-                    if kp_result['count'] == 0:
-                        sql = """
+                    try:
+                        sql_insert_knowledge = """
                         INSERT INTO knowledge_points 
-                        (subject, chapter_name, section_name, point_name, chapter_id, created_at)
-                        VALUES (%s, %s, %s, %s, %s, NOW())
+                        (section_num, section_name, point_name, chapter_id)
+                        VALUES (%s, %s, %s, %s)
                         """
-                        cursor.execute(sql, (subject, chapter, section, knowledge_point, chapter_id))
+                        cursor.execute(sql_insert_knowledge, (section_num, section_name, point_name, chapter_id))
                         imported_knowledge_count += 1
-                        print(f"新增知識點: {subject} - {chapter} - {section} - {knowledge_point}")
-                    else:
-                        print(f"知識點已存在: {subject} - {chapter} - {section} - {knowledge_point}")
-                
-                except Exception as row_error:
-                    print(f"處理行資料時出錯: {row}, 錯誤: {row_error}")
-                    continue
-        
-        connection.commit()
-        
-        return {
-            "success": True,
-            "message": f"成功導入 {imported_chapter_count} 個章節和 {imported_knowledge_count} 個知識點",
-            "chapters_imported": imported_chapter_count,
-            "knowledge_points_imported": imported_knowledge_count
-        }
+                        print(f"已插入知識點: {point_name}")
+                    except pymysql.err.IntegrityError as e:
+                        if "Duplicate entry" in str(e):
+                            print(f"知識點已存在，跳過: {point_name}")
+                        else:
+                            print(f"插入知識點時出錯: {e}")
+                            continue
+            
+            # 提交事務
+            connection.commit()
+            print(f"已完成行: {row}")
     
     except Exception as e:
         print(f"處理 CSV 文件時出錯: {e}")
+        import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"導入失敗: {str(e)}")
     finally:
-        if 'connection' in locals():
+        if connection:
             connection.close()
+            print("數據庫連接已關閉")
+    
+    return {
+        "message": f"成功導入 {imported_chapter_count} 個章節和 {imported_knowledge_count} 個知識點",
+        "chapters_imported": imported_chapter_count,
+        "knowledge_points_imported": imported_knowledge_count
+    }
 
 
 @router.get("/subjects_and_chapters", response_model=Dict[str, Any])
