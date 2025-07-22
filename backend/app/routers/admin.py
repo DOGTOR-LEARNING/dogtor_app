@@ -8,6 +8,7 @@ from typing import Dict, Any
 import traceback
 import csv
 import io
+import pymysql
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
