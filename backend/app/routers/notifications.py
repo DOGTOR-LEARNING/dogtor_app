@@ -102,7 +102,7 @@ async def send_test_push(request: dict = Body(...)):
         connection = get_db_connection()
         with connection.cursor() as cursor:
             # 獲取用戶的活躍 token
-            sql = "SELECT token FROM user_tokens WHERE user_id = %s"
+            sql = "SELECT firebase_token FROM user_tokens WHERE user_id = %s"
             cursor.execute(sql, (user_id,))
             tokens = cursor.fetchall()
             
