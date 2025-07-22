@@ -77,8 +77,8 @@ class QuestionKnowledgePointMatcher:
     def should_skip_question(self, question_text: str) -> tuple[bool, str]:
         """判斷是否應該跳過這道題目"""
         # 檢查是否提到圖片
-        # image_keywords = ['圖為', '圖片', '圖表', '下圖', '右圖', '左圖', '如圖', '圖中', '附圖']
-        image_keywords = []
+        image_keywords = ['圖為', '圖片', '圖表', '下圖', '右圖', '左圖', '如圖', '圖中', '附圖']
+        # image_keywords = []
         question_lower = question_text.lower()
         
         for keyword in image_keywords:

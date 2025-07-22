@@ -1,0 +1,166 @@
+2025-07-21 16:40:33,573 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 16:40:33,574 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 16:40:33,575 - INFO - 已保存壓縮檔案: test_table_test_001.bin (MIME: application/octet-stream, 大小: 317 bytes)
+2025-07-21 16:40:33,576 - INFO - 已保存壓縮檔案: test_table_test_002.txt (MIME: text/plain, 大小: 36 bytes)
+2025-07-21 16:40:33,576 - INFO - 已保存壓縮檔案: test_table_test_003.bin (MIME: application/octet-stream, 大小: 102 bytes)
+2025-07-21 16:40:33,586 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 16:40:33,587 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 16:40:33,587 - INFO - 已保存壓縮檔案: test_table_test_zip.bin (MIME: application/octet-stream, 大小: 317 bytes)
+2025-07-21 16:43:13,382 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 16:43:13,383 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 16:43:13,384 - INFO - 已保存壓縮檔案: test_table_test_001.bin (MIME: application/octet-stream, 大小: 317 bytes)
+2025-07-21 16:43:13,385 - INFO - ZIP 檔案包含以下檔案: ['test.txt', 'readme.txt']
+2025-07-21 16:43:13,386 - INFO - 已保存壓縮檔案: test_table_test_002.txt (MIME: text/plain, 大小: 36 bytes)
+2025-07-21 16:43:13,386 - INFO - 已保存壓縮檔案: test_table_test_003.bin (MIME: application/octet-stream, 大小: 102 bytes)
+2025-07-21 16:43:13,386 - WARNING - ZIP 檔案格式錯誤: File is not a zip file
+2025-07-21 16:43:13,392 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 16:43:13,394 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 16:43:13,395 - INFO - 已保存壓縮檔案: test_table_test_zip.bin (MIME: application/octet-stream, 大小: 317 bytes)
+2025-07-21 16:44:13,296 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 16:44:13,313 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 16:44:13,313 - INFO - 找到 1 個 MDB 檔案
+2025-07-21 16:44:13,313 - INFO - 開始處理 MDB 檔案: pq1WordAndPic.mdb
+2025-07-21 16:44:13,322 - INFO - 找到 1 個表格: ['WordAndPic']
+2025-07-21 16:47:43,103 - INFO - 偵測到編碼: None (信心度: 0.00)
+2025-07-21 16:47:43,241 - INFO - 成功使用編碼 latin1 解碼
+2025-07-21 16:47:43,316 - INFO - 原始欄位: ['Code', 'QPic', 'APic', 'Word', 'LessonID']
+2025-07-21 16:47:43,316 - INFO - 保留欄位: ['Code', 'Word', 'LessonID']
+2025-07-21 16:47:44,200 - INFO - 已處理 50000 行，有效資料 49737 行
+2025-07-21 16:47:45,030 - INFO - 已處理 100000 行，有效資料 99487 行
+2025-07-21 16:47:45,861 - INFO - 已處理 150000 行，有效資料 149300 行
+2025-07-21 16:47:46,810 - INFO - 已處理 200000 行，有效資料 198939 行
+2025-07-21 16:47:47,675 - INFO - 已處理 250000 行，有效資料 248723 行
+2025-07-21 16:47:48,588 - INFO - 已處理 300000 行，有效資料 298528 行
+2025-07-21 16:47:49,372 - INFO - 簡化處理完成，輸出 339524 行 (有效資料 339523 行)
+2025-07-21 16:47:49,760 - INFO - ✅ 成功匯出 WordAndPic -> WordAndPic.csv (339523 行)
+2025-07-21 16:47:49,796 - INFO - 處理大型檔案 WordAndPic.csv (108.5 MB)
+2025-07-21 16:47:52,383 - INFO - ✅ 大型檔案處理完成: WordAndPic.csv
+2025-07-21 16:47:52,384 - INFO - 完成處理 pq1WordAndPic.mdb: 1/1 個表格成功轉換
+2025-07-21 16:47:52,384 - INFO - 轉換完成！成功處理 1/1 個檔案
+2025-07-21 16:47:52,386 - INFO - 
+=== 轉換摘要 ===
+2025-07-21 16:47:52,386 - INFO - 總共產生 1 個 CSV 檔案
+2025-07-21 16:47:52,386 - INFO - 總大小: 107.0 MB
+2025-07-21 16:47:52,386 - INFO -   📁 pq1: 0 個檔案, 0.0 MB
+2025-07-21 16:47:52,386 - INFO -   📁 pq1WordAndPic: 1 個檔案, 107.0 MB
+2025-07-21 16:54:47,556 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 16:54:47,568 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 16:54:47,568 - INFO - 找到 9 個 MDB 檔案
+2025-07-21 16:54:47,569 - INFO - 開始處理 MDB 檔案: pa1.mdb
+2025-07-21 16:54:47,578 - INFO - 找到 1 個表格: ['WordAndPic']
+2025-07-21 17:01:09,114 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 17:01:09,129 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 17:01:23,104 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 17:01:23,121 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 17:04:44,446 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 17:04:44,463 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 17:04:44,464 - INFO - 找到 1 個 MDB 檔案
+2025-07-21 17:04:44,464 - INFO - 開始處理 MDB 檔案: pq1WordAndPic.mdb
+2025-07-21 17:04:44,472 - INFO - 找到 1 個表格: ['WordAndPic']
+2025-07-21 17:05:02,685 - DEBUG - SHIFT_JIS Japanese prober hit error at byte 63
+2025-07-21 17:05:02,686 - DEBUG - EUC-JP Japanese prober hit error at byte 43
+2025-07-21 17:05:02,686 - DEBUG - GB2312 Chinese prober hit error at byte 63
+2025-07-21 17:05:02,686 - DEBUG - EUC-KR Korean prober hit error at byte 43
+2025-07-21 17:05:02,686 - DEBUG - CP949 Korean prober hit error at byte 63
+2025-07-21 17:05:02,686 - DEBUG - Big5 Chinese prober hit error at byte 43
+2025-07-21 17:05:02,686 - DEBUG - EUC-TW Taiwan prober hit error at byte 43
+2025-07-21 17:05:02,686 - DEBUG - Johab Korean prober hit error at byte 62
+2025-07-21 17:05:25,354 - DEBUG - KOI8-R confidence = 0.04959396361940693, below negative shortcut threshold 0.05
+2025-07-21 17:08:42,551 - DEBUG - windows-1251 Russian confidence = 0.05840760129540122
+2025-07-21 17:08:42,552 - DEBUG - KOI8-R not active
+2025-07-21 17:08:42,553 - DEBUG - ISO-8859-5 Russian confidence = 0.053693064055056326
+2025-07-21 17:08:42,553 - DEBUG - MacCyrillic Russian confidence = 0.059760471450125724
+2025-07-21 17:08:42,553 - DEBUG - IBM866 Russian confidence = 0.05088348844113537
+2025-07-21 17:08:42,553 - DEBUG - IBM855 Russian confidence = 0.052673023530705874
+2025-07-21 17:08:42,553 - DEBUG - ISO-8859-7 Greek confidence = 0.09604036064609979
+2025-07-21 17:08:42,553 - DEBUG - windows-1253 Greek confidence = 0.09790677334685466
+2025-07-21 17:08:42,553 - DEBUG - ISO-8859-5 Bulgarian confidence = 0.05185854392579552
+2025-07-21 17:08:42,553 - DEBUG - windows-1251 Bulgarian confidence = 0.05550741871442944
+2025-07-21 17:08:42,553 - DEBUG - TIS-620 Thai confidence = 0.054657015407514484
+2025-07-21 17:08:42,553 - DEBUG - ISO-8859-9 Turkish confidence = 0.07479971054140504
+2025-07-21 17:08:42,553 - DEBUG - ISO-8859-8 Hebrew confidence = 0.0
+2025-07-21 17:08:42,553 - DEBUG - ISO-8859-8 Hebrew confidence = 0.06063393685003519
+2025-07-21 17:08:42,553 - DEBUG - ISO-8859-8 Hebrew confidence = 0.0603887522531304
+2025-07-21 17:08:42,553 - DEBUG - no probers hit minimum threshold
+2025-07-21 17:08:42,553 - DEBUG - utf-8  confidence = 0.010000000000000009
+2025-07-21 17:08:42,553 - DEBUG - SHIFT_JIS Japanese confidence = 0.01
+2025-07-21 17:08:42,553 - DEBUG - EUC-JP Japanese confidence = 0.01
+2025-07-21 17:08:42,553 - DEBUG - GB2312 Chinese confidence = 0.01
+2025-07-21 17:08:42,553 - DEBUG - EUC-KR Korean confidence = 0.01
+2025-07-21 17:08:42,553 - DEBUG - CP949 Korean confidence = 0.01
+2025-07-21 17:08:42,553 - DEBUG - Big5 Chinese confidence = 0.01
+2025-07-21 17:08:42,553 - DEBUG - EUC-TW Taiwan confidence = 0.01
+2025-07-21 17:08:42,553 - DEBUG - Johab Korean confidence = 0.01
+2025-07-21 17:08:42,553 - DEBUG - windows-1251 Russian confidence = 0.05840760129540122
+2025-07-21 17:08:42,553 - DEBUG - KOI8-R Russian confidence = 0.04959396361940693
+2025-07-21 17:08:42,553 - DEBUG - ISO-8859-5 Russian confidence = 0.053693064055056326
+2025-07-21 17:08:42,553 - DEBUG - MacCyrillic Russian confidence = 0.059760471450125724
+2025-07-21 17:08:42,554 - DEBUG - IBM866 Russian confidence = 0.05088348844113537
+2025-07-21 17:08:42,554 - DEBUG - IBM855 Russian confidence = 0.052673023530705874
+2025-07-21 17:08:42,554 - DEBUG - ISO-8859-7 Greek confidence = 0.09604036064609979
+2025-07-21 17:08:42,554 - DEBUG - windows-1253 Greek confidence = 0.09790677334685466
+2025-07-21 17:08:42,554 - DEBUG - ISO-8859-5 Bulgarian confidence = 0.05185854392579552
+2025-07-21 17:08:42,554 - DEBUG - windows-1251 Bulgarian confidence = 0.05550741871442944
+2025-07-21 17:08:42,554 - DEBUG - TIS-620 Thai confidence = 0.054657015407514484
+2025-07-21 17:08:42,554 - DEBUG - ISO-8859-9 Turkish confidence = 0.07479971054140504
+2025-07-21 17:08:42,554 - DEBUG - ISO-8859-8 Hebrew confidence = 0.0
+2025-07-21 17:08:42,554 - DEBUG - ISO-8859-8 Hebrew confidence = 0.06063393685003519
+2025-07-21 17:08:42,554 - DEBUG - ISO-8859-8 Hebrew confidence = 0.0603887522531304
+2025-07-21 17:08:42,554 - DEBUG - ISO-8859-1  confidence = 0.01
+2025-07-21 17:08:42,555 - DEBUG - MacRoman  confidence = 0.0
+2025-07-21 17:08:42,558 - INFO - 偵測到編碼: None (信心度: 0.00)
+2025-07-21 17:08:42,721 - INFO - 成功使用編碼 latin1 解碼
+2025-07-21 17:08:42,797 - INFO - 原始欄位: ['Code', 'QPic', 'APic', 'Word', 'LessonID']
+2025-07-21 17:08:42,797 - INFO - 保留欄位: ['Code', 'Word', 'LessonID']
+2025-07-21 17:08:43,652 - INFO - 已處理 50000 行，有效資料 49737 行
+2025-07-21 17:08:44,410 - INFO - 已處理 100000 行，有效資料 99487 行
+2025-07-21 17:08:45,186 - INFO - 已處理 150000 行，有效資料 149300 行
+2025-07-21 17:08:45,956 - INFO - 已處理 200000 行，有效資料 198939 行
+2025-07-21 17:08:46,760 - INFO - 已處理 250000 行，有效資料 248723 行
+2025-07-21 17:08:47,588 - INFO - 已處理 300000 行，有效資料 298528 行
+2025-07-21 17:08:48,248 - INFO - 簡化處理完成，輸出 339524 行 (有效資料 339523 行)
+2025-07-21 17:08:48,607 - INFO - ✅ 成功匯出 WordAndPic -> WordAndPic.csv (339523 行)
+2025-07-21 17:08:48,640 - INFO - 處理大型檔案 WordAndPic.csv (108.5 MB)
+2025-07-21 17:09:53,625 - INFO - ✅ 大型檔案處理完成: WordAndPic.csv
+2025-07-21 17:09:53,628 - INFO - 完成處理 pq1WordAndPic.mdb: 1/1 個表格成功轉換
+2025-07-21 17:09:53,628 - INFO - 轉換完成！成功處理 1/1 個檔案
+2025-07-21 17:09:53,628 - INFO - 
+=== 轉換摘要 ===
+2025-07-21 17:09:53,628 - INFO - 總共產生 1 個 CSV 檔案
+2025-07-21 17:09:53,628 - INFO - 總大小: 107.0 MB
+2025-07-21 17:09:53,628 - INFO -   📁 pq1WordAndPic: 1 個檔案, 107.0 MB
+2025-07-21 17:18:35,548 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 17:18:35,564 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 17:18:35,564 - DEBUG - 使用 latin1 編碼轉換，資料大小: 53 bytes
+2025-07-21 17:18:35,564 - DEBUG - 偵測到 MIME type: text/plain
+2025-07-21 17:18:35,565 - DEBUG - 偵測到 MIME type: text/plain
+2025-07-21 17:18:35,565 - INFO - 已保存壓縮檔案: WordAndPic_test_001.txt (MIME: text/plain, 大小: 53 bytes)
+2025-07-21 17:18:35,565 - DEBUG - 原始檔案已保存至: /var/folders/86/83jw5_4s79582tghq_np6p1c0000gn/T/tmp8gjdnaph/extracted_files/WordAndPic_test_001.txt
+2025-07-21 17:19:41,023 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 17:19:41,035 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 17:19:41,035 - DEBUG - 使用 latin1 編碼轉換，資料大小: 53 bytes
+2025-07-21 17:19:41,036 - DEBUG - 偵測到 MIME type: text/plain
+2025-07-21 17:19:41,036 - DEBUG - 偵測到 MIME type: text/plain
+2025-07-21 17:19:41,037 - INFO - 已保存壓縮檔案: WordAndPic_test_001.txt (MIME: text/plain, 大小: 53 bytes)
+2025-07-21 17:19:41,037 - DEBUG - 原始檔案已保存至: /var/folders/86/83jw5_4s79582tghq_np6p1c0000gn/T/tmpb55j048x/extracted_files/WordAndPic_test_001.txt
+2025-07-21 17:20:13,950 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 17:20:13,968 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 17:20:13,968 - DEBUG - 使用 latin1 編碼轉換，資料大小: 53 bytes
+2025-07-21 17:20:13,969 - DEBUG - 偵測到 MIME type: text/plain
+2025-07-21 17:20:13,969 - DEBUG - 偵測到 MIME type: text/plain
+2025-07-21 17:20:13,969 - INFO - 已保存壓縮檔案: WordAndPic_test_001.png (MIME: text/plain, 大小: 53 bytes)
+2025-07-21 17:20:13,969 - DEBUG - 原始檔案已保存至: /var/folders/86/83jw5_4s79582tghq_np6p1c0000gn/T/tmp9azk7ojm/extracted_files/WordAndPic_test_001.png
+2025-07-21 17:23:37,168 - INFO - ✅ mdbtools 已安裝並可用
+2025-07-21 17:23:37,183 - INFO - ✅ python-magic 已安裝並可用
+2025-07-21 17:23:37,183 - INFO - 找到 1 個 MDB 檔案
+2025-07-21 17:23:37,183 - INFO - 開始處理 MDB 檔案: pq1WordAndPic.mdb
+2025-07-21 17:23:37,193 - INFO - 找到 1 個表格: ['WordAndPic']
+2025-07-21 17:23:56,383 - DEBUG - SHIFT_JIS Japanese prober hit error at byte 63
+2025-07-21 17:23:56,384 - DEBUG - EUC-JP Japanese prober hit error at byte 43
+2025-07-21 17:23:56,384 - DEBUG - GB2312 Chinese prober hit error at byte 63
+2025-07-21 17:23:56,384 - DEBUG - EUC-KR Korean prober hit error at byte 43
+2025-07-21 17:23:56,384 - DEBUG - CP949 Korean prober hit error at byte 63
+2025-07-21 17:23:56,384 - DEBUG - Big5 Chinese prober hit error at byte 43
+2025-07-21 17:23:56,384 - DEBUG - EUC-TW Taiwan prober hit error at byte 43
+2025-07-21 17:23:56,384 - DEBUG - Johab Korean prober hit error at byte 62
+2025-07-21 17:24:19,025 - DEBUG - KOI8-R confidence = 0.04959396361940693, below negative shortcut threshold 0.05
