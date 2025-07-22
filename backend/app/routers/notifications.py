@@ -111,7 +111,7 @@ async def send_test_push(request: dict = Body(...)):
             
             success_count = 0
             for token_record in tokens:
-                token = token_record['token']
+                token = token_record['firebase_token']
                 result = send_push_notification(token, title, body)
                 if result != "error":
                     success_count += 1
