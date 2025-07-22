@@ -1,49 +1,34 @@
 {
   "project_info": {
-    "project_number": "426092249907",
-    "project_id": "dogtor-c33d4",
-    "storage_bucket": "dogtor-c33d4.firebasestorage.app"
+    "project_number": "1041765261654",
+    "project_id": "dogtor-454402",
+    "storage_bucket": "dogtor-454402.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:426092249907:android:01e1d32218306c07633446",
+        "mobilesdk_app_id": "1:1041765261654:android:9937081c3404210558b6f7",
         "android_client_info": {
-          "package_name": "com.example.superb_flutter_app"
+          "package_name": "com.dogtor.superbFlutterApp"
         }
       },
       "oauth_client": [
         {
-          "client_id": "426092249907-kg90afm59kcvgiu0tm8old3e3r0dquti.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.superb_flutter_app",
-            "certificate_hash": "2c69f07431458c0a0d9c4b82ca5f16aea12a77c8"
-          }
-        },
-        {
-          "client_id": "426092249907-jgnr6rj7mr3gtjuuo0u6jsmifi7a822s.apps.googleusercontent.com",
+          "client_id": "1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDvqaUZt60xqs-qmVOARUujjEBx9Y95KAA"
+          "current_key": "AIzaSyCVEN9eLFYQGKes132ay_d34fuz-pcCUPc"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "426092249907-jgnr6rj7mr3gtjuuo0u6jsmifi7a822s.apps.googleusercontent.com",
+              "client_id": "1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com",
               "client_type": 3
-            },
-            {
-              "client_id": "426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.superbFlutterApp"
-              }
             }
           ]
         }

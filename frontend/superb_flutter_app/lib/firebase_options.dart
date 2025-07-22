@@ -45,40 +45,40 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyDKhxOXPrnnOsI81BMxzedWDDrT6W7Il2U',
-    appId: '1:426092249907:web:93144c2086ce9295633446',
-    messagingSenderId: '426092249907',
-    projectId: 'dogtor-c33d4',
-    authDomain: 'dogtor-c33d4.firebaseapp.com',
-    storageBucket: 'dogtor-c33d4.firebasestorage.app',
+    appId: '1:1041765261654:web:93144c2086ce9295633446',
+    messagingSenderId: '1041765261654',
+    projectId: 'dogtor-454402',
+    authDomain: 'dogtor-454402.firebaseapp.com',
+    storageBucket: 'dogtor-454402.firebasestorage.app',
     measurementId: 'G-KQ2TB1DKP9',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyC08-ayj1WJn8FgaVi-Eq4gyB95pNPuTPI',
-    appId: '1:426092249907:ios:d5f104285c62eff7633446',
-    messagingSenderId: '426092249907',
-    projectId: 'dogtor-c33d4',
-    storageBucket: 'dogtor-c33d4.firebasestorage.app',
-    iosClientId: '426092249907-e5ff9jmpceiads6n4sfkof2uemjcrhm5.apps.googleusercontent.com',
-    iosBundleId: 'com.example.superbFlutterApp',
+    apiKey: 'AIzaSyBCciaIQe-DlrMfrZt3Molkn790rbaklc8',
+    appId: '1:1041765261654:ios:eb13fd8bd048f0ec58b6f7',
+    messagingSenderId: '1041765261654',
+    projectId: 'dogtor-454402',
+    storageBucket: 'dogtor-454402.firebasestorage.app',
+    iosClientId: '1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com',
+    iosBundleId: 'com.dogtor.superbFlutterApp',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyC08-ayj1WJn8FgaVi-Eq4gyB95pNPuTPI',
-    appId: '1:426092249907:ios:aa594c3ce723ac5f633446',
-    messagingSenderId: '426092249907',
-    projectId: 'dogtor-c33d4',
-    storageBucket: 'dogtor-c33d4.firebasestorage.app',
-    iosClientId: '426092249907-olief71ue5k89idf9m1fpk05gqm3bs6l.apps.googleusercontent.com',
+    apiKey: 'AIzaSyBCciaIQe-DlrMfrZt3Molkn790rbaklc8',
+    appId: '1:1041765261654:ios:eb13fd8bd048f0ec58b6f7',
+    messagingSenderId: '1041765261654',
+    projectId: 'dogtor-454402',
+    storageBucket: 'dogtor-454402.firebasestorage.app',
+    iosClientId: '1041765261654-jgpu9igp4l421b562pbrk5lpe4otadd7.apps.googleusercontent.com',
     iosBundleId: 'com.dogtor.superbFlutterApp',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDvqaUZt60xqs-qmVOARUujjEBx9Y95KAA',
-    appId: '1:426092249907:android:01e1d32218306c07633446',
-    messagingSenderId: '426092249907',
-    projectId: 'dogtor-c33d4',
-    storageBucket: 'dogtor-c33d4.firebasestorage.app',
+    apiKey: 'AIzaSyCVEN9eLFYQGKes132ay_d34fuz-pcCUPc',
+    appId: '1:1041765261654:android:9937081c3404210558b6f7',
+    messagingSenderId: '1041765261654',
+    projectId: 'dogtor-454402',
+    storageBucket: 'dogtor-454402.firebasestorage.app',
   );
 
 }
