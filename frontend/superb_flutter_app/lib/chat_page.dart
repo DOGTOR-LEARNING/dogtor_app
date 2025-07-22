@@ -154,7 +154,7 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/chat"),
+        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/ai/chat"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );

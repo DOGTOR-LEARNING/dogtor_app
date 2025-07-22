@@ -144,7 +144,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       
       // 調用後端API發送給Gemini
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/generate_learning_suggestions'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/ai/analyze_quiz_performance'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -350,7 +350,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       }
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_user_stats'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/user_stats'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -387,7 +387,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (user == null) return;
       
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_monthly_subject_progress'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/monthly_progress'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -452,7 +452,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (user == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_learning_days/${user.uid}'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_days/${user.uid}'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -485,7 +485,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (user == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_weekly_stats/${user.uid}'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/weekly/${user.uid}'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -516,7 +516,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (user == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_learning_suggestions/${user.uid}'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_suggestions/${user.uid}'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -548,7 +548,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (user == null) return;
       
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_subject_abilities'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/subject_abilities'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -701,7 +701,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         if (user != null) {
           try {
             final response = await http.post(
-              Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_monthly_subject_progress'),
+              Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/monthly_progress'),
               headers: {
                 'Content-Type': 'application/json; charset=utf-8',
                 'Accept': 'application/json; charset=utf-8',

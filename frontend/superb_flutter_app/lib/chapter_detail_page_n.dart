@@ -383,7 +383,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
       if (userId == null) return {'hasHearts': false, 'remainingTime': null};
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/check_heart'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/hearts/check_heart'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -434,7 +434,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
       if (userId == null) return;
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/consume_heart'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/hearts/consume_heart'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );

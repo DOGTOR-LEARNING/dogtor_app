@@ -95,7 +95,7 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_subjects_and_chapters'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/admin/subjects_and_chapters'),
       );
 
       if (response.statusCode == 200) {
@@ -456,7 +456,7 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/chat"),
+        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/ai/chat"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
@@ -612,7 +612,7 @@ class _ChatPageState extends State<ChatPage> {
       
       // 調用後端 API 進行圖片分析
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/analyze_image'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/ai/analyze_image'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'image_base64': base64Image,
@@ -652,7 +652,7 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _classifyText(String text) async {
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/classify_text'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/ai/classify_text'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'text': text,

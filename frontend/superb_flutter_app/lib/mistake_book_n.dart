@@ -127,7 +127,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
       };
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/add_mistake_book'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
       );
@@ -180,7 +180,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
         },
       );
 
-      final response = await http.get(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_mistake_book'));
+      final response = await http.get(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/'));
       
       Navigator.pop(context); // 關閉載入對話框
       
@@ -759,7 +759,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
 
       // 呼叫後端 delete_mistake_book API
       final response = await http.delete(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/delete_mistake_book/$qId'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/$qId'),
       );
 
       Navigator.pop(context); // 關閉載入對話框

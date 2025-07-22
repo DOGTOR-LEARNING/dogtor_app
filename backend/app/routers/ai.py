@@ -123,7 +123,7 @@ async def summarize_content(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"摘要生成錯誤: {str(e)}")
 
 
-@router.post("/classify-text", response_model=ClassifyTextResponse)
+@router.post("/classify_text", response_model=ClassifyTextResponse)
 async def classify_text(request: ClassifyTextRequest):
     """文本分類（需要實作 TextCNN 模型）"""
     # TODO: 實作 TextCNN 模型載入和預測邏輯
@@ -132,8 +132,10 @@ async def classify_text(request: ClassifyTextRequest):
         message="文本分類功能尚未實作"
     )
 
+@router.post("/analyze_image")
 
-@router.post("/analyze-quiz", response_model=AnalyzeQuizResponse)
+
+@router.post("/analyze_quiz_performance", response_model=AnalyzeQuizResponse)
 async def analyze_quiz_performance(request: AnalyzeQuizRequest):
     """分析答題表現並提供建議"""
     try:

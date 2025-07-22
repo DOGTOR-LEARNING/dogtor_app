@@ -87,7 +87,7 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
     try {
       final user = _auth.currentUser!;
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/register_token'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/notifications/register_token'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'user_id': user.uid,
@@ -192,7 +192,7 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/send_test_push'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/notifications/send_test_push'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'token': _currentToken,
