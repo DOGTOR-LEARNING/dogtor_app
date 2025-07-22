@@ -52,7 +52,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
     try {
       final String userId = widget.friend['user_id'];
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_learning_days/$userId'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_days/$userId'),
         headers: {'Accept': 'application/json; charset=utf-8'},
       );
       
@@ -146,7 +146,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
       // 獲取每週學習統計
       final String userId = widget.friend['user_id'];
       final weeklyStatsResponse = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_weekly_stats/$userId'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/weekly/$userId'),
         headers: {'Accept': 'application/json; charset=utf-8'},
       );
       
@@ -173,7 +173,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
         
         // 嘗試獲取用戶整體統計
         final userStatsResponse = await http.post(
-          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_user_stats'),
+          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/user_stats'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({'user_id': userId}),
         );
@@ -223,7 +223,7 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
 
       final String userId = widget.friend['user_id'];
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/send_learning_reminder'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/notifications/send_learning_reminder'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'user_id': userId,

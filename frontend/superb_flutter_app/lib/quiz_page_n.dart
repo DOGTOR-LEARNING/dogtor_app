@@ -143,7 +143,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       
       // 從數據庫獲取題目
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_questions_by_level'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/quiz/questions'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8'
@@ -157,7 +157,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
         }),
       );
 
-      // print('發送請求到: https://superb-backend-1041765261654.asia-east1.run.app/get_questions_by_level');
+      // print('發送請求到: https://superb-backend-1041765261654.asia-east1.run.app/quiz/questions');
       // print('請求數據: ${jsonEncode({
       //   'chapter': '',
       //   'section': widget.section,
@@ -354,7 +354,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       if (userId != null) {
         // 發送請求到後端 API 記錄答題情況
         final response = await http.post(
-          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/record_answer'),
+          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/quiz/record_answer'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'user_id': userId,
@@ -487,7 +487,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       }
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/analyze_quiz_performance'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/ai/analyze_quiz_performance'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'user_id': userId,
@@ -897,7 +897,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       print('請求數據: $requestData');
       
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/complete_level'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/quiz/complete_level'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestData),
       );

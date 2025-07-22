@@ -43,38 +43,52 @@ def send_push_notification(token: str, title: str, body: str) -> str:
 
 @router.post("/register_token", response_model=StandardResponse)
 async def register_token(request: RegisterTokenRequest):
-    """註冊推播 token"""
+    connection = get_db_connection()
     try:
-        connection = get_db_connection()
+        user_id = request.get('user_id')
+        firebase_token = request.get('firebase_token')
+        old_token = request.get('old_token', None)
+        device_info = request.get('device_info', None)
+
+        if not user_id or not firebase_token:
+            return {"success": False, "message": "缺少必要參數"}
+
         with connection.cursor() as cursor:
-            # 檢查 token 是否已存在
-            sql = "SELECT COUNT(*) as count FROM user_tokens WHERE user_id = %s AND token = %s"
-            cursor.execute(sql, (request.user_id, request.token))
-            result = cursor.fetchone()
-            
-            if result['count'] == 0:
-                # 插入新 token
-                sql = """
-                INSERT INTO user_tokens (user_id, token, created_at, is_active) 
-                VALUES (%s, %s, NOW(), 1)
+            # 如果有傳 old_token，先試著用 old_token 來更新資料
+            if old_token:
+                update_sql = """
+                    UPDATE user_tokens
+                    SET firebase_token = %s, user_id = %s, device_info = %s, last_updated = %s
+                    WHERE firebase_token = %s
                 """
-                cursor.execute(sql, (request.user_id, request.token))
-                connection.commit()
-                return StandardResponse(success=True, message="Token 註冊成功")
-            else:
-                # 更新現有 token 為活躍狀態
-                sql = "UPDATE user_tokens SET is_active = 1, updated_at = NOW() WHERE user_id = %s AND token = %s"
-                cursor.execute(sql, (request.user_id, request.token))
-                connection.commit()
-                return StandardResponse(success=True, message="Token 已更新")
-    
+                affected = cursor.execute(update_sql, (
+                    firebase_token, user_id, device_info, datetime.utcnow(), old_token
+                ))
+                if affected:
+                    connection.commit()
+                    print(f"🔁 已更新舊 token 為新 token：{firebase_token[:10]}...")
+                    return {"success": True, "message": "更新成功"}
+                else:
+                    print("⚠️ 找不到舊 token，改為新增 token")
+
+            # 如果沒舊 token 或找不到，就嘗試插入新 token
+            insert_sql = """
+                INSERT INTO user_tokens (user_id, firebase_token, device_info, last_updated)
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    user_id = VALUES(user_id),
+                    device_info = VALUES(device_info),
+                    last_updated = VALUES(last_updated)
+            """
+            cursor.execute(insert_sql, (user_id, firebase_token, device_info, datetime.utcnow()))
+            connection.commit()
+            print(f"✅ Token 註冊成功: {firebase_token[:10]}...")
+            return {"success": True, "message": "Token 註冊成功"}
     except Exception as e:
-        print(f"[register_token] Error: {e}")
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        print(f"❌ Token 註冊時出錯: {str(e)}")
+        return {"success": False, "message": f"Token 註冊時出錯: {str(e)}"}
     finally:
-        if 'connection' in locals():
-            connection.close()
+        connection.close()
 
 
 @router.post("/send_test_push", response_model=StandardResponse)
@@ -88,7 +102,7 @@ async def send_test_push(request: dict = Body(...)):
         connection = get_db_connection()
         with connection.cursor() as cursor:
             # 獲取用戶的活躍 token
-            sql = "SELECT token FROM user_tokens WHERE user_id = %s AND is_active = 1"
+            sql = "SELECT token FROM user_tokens WHERE user_id = %s"
             cursor.execute(sql, (user_id,))
             tokens = cursor.fetchall()
             
@@ -123,7 +137,7 @@ async def send_learning_reminder(request: LearningReminderRequest):
         connection = get_db_connection()
         with connection.cursor() as cursor:
             # 獲取用戶的活躍 token
-            sql = "SELECT token FROM user_tokens WHERE user_id = %s AND is_active = 1"
+            sql = "SELECT token FROM user_tokens WHERE user_id = %s"
             cursor.execute(sql, (request.user_id,))
             tokens = cursor.fetchall()
             

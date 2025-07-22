@@ -223,11 +223,9 @@ async def create_required_tables():
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id VARCHAR(255) NOT NULL,
                 token TEXT NOT NULL,
-                is_active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_user_id (user_id),
-                INDEX idx_is_active (is_active)
+                INDEX idx_user_id (user_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
             cursor.execute(sql)
@@ -313,9 +311,9 @@ async def cleanup_inactive_tokens():
         connection = get_db_connection()
         with connection.cursor() as cursor:
             # 刪除 30 天內未更新的不活躍 token
+            #WHERE is_active = 0
             sql = """
-            DELETE FROM user_tokens 
-            WHERE is_active = 0 
+            DELETE FROM user_tokens   
             AND updated_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
             """
             cursor.execute(sql)

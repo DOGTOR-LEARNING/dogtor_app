@@ -60,7 +60,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_friends/$_userId'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/friends/$_userId'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -168,7 +168,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_friend_requests/$_userId'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/friends/requests/$_userId'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -268,7 +268,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/search_users'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/friends/search'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -337,7 +337,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/send_friend_request'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/friends/send_request'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -409,7 +409,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       // 首先嘗試使用請求ID
       if (requestId.isNotEmpty) {
         final response = await http.post(
-          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/respond_friend_request'),
+          Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/friends/respond_request'),
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
             'Accept': 'application/json; charset=utf-8',
@@ -434,7 +434,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       
       // 如果請求ID方法失敗，嘗試使用用戶ID
       final cancelByUserResponse = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/cancel_friend_request'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/friends/cancel_request'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -501,7 +501,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
 
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/respond_friend_request'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/friends/respond_request'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',

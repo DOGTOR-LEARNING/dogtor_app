@@ -124,7 +124,7 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
       }
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/check_heart'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/hearts/check_heart'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );

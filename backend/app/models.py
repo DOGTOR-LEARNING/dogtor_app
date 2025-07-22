@@ -714,7 +714,9 @@ class LearningReminderRequest(BaseModel):
 
 class RegisterTokenRequest(BaseModel):
     user_id: str
-    token: str
+    firebase_token: str
+    old_token: Optional[str] = None
+    device_info: Optional[str] = None
 
 
 class ImportKnowledgePointsRequest(BaseModel):

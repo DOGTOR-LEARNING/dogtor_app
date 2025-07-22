@@ -44,7 +44,7 @@ def calculate_current_hearts(last_updated, stored_hearts):
     return new_hearts, time_since_last, recovered
 
 
-@router.post("/check", response_model=HeartCheckResponse)
+@router.post("/check_heart", response_model=HeartCheckResponse)
 async def check_heart(request: HeartCheckRequest):
     """檢查用戶愛心狀態"""
     try:
@@ -61,7 +61,7 @@ async def check_heart(request: HeartCheckRequest):
                 # 新用戶，創建愛心記錄
                 now = datetime.utcnow()
                 cursor.execute(
-                    "INSERT INTO user_hearts (user_id, hearts, last_heart_update) VALUES (%s, %s, %s)",
+                    "INSERT INTO user_heart (user_id, hearts, last_heart_update) VALUES (%s, %s, %s)",
                     (request.user_id, MAX_HEARTS, now)
                 )
                 connection.commit()
@@ -80,7 +80,7 @@ async def check_heart(request: HeartCheckRequest):
             if recovered > 0:
                 new_update_time = datetime.utcnow() - time_since_last
                 cursor.execute(
-                    "UPDATE user_hearts SET hearts = %s, last_heart_update = %s WHERE user_id = %s",
+                    "UPDATE user_heart SET hearts = %s, last_heart_update = %s WHERE user_id = %s",
                     (current_hearts, new_update_time, request.user_id)
                 )
                 connection.commit()
@@ -106,7 +106,7 @@ async def check_heart(request: HeartCheckRequest):
             connection.close()
 
 
-@router.post("/consume", response_model=ConsumeHeartResponse)
+@router.post("/consume_heart", response_model=ConsumeHeartResponse)
 async def consume_heart(request: ConsumeHeartRequest):
     """消耗愛心"""
     try:
@@ -123,7 +123,7 @@ async def consume_heart(request: ConsumeHeartRequest):
             now = datetime.utcnow()
             
             cursor.execute(
-                "UPDATE user_hearts SET hearts = %s, last_heart_update = %s WHERE user_id = %s",
+                "UPDATE user_heart SET hearts = %s, last_heart_update = %s WHERE user_id = %s",
                 (new_hearts, now, request.user_id)
             )
             connection.commit()

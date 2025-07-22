@@ -94,7 +94,7 @@ class NotificationService {
 
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/register_token'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/notifications/register_token'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "user_id": userId,

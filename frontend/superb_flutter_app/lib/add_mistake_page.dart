@@ -167,8 +167,8 @@ class _AddMistakePageState extends State<AddMistakePage> {
       // Cloud端：上傳錯題資訊到後端
       // Choose endpoint based on whether we're editing or creating
       final endpoint = widget.isEditMode 
-          ? "https://superb-backend-1041765261654.asia-east1.run.app/update_question"
-          : "https://superb-backend-1041765261654.asia-east1.run.app/add_mistake_book";
+          ? "https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/update_question"
+          : "https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/";
           
       final response = await http.post(
         Uri.parse(endpoint),
@@ -273,7 +273,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
 
       // 發送 POST 請求到 add_mistake_book API
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/add_mistake_book'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(syncRequestBody),
       );
@@ -345,7 +345,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
       };
 
       final response = await http.post(
-        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/summarize"),
+        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/ai/summarize"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
