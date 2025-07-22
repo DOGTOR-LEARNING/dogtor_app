@@ -43,15 +43,16 @@ def send_push_notification(token: str, title: str, body: str) -> str:
 
 @router.post("/register_token", response_model=StandardResponse)
 async def register_token(request: RegisterTokenRequest):
+    print("🔗 註冊推播 token")
     connection = get_db_connection()
     try:
-        user_id = request.get('user_id')
-        firebase_token = request.get('firebase_token')
-        old_token = request.get('old_token', None)
-        device_info = request.get('device_info', None)
+        user_id = request.user_id
+        firebase_token = request.firebase_token
+        old_token = request.old_token
+        device_info = request.device_info
 
         if not user_id or not firebase_token:
-            return {"success": False, "message": "缺少必要參數"}
+            return StandardResponse(success=False, message="缺少必要參數")
 
         with connection.cursor() as cursor:
             # 如果有傳 old_token，先試著用 old_token 來更新資料
@@ -67,7 +68,7 @@ async def register_token(request: RegisterTokenRequest):
                 if affected:
                     connection.commit()
                     print(f"🔁 已更新舊 token 為新 token：{firebase_token[:10]}...")
-                    return {"success": True, "message": "更新成功"}
+                    return StandardResponse(success=True, message="更新成功")
                 else:
                     print("⚠️ 找不到舊 token，改為新增 token")
 
