@@ -36,44 +36,42 @@ async def get_friends(user_id: str):
         if 'connection' in locals():
             connection.close()
 
-
 @router.get("/requests/{user_id}", response_model=Dict[str, Any])
 async def get_friend_requests(user_id: str):
     """取得用戶的好友請求列表"""
     try:
         connection = get_db_connection()
         with connection.cursor() as cursor:
-            # 獲取收到的好友請求
-            sql = """
-            SELECT fr.id, fr.requester_id, u.name, u.nickname, u.photo_url, fr.created_at
-            FROM friend_requests fr
-            JOIN users u ON fr.requester_id = u.user_id
-            WHERE fr.addressee_id = %s AND fr.status = 'pending'
-            ORDER BY fr.created_at DESC
-            """
-            cursor.execute(sql, (user_id,))
-            received_requests = cursor.fetchall()
+            query = """
+                SELECT 
+                    f.id as request_id,
+                    u.user_id as requester_id,
+                    u.name as requester_name,
+                    u.photo_url as requester_photo,
+                    u.year_grade as requester_grade,
+                    u.introduction as requester_intro
+                FROM friendships f
+                INNER JOIN users u ON f.requester_id = u.user_id
+                WHERE f.addressee_id = %s AND f.status = 'pending'
+                ORDER BY f.created_at DESC
+                """
+            cursor.execute(query, (user_id,))
+            requests = cursor.fetchall()
             
-            # 獲取發出的好友請求
-            sql = """
-            SELECT fr.id, fr.addressee_id, u.name, u.nickname, u.photo_url, fr.created_at, fr.status
-            FROM friend_requests fr
-            JOIN users u ON fr.addressee_id = u.user_id
-            WHERE fr.requester_id = %s
-            ORDER BY fr.created_at DESC
-            """
-            cursor.execute(sql, (user_id,))
-            sent_requests = cursor.fetchall()
-        
+            cursor.close()
+            connection.close()
+            
         return {
-            "received_requests": received_requests,
-            "sent_requests": sent_requests
+            "status": "success",
+            "requests": requests
         }
-    
+        
     except Exception as e:
-        print(f"[get_friend_requests] Error: {e}")
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        print(f"獲取好友請求時出錯: {str(e)}")
+        return {
+            "status": "error",
+            "message": "無法獲取好友請求"
+        }
     finally:
         if 'connection' in locals():
             connection.close()

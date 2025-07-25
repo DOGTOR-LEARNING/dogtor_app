@@ -70,6 +70,19 @@ Future<void> main() async {
   
   //await NotificationService.init(); // ← 在這裡初始化推播，包含 token 取得與上傳邏輯
 
+  
+  /*
+  // 暫時列出並清空 shared_preferences 的所有鍵值對
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  print("SharedPreferences 中的所有鍵值對：");
+  prefs.getKeys().forEach((key) {
+    print("$key: ${prefs.get(key)}");
+  });
+  await prefs.clear();
+  print("已清空 SharedPreferences");
+  */
+  
+
   runApp(MyApp());
 }
 
