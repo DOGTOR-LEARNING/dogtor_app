@@ -41,23 +41,24 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Initialize Firebase Messaging
-  final messaging = FirebaseMessaging.instance;
+  // // Initialize Firebase Messaging
+  // final messaging = FirebaseMessaging.instance;
   
-  // Request permission for iOS
-  await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+  // // Request permission for iOS
+  // await messaging.requestPermission(
+  //   alert: true,
+  //   badge: true,
+  //   sound: true,
+  // );
   
-  // Get APNS token
-  final apnsToken = await messaging.getAPNSToken();
-  print('APNS Token: $apnsToken');
+  // // Get APNS token
+  // final apnsToken = await messaging.getAPNSToken();
+  // print('APNS Token: $apnsToken');
   
-  // Get FCM token
-  final fcmToken = await messaging.getToken();
-  print('FCM Token: $fcmToken');
+  // // Get FCM token
+  // final fcmToken = await messaging.getToken();
+  // print('FCM Token: $fcmToken');
+  // Firebase Messaging 將在用戶登入後透過 NotificationService.init() 進行初始化
 
   // 初始化 Hive
   // 這樣能載入之前的錯題？
