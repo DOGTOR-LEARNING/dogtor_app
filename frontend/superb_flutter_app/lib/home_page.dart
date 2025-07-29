@@ -30,7 +30,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin, Widg
   int _selectedIndex = 1;
   final ScrollController _scrollController = ScrollController();
   final double _maxPlanetSize = 200.0;
-  final double _minPlanetSize = 100.0;
+  final double _minPlanetSize = 10.0;
   double _screenHeight = 600.0;
   String? _userPhotoUrl;
   TopHeartDisplay? _topHeartDisplay;
@@ -207,13 +207,9 @@ void _onItemTapped(int index) {
                   children:[
                     if (_shimmerController != null)
                       _HorizonShimmerLayer(animation: _shimmerController!),
-                    if (_shimmerController != null)
-                      _WavesLayer(
-                        scrollController: _scrollController,
-                        shimmerController: _shimmerController!,
-                      ),
-                    _IslandsLayer(
+                    _UnifiedSeaLayer(
                       scrollController: _scrollController,
+                      shimmerController: _shimmerController!,
                       minPlanetSize: _minPlanetSize,
                       maxPlanetSize: _maxPlanetSize,
                       screenHeightSetter: (h) => _screenHeight = h,
@@ -302,67 +298,7 @@ void _onItemTapped(int index) {
   ];
 }
 
-// 自定義吸附式滾動物理效果
-class SnappingScrollPhysics extends ScrollPhysics {
-  final double itemExtent;
 
-  const SnappingScrollPhysics({
-    ScrollPhysics? parent,
-    required this.itemExtent,
-  }) : super(parent: parent);
-
-  @override
-  SnappingScrollPhysics applyTo(ScrollPhysics? ancestor) {
-    return SnappingScrollPhysics(
-      parent: buildParent(ancestor),
-      itemExtent: itemExtent,
-    );
-  }
-
-  double _getPage(ScrollMetrics position) {
-    return position.pixels / itemExtent;
-  }
-
-  double _getPixels(double page) {
-    return page * itemExtent;
-  }
-
-  double _getTargetPixels(ScrollMetrics position, Tolerance tolerance, double velocity) {
-    double page = _getPage(position);
-    if (velocity < -tolerance.velocity) {
-      page -= 0.5;
-    } else if (velocity > tolerance.velocity) {
-      page += 0.5;
-    }
-    return _getPixels(page.roundToDouble());
-  }
-
-  @override
-  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
-    // 如果已經在邊界，使用默認行為
-    if (position.outOfRange) {
-      return super.createBallisticSimulation(position, velocity);
-    }
-
-    final Tolerance tolerance = this.tolerance;
-    final double target = _getTargetPixels(position, tolerance, velocity);
-    
-    // 如果目標滾動位置非常接近當前位置，且沒有滾動速度，不使用模擬
-    if ((target - position.pixels).abs() < tolerance.distance &&
-        velocity.abs() < tolerance.velocity) {
-      return null;
-    }
-    
-    // 返回一個使滾動動畫平滑的彈簧模擬
-    return ScrollSpringSimulation(
-      spring,
-      position.pixels,
-      target,
-      velocity,
-      tolerance: tolerance,
-    );
-  }
-}
 
 // --- Modular Layer Widgets ---
 
@@ -389,190 +325,197 @@ class _HorizonShimmerLayer extends StatelessWidget {
   const _HorizonShimmerLayer({required this.animation});
   @override
   Widget build(BuildContext context) {
-    final double shimmerHeight = 40;
-    final double shimmerWidth = MediaQuery.of(context).size.width * 0.8;
+    final List<Color> shimmerColors = [
+      Colors.white.withOpacity(0.4),
+      Colors.blueAccent.withOpacity(0.4),
+      Colors.lightBlueAccent.withOpacity(0.4),
+    ];
     return AnimatedBuilder(
       animation: animation,
       builder: (context, child) {
         final double t = animation.value;
-        final double y = 120 + 20 * (sin(2 * pi * t));
-        return Positioned(
-          top: y,
-          left: (MediaQuery.of(context).size.width - shimmerWidth) / 2,
-          child: Opacity(
-            opacity: 0.25,
-            child: Container(
-              width: shimmerWidth,
-              height: shimmerHeight,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Center(child: Text('Shimmer Placeholder', style: TextStyle(color: Colors.blueGrey, fontSize: 12))),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _WavesLayer extends StatelessWidget {
-  final ScrollController scrollController;
-  final AnimationController shimmerController;
-  const _WavesLayer({required this.scrollController, required this.shimmerController});
-  @override
-  Widget build(BuildContext context) {
-    final double baseY = 180;
-    final List<Color> waveColors = [
-      Colors.white.withOpacity(0.5),
-      Colors.blueAccent.withOpacity(0.3),
-      Colors.lightBlueAccent.withOpacity(0.2),
-    ];
-    return AnimatedBuilder(
-      animation: Listenable.merge([scrollController, shimmerController]),
-      builder: (context, child) {
-        final double scroll = scrollController.hasClients ? scrollController.offset : 0.0;
-        final double t = shimmerController.value;
-        List<Widget> waves = [];
+        List<Widget> shimmers = [];
         for (int i = 0; i < 3; i++) {
-          final double scale = 1.0 - 0.15 * (scroll / 300).clamp(0, 1) - 0.05 * i;
-          final double y = baseY + i * 30 - (scroll * 0.3) + 10 * sin(2 * pi * t + i);
-          final double x = 10 * sin(2 * pi * t + i * 2);
-          waves.add(Positioned(
+          final double shimmerHeight = 200 + i * 13;
+          final double shimmerWidth = MediaQuery.of(context).size.width * 1.5;
+          final double y = i * 25 + 20 * sin(2 * pi * t + i)-100;
+          final double x = 20 * sin(2 * pi * t + i * 1.5);
+          shimmers.add(Positioned(
             top: y,
-            left: x,
-            right: -x,
-            child: Transform.scale(
-              scale: scale,
-              alignment: Alignment.center,
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: 28.0 - i * 4,
-                decoration: BoxDecoration(
-                  color: waveColors[i],
-                  borderRadius: BorderRadius.circular(20),
+            left: (MediaQuery.of(context).size.width - shimmerWidth) / 2 + x,
+            child: Opacity(
+              opacity: 0.6 - i * 0.1,
+              child: CustomPaint(
+                size: Size(shimmerWidth, shimmerHeight),
+                painter: WaveShimmerPainter(
+                  color: shimmerColors[i],
+                  animationValue: t + i * 0.3,
+                  waveCount: 3 + i,
+                  amplitude: 15 - i * 3,
                 ),
-                child: Center(child: Text('Wave ${i + 1}', style: TextStyle(color: Colors.blueGrey, fontSize: 10))),
               ),
             ),
           ));
         }
-        return Stack(children: waves);
+        return Stack(children: shimmers);
       },
     );
   }
 }
 
-class _IslandsLayer extends StatelessWidget {
+class WaveShimmerPainter extends CustomPainter {
+  final Color color;
+  final double animationValue;
+  final int waveCount;
+  final double amplitude;
+
+  WaveShimmerPainter({
+    required this.color,
+    required this.animationValue,
+    required this.waveCount,
+    required this.amplitude,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color.withOpacity(0.6),
+          color.withOpacity(0.6),
+          color.withOpacity(0.6),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final path = Path();
+    
+    // Start from top-left
+    path.moveTo(0, 0);
+    
+    // Draw top wave edge
+    path.lineTo(size.width, 0);
+    
+    // Draw right edge
+    path.lineTo(size.width, size.height);
+    
+    // Draw bottom wave edge
+    for (int i = size.width.toInt(); i >= 0; i--) {
+      final x = i.toDouble();
+      final waveOffset = amplitude * 0.5 * sin(1.3 * pi * waveCount * x / size.width + animationValue * 2 * pi + pi);
+      final y = size.height * 0.7 + waveOffset* 5;
+      path.lineTo(x, y);
+    }
+    
+    // Close the path
+    path.close();
+    
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(WaveShimmerPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue ||
+           oldDelegate.color != color ||
+           oldDelegate.waveCount != waveCount ||
+           oldDelegate.amplitude != amplitude;
+  }
+}
+
+
+
+// Unified sea layer that combines islands and waves in a single scrollable widget
+class _UnifiedSeaLayer extends StatefulWidget {
   final ScrollController scrollController;
+  final AnimationController shimmerController;
   final double minPlanetSize;
   final double maxPlanetSize;
   final Function(double) screenHeightSetter;
   final Function(int) onPlanetTap;
   final List<Map<String, dynamic>> planets;
-  const _IslandsLayer({
+  
+  const _UnifiedSeaLayer({
     required this.scrollController,
+    required this.shimmerController,
     required this.minPlanetSize,
     required this.maxPlanetSize,
     required this.screenHeightSetter,
     required this.onPlanetTap,
     required this.planets,
   });
-  double calculatePlanetSize(double scrollPosition, double itemPosition, double screenHeight) {
-    double distanceFromHorizon = screenHeight - ((scrollPosition - itemPosition));
+  
+  @override
+  State<_UnifiedSeaLayer> createState() => _UnifiedSeaLayerState();
+}
+
+class _UnifiedSeaLayerState extends State<_UnifiedSeaLayer> {
+  late List<List<Map<String, dynamic>>> _islandWaves;
+  
+  @override
+  void initState() {
+    super.initState();
+    _islandWaves = _generateWavesForEachIsland();
+  }
+  
+  // Generate waves specifically for each island
+  List<List<Map<String, dynamic>>> _generateWavesForEachIsland() {
+    final random = Random(42);
+    List<List<Map<String, dynamic>>> allIslandWaves = [];
     
-    distanceFromHorizon = distanceFromHorizon.clamp( 0, screenHeight);
-    if(distanceFromHorizon ==0 ) { print(distanceFromHorizon);}
-    double sizeFactor = distanceFromHorizon/screenHeight;
-    return (maxPlanetSize)* sizeFactor;
+    for (int islandIndex = 0; islandIndex < widget.planets.length; islandIndex++) {
+      List<Map<String, dynamic>> islandWaveList = [];
+      
+      // Create 3-5 waves around each island
+      int waveCount = 3 + random.nextInt(3);
+      
+      for (int waveIndex = 0; waveIndex < waveCount; waveIndex++) {
+        islandWaveList.add({
+          'imageIndex': random.nextInt(6) + 1,
+          'offsetX': (random.nextDouble() - 0.5) * 0.6, // -0.3 to 0.3 screen width
+          'offsetY': (random.nextDouble() - 0.5) * 120, // ±60 pixels from island center
+          'scale': 0.15 + random.nextDouble() * 0.25, // 0.15 to 0.4 scale
+          'speed': 0.1 + random.nextDouble() * 0.3, // 0.1 to 0.4 speed
+          'phase': random.nextDouble() * 2 * pi,
+          'opacity': 0.2 + random.nextDouble() * 0.3,
+        });
+      }
+      
+      allIslandWaves.add(islandWaveList);
+    }
+    
+    return allIslandWaves;
   }
-  double calculateTextSize(double size) {
-    double maxTextSize = 28.0;
-    double minTextSize = 18.0;
-    double ratio = (size - minPlanetSize) / (maxPlanetSize - minPlanetSize);
-    return minTextSize + (maxTextSize - minTextSize) * ratio;
-  }
+  
+
+  
+
+  
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-        builder: (context, constraints) {
-        screenHeightSetter(constraints.maxHeight);
+      builder: (context, constraints) {
+        widget.screenHeightSetter(constraints.maxHeight);
         return Column(
           children: [
-            // ListView of islands/planets
             Expanded(
-              child: ListView.builder(
-                controller: scrollController,
-                physics: SnappingScrollPhysics(itemExtent: 180),
-                itemCount: planets.length,
-                itemBuilder: (context, index) {
-                  return AnimatedBuilder(
-                    animation: scrollController,
-                    builder: (context, child) {
-                      double itemPosition = index * 180.0;
-                      double scrollPosition = scrollController.hasClients ? scrollController.offset : 0.0;
-                      double size = calculatePlanetSize(scrollPosition , itemPosition, constraints.maxHeight);
-                      bool isLeft = index.isEven;
-                      return Container(
-                        height: 160,
-                        padding: EdgeInsets.symmetric(horizontal: 40),
-                        child: Row(
-                          mainAxisAlignment: isLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
-                          children: [
-                            if (!isLeft)
-                              Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.only(right: 40),
-                                  child: AnimatedDefaultTextStyle(
-                                    duration: Duration(milliseconds: 100),
-                                    style: Theme.of(context).textTheme.displayMedium!.copyWith(
-                                          fontSize: calculateTextSize(size),
-                                          color: Colors.white,
-                                        ),
-                                    child: Text(
-                                      planets[index]['name'],
-                                      textAlign: TextAlign.end,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            AnimatedContainer(
-                              duration: Duration(milliseconds: 100),
-                              width: size,
-                              height: size,
-                              child: GestureDetector(
-                                onTap: () => onPlanetTap(index),
-                                child: Image.asset(
-                                  planets[index]['image'],
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                            ),
-                            if (isLeft)
-                              Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.only(left: 40),
-                                  child: AnimatedDefaultTextStyle(
-                                    duration: Duration(milliseconds: 100),
-                                    style: Theme.of(context).textTheme.displayMedium!.copyWith(
-                                          fontSize: calculateTextSize(size),
-                                          color: Colors.white,
-                                        ),
-                                    child: Text(
-                                      planets[index]['name'],
-                                      textAlign: TextAlign.start,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
+              child: CustomScrollView(
+                controller: widget.scrollController,
+                physics: ClampingScrollPhysics(),
+                slivers: [
+                  SliverIslandList(
+                    planets: widget.planets,
+                    islandWaves: _islandWaves,
+                    shimmerController: widget.shimmerController,
+                    minPlanetSize: widget.minPlanetSize,
+                    maxPlanetSize: widget.maxPlanetSize,
+                    onPlanetTap: widget.onPlanetTap,
+                  ),
+                ],
               ),
+
             ),
           ],
         );
@@ -580,6 +523,8 @@ class _IslandsLayer extends StatelessWidget {
     );
   }
 }
+
+
 
 // --- Bottom NavBar modularized (unchanged logic) ---
 class _BottomNavBar extends StatelessWidget {
@@ -851,6 +796,184 @@ class _BottomNavBar extends StatelessWidget {
                               ],
                             ),
                           ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Custom Sliver for Island List ---
+class SliverIslandList extends StatelessWidget {
+  final List<Map<String, dynamic>> planets;
+  final List<List<Map<String, dynamic>>> islandWaves;
+  final AnimationController shimmerController;
+  final double minPlanetSize;
+  final double maxPlanetSize;
+  final Function(int) onPlanetTap;
+
+  const SliverIslandList({
+    super.key,
+    required this.planets,
+    required this.islandWaves,
+    required this.shimmerController,
+    required this.minPlanetSize,
+    required this.maxPlanetSize,
+    required this.onPlanetTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          return AnimatedBuilder(
+            animation: shimmerController,
+            builder: (context, child) {
+              return IslandItem(
+                index: index,
+                planetData: planets[index],
+                waveData: islandWaves[index],
+                shimmerController: shimmerController,
+                minPlanetSize: minPlanetSize,
+                maxPlanetSize: maxPlanetSize,
+                onTap: () => onPlanetTap(index),
+              );
+            },
+          );
+        },
+        childCount: planets.length,
+      ),
+    );
+  }
+}
+
+class IslandItem extends StatelessWidget {
+  final int index;
+  final Map<String, dynamic> planetData;
+  final List<Map<String, dynamic>> waveData;
+  final AnimationController shimmerController;
+  final double minPlanetSize;
+  final double maxPlanetSize;
+  final VoidCallback onTap;
+
+  const IslandItem({
+    super.key,
+    required this.index,
+    required this.planetData,
+    required this.waveData,
+    required this.shimmerController,
+    required this.minPlanetSize,
+    required this.maxPlanetSize,
+    required this.onTap,
+  });
+
+  double calculatePlanetSize(BuildContext context) {
+    // Get the RenderObject to find actual position
+    final RenderObject? renderObject = context.findRenderObject();
+    if (renderObject == null) return minPlanetSize;
+    
+    final RenderBox renderBox = renderObject as RenderBox;
+    final Offset globalPosition = renderBox.localToGlobal(Offset.zero);
+    
+    // Get viewport height
+    final MediaQueryData mediaQuery = MediaQuery.of(context);
+    final double screenHeight = mediaQuery.size.height * 0.75; // Sea area height
+    
+    // Calculate distance from horizon (top of viewport)
+    double distanceFromHorizon = globalPosition.dy;
+    
+    if (distanceFromHorizon <= 0) {
+      return minPlanetSize * 0.1; // Nearly invisible at horizon
+    } else if (distanceFromHorizon >= screenHeight) {
+      return maxPlanetSize; // Maximum size at bottom
+    } else {
+      // Perspective calculation
+      double normalizedDistance = distanceFromHorizon / screenHeight;
+      double perspectiveFactor = 1.0 - pow(1.0 - normalizedDistance, 2.5);
+      return (maxPlanetSize - minPlanetSize) * perspectiveFactor;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final islandSize = calculatePlanetSize(context);
+    final itemHeight = islandSize.clamp(0.0, 300.0); // Min/max heights for stability
+    final isLeft = index.isEven;
+    final t = shimmerController.value;
+    
+    // Calculate perspective positioning
+    double perspectiveFactor = 1.0 - (islandSize / maxPlanetSize);
+    double baseOffsetFromCenter = isLeft ? -screenWidth * 0.25 : screenWidth * 0.25;
+    double perspectiveOffset = baseOffsetFromCenter * (1.0 - perspectiveFactor);
+    double finalX = (screenWidth / 2) + perspectiveOffset - (islandSize / 2);
+    
+    return SizedBox(
+      height: itemHeight,
+      child: Stack(
+        children: [
+          // Render waves
+          ...waveData.map((wave) {
+            final double waveX = screenWidth * 0.5 + screenWidth * wave['offsetX'] + 
+                                6 * sin(2 * pi * t * wave['speed'] + wave['phase']);
+            final double waveY = itemHeight / 2 + wave['offsetY'] +
+                                4 * sin(2 * pi * t * wave['speed'] + wave['phase'] + pi/4);
+            
+            final double waveScaleFactor = islandSize / maxPlanetSize;
+            final double finalWaveScale = wave['scale'] * waveScaleFactor;
+            final double waveOpacity = (waveScaleFactor * wave['opacity']).clamp(0.0, 1.0);
+            
+            return Positioned(
+              left: waveX - 50,
+              top: waveY,
+              child: Transform.scale(
+                scale: finalWaveScale,
+                child: Opacity(
+                  opacity: waveOpacity,
+                  child: Image.asset(
+                    'assets/images/waves/${wave['imageIndex']}.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Wave ${wave['imageIndex']}',
+                            style: TextStyle(color: Colors.blueGrey, fontSize: 8),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+          
+          // Render island
+          Positioned(
+            left: finalX,
+            top: 0,
+            child: GestureDetector(
+              onTap: onTap,
+              child: Opacity(
+                opacity: 1,
+                child: Image.asset(
+                  planetData['image'],
+                  width: islandSize,
+                  height: islandSize,
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
         ],
