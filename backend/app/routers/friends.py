@@ -19,12 +19,14 @@ async def get_friends(user_id: str):
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
         
-        # 獲取好友列表（包括雙向的好友關係）
+        # 獲取好友列表（包括雙向的好友關係）- 使用簡化查詢測試
         query = """
-        SELECT u.user_id, u.name, u.nickname, u.photo_url, u.year_grade, u.introduction
+        SELECT DISTINCT u.user_id, u.name, u.nickname, u.photo_url, u.year_grade, u.introduction
         FROM users u
-        INNER JOIN friendships f ON (f.requester_id = %s AND f.addressee_id = u.user_id)
-            OR (f.addressee_id = %s AND f.requester_id = u.user_id)
+        JOIN friendships f ON (
+            (f.requester_id = %s AND f.addressee_id = u.user_id) OR
+            (f.addressee_id = %s AND f.requester_id = u.user_id)
+        )
         WHERE f.status = 'accepted'
         ORDER BY u.name
         """

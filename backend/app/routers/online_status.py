@@ -7,6 +7,7 @@ from models import (
     UpdateOnlineStatusRequest,
     StandardResponse
 )
+# from database import get_db_connection
 from datetime import datetime, timedelta
 import pymysql
 import os
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/online", tags=["在線狀態"])
 # 內存中存儲在線狀態（生產環境建議使用 Redis）
 online_users: Dict[str, datetime] = {}
 
+# 這個是本地開發環境的連接方式
 def get_db_connection():
     """獲取資料庫連接"""
     return pymysql.connect(
