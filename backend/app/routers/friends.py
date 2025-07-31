@@ -7,6 +7,7 @@ from models import FriendRequest, FriendResponse, SearchUsersRequest, StandardRe
 from typing import Dict, Any
 import traceback
 
+# 好友系統相關 API
 router = APIRouter(prefix="/friends", tags=["Friends"])
 
 
@@ -15,18 +16,27 @@ async def get_friends(user_id: str):
     """取得用戶的好友列表"""
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
-            sql = """
-            SELECT f.id, f.friend_id, u.name, u.nickname, u.photo_url, f.created_at
-            FROM friends f
-            JOIN users u ON f.friend_id = u.user_id
-            WHERE f.user_id = %s
-            ORDER BY f.created_at DESC
-            """
-            cursor.execute(sql, (user_id,))
-            friends = cursor.fetchall()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
         
-        return {"friends": friends}
+        # 獲取好友列表（包括雙向的好友關係）
+        query = """
+        SELECT u.user_id, u.name, u.nickname, u.photo_url, u.year_grade, u.introduction
+        FROM users u
+        INNER JOIN friendships f ON (f.requester_id = %s AND f.addressee_id = u.user_id)
+            OR (f.addressee_id = %s AND f.requester_id = u.user_id)
+        WHERE f.status = 'accepted'
+        ORDER BY u.name
+        """
+        cursor.execute(query, (user_id, user_id))
+        friends = cursor.fetchall()
+        
+        cursor.close()
+        connection.close()
+        
+        return {
+            "status": "success",
+            "friends": friends
+        }
     
     except Exception as e:
         print(f"[get_friends] Error: {e}")
@@ -82,39 +92,54 @@ async def send_friend_request(request: FriendRequest):
     """發送好友請求"""
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
-            # 檢查是否已經是好友
-            sql = """
-            SELECT COUNT(*) as count FROM friends 
-            WHERE (user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s)
-            """
-            cursor.execute(sql, (request.requester_id, request.addressee_id, 
-                                request.addressee_id, request.requester_id))
-            result = cursor.fetchone()
-            
-            if result['count'] > 0:
-                return StandardResponse(success=False, message="已經是好友了")
-            
-            # 檢查是否已經有待處理的請求
-            sql = """
-            SELECT COUNT(*) as count FROM friend_requests 
-            WHERE requester_id = %s AND addressee_id = %s AND status = 'pending'
-            """
-            cursor.execute(sql, (request.requester_id, request.addressee_id))
-            result = cursor.fetchone()
-            
-            if result['count'] > 0:
-                return StandardResponse(success=False, message="已經發送過好友請求了")
-            
-            # 插入好友請求
-            sql = """
-            INSERT INTO friend_requests (requester_id, addressee_id, status, created_at)
-            VALUES (%s, %s, 'pending', NOW())
-            """
-            cursor.execute(sql, (request.requester_id, request.addressee_id))
-            connection.commit()
-            
-            return StandardResponse(success=True, message="好友請求已發送")
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        
+        # 檢查是否已存在好友關係
+        check_query = """
+        SELECT id, status FROM friendships 
+        WHERE (requester_id = %s AND addressee_id = %s) 
+        OR (requester_id = %s AND addressee_id = %s)
+        """
+        cursor.execute(check_query, (
+            request.requester_id, 
+            request.addressee_id, 
+            request.addressee_id, 
+            request.requester_id
+        ))
+        existing = cursor.fetchone()
+        
+        if existing:
+            status = existing['status']
+            if status == 'accepted':
+                return {"status": "error", "message": "已經是好友了"}
+            elif status == 'blocked':
+                return {"status": "error", "message": "無法發送好友請求"}
+            elif status == 'pending':
+                return {"status": "error", "message": "好友請求已存在，等待對方回應"}
+            else:
+                # 如果是被拒絕狀態，可以重新發送請求
+                update_query = """
+                UPDATE friendships 
+                SET status = 'pending', 
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                """
+                cursor.execute(update_query, (existing['id'],))
+                connection.commit()
+                return {"status": "success", "message": "好友請求已重新發送"}
+        
+        # 創建新的好友請求
+        insert_query = """
+        INSERT INTO friendships (requester_id, addressee_id, status)
+        VALUES (%s, %s, 'pending')
+        """
+        cursor.execute(insert_query, (request.requester_id, request.addressee_id))
+        connection.commit()
+        
+        cursor.close()
+        connection.close()
+        
+        return {"status": "success", "message": "好友請求已發送"}
     
     except Exception as e:
         print(f"[send_friend_request] Error: {e}")
@@ -130,39 +155,26 @@ async def respond_friend_request(response: FriendResponse):
     """回應好友請求"""
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
-            if response.status == "accepted":
-                # 更新請求狀態
-                sql = "UPDATE friend_requests SET status = 'accepted' WHERE id = %s"
-                cursor.execute(sql, (response.request_id,))
-                
-                # 獲取請求詳情
-                sql = "SELECT requester_id, addressee_id FROM friend_requests WHERE id = %s"
-                cursor.execute(sql, (response.request_id,))
-                request_info = cursor.fetchone()
-                
-                if request_info:
-                    # 雙向添加好友關係
-                    sql = """
-                    INSERT INTO friends (user_id, friend_id, created_at)
-                    VALUES (%s, %s, NOW()), (%s, %s, NOW())
-                    """
-                    cursor.execute(sql, (
-                        request_info['requester_id'], request_info['addressee_id'],
-                        request_info['addressee_id'], request_info['requester_id']
-                    ))
-                
-                connection.commit()
-                return StandardResponse(success=True, message="已接受好友請求")
-            
-            elif response.status in ["rejected", "blocked"]:
-                sql = "UPDATE friend_requests SET status = %s WHERE id = %s"
-                cursor.execute(sql, (response.status, response.request_id))
-                connection.commit()
-                return StandardResponse(success=True, message=f"已{response.status}好友請求")
-            
-            else:
-                return StandardResponse(success=False, message="無效的回應狀態")
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        
+        # 更新好友請求狀態
+        update_query = """
+        UPDATE friendships 
+        SET status = %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+        """
+        cursor.execute(update_query, (request.status, request.request_id))
+        connection.commit()
+        
+        cursor.close()
+        connection.close()
+        
+        return {
+            "status": "success",
+            "message": "好友請求已更新"
+        }
+        
     
     except Exception as e:
         print(f"[respond_friend_request] Error: {e}")
