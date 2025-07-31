@@ -6,6 +6,7 @@ from database import get_db_connection
 from models import FriendRequest, FriendResponse, SearchUsersRequest, StandardResponse
 from typing import Dict, Any
 import traceback
+import pymysql
 
 # 好友系統相關 API
 router = APIRouter(prefix="/friends", tags=["Friends"])
@@ -164,7 +165,7 @@ async def respond_friend_request(response: FriendResponse):
             updated_at = CURRENT_TIMESTAMP
         WHERE id = %s
         """
-        cursor.execute(update_query, (request.status, request.request_id))
+        cursor.execute(update_query, (response.status, response.request_id))
         connection.commit()
         
         cursor.close()
@@ -191,7 +192,7 @@ async def cancel_friend_request(request: dict = Body(...)):
     try:
         connection = get_db_connection()
         with connection.cursor() as cursor:
-            sql = "DELETE FROM friend_requests WHERE id = %s"
+            sql = "DELETE FROM friendships WHERE id = %s"
             cursor.execute(sql, (request['request_id'],))
             connection.commit()
             
@@ -213,40 +214,53 @@ async def search_users(request: SearchUsersRequest):
         connection = get_db_connection()
         with connection.cursor() as cursor:
             sql = """
-            SELECT user_id, name, nickname, photo_url, year_grade
+            SELECT user_id, name, nickname, photo_url, year_grade, introduction
             FROM users 
             WHERE (name LIKE %s OR nickname LIKE %s OR user_id LIKE %s)
             AND user_id != %s
             LIMIT 20
             """
-            search_pattern = f"%{request.search_term}%"
+            search_pattern = f"%{request.query}%"
             cursor.execute(sql, (search_pattern, search_pattern, search_pattern, request.current_user_id))
             users = cursor.fetchall()
             
-            # 檢查好友狀態
+            # 檢查每個用戶的好友狀態
             for user in users:
                 # 檢查是否已經是好友
-                sql = """
-                SELECT COUNT(*) as count FROM friends 
-                WHERE (user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s)
+                friend_sql = """
+                SELECT COUNT(*) as count FROM friendships 
+                WHERE ((requester_id = %s AND addressee_id = %s) OR (requester_id = %s AND addressee_id = %s))
+                AND status = 'accepted'
                 """
-                cursor.execute(sql, (request.current_user_id, user['user_id'], 
-                                   user['user_id'], request.current_user_id))
+                cursor.execute(friend_sql, (request.current_user_id, user['user_id'], 
+                                         user['user_id'], request.current_user_id))
                 friend_result = cursor.fetchone()
                 user['is_friend'] = friend_result['count'] > 0
                 
                 # 檢查是否有待處理的請求
-                sql = """
-                SELECT COUNT(*) as count FROM friend_requests 
+                pending_sql = """
+                SELECT id, requester_id, status FROM friendships 
                 WHERE ((requester_id = %s AND addressee_id = %s) OR (requester_id = %s AND addressee_id = %s))
                 AND status = 'pending'
                 """
-                cursor.execute(sql, (request.current_user_id, user['user_id'], 
-                                   user['user_id'], request.current_user_id))
-                request_result = cursor.fetchone()
-                user['has_pending_request'] = request_result['count'] > 0
+                cursor.execute(pending_sql, (request.current_user_id, user['user_id'], 
+                                           user['user_id'], request.current_user_id))
+                pending_result = cursor.fetchone()
+                
+                if pending_result:
+                    user['friend_status'] = 'pending'
+                    user['request_id'] = pending_result['id']
+                    # 檢查是當前用戶發送的請求還是接收的請求
+                    user['is_requester'] = pending_result['requester_id'] == request.current_user_id
+                elif user['is_friend']:
+                    user['friend_status'] = 'accepted'
+                else:
+                    user['friend_status'] = 'none'
         
-        return {"users": users}
+        return {
+            "status": "success", 
+            "users": users
+        }
     
     except Exception as e:
         print(f"[search_users] Error: {e}")
