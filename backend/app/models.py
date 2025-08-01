@@ -724,6 +724,52 @@ class ImportKnowledgePointsRequest(BaseModel):
     subject: str
 
 
+class UserLevelStarsRequest(BaseModel):
+    """獲取用戶關卡星星數請求模型"""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "user_id": "user123",
+                "subject": "國中數學"
+            }
+        }
+    )
+    
+    user_id: str = Field(
+        description="用戶ID",
+        examples=["user123", "student456"]
+    )
+    subject: Optional[str] = Field(
+        None,
+        description="科目名稱，如果不提供則返回所有科目的星星數",
+        examples=["國中數學", "國中理化", "高中化學"]
+    )
+
+
+class UserLevelStarsResponse(BaseModel):
+    """獲取用戶關卡星星數響應模型"""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "success": True,
+                "level_stars": {
+                    "1": 3,
+                    "2": 2,
+                    "3": 1
+                }
+            }
+        }
+    )
+    
+    success: bool = Field(description="請求是否成功")
+    message: Optional[str] = Field(None, description="錯誤消息（如果有）")
+    level_stars: Optional[Dict[str, int]] = Field(
+        None, 
+        description="關卡ID對應的最高星星數",
+        examples=[{"1": 3, "2": 2, "3": 1}]
+    )
+
+
 class StandardResponse(BaseModel):
     success: bool
     message: str

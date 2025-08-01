@@ -825,7 +825,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/report_question_error'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/quiz/report_error'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'question_id': questionId,

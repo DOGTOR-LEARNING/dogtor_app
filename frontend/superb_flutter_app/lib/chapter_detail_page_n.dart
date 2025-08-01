@@ -120,7 +120,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
       }
       
       print("正在獲取用戶星星數，用戶 ID: $userId, 科目: ${widget.subject}");
-      final apiUrl = 'https://superb-backend-1041765261654.asia-east1.run.app/get_user_level_stars';
+      final apiUrl = 'https://superb-backend-1041765261654.asia-east1.run.app/quiz/user_level_stars';
       // print("API URL: $apiUrl");
       
       final response = await http.post(
