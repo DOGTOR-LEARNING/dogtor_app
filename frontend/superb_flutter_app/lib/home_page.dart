@@ -15,7 +15,6 @@ import 'user_stats_page.dart';  // Import the UserStatsPage
 import 'friends_page.dart';  // 引入新的好友頁面
 import 'notification_status_page.dart';  // Import the NotificationStatusPage
 import 'heart_display_widget.dart';  // 引入新的生命樹組件
-import 'top_heart_display.dart';  // 引入頂部生命樹組件
 import 'insufficient_hearts_dialog.dart';  // 引入生命不足對話框
 
 import 'package:http/http.dart' as http;
@@ -33,7 +32,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin, Widg
   final double _minPlanetSize = 10.0;
   double _screenHeight = 600.0;
   String? _userPhotoUrl;
-  TopHeartDisplay? _topHeartDisplay;
+  // Heart display widgets
+  HeartDisplayWidget? _heartDisplayWidget;
 
   late AnimationController? _shimmerController;
   
@@ -43,9 +43,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin, Widg
     WidgetsBinding.instance.addObserver(this);
     _loadUserPhoto();
     _shimmerController = AnimationController(
+      duration: Duration(seconds: 5), // Slower animation to reduce GPU load
       vsync: this,
-      duration: Duration(seconds: 3),
     )..repeat();
+    
+    // Remove automatic scroll initialization to prevent jumping back
+    // Users can manually scroll to their desired position
   }
 
   @override
@@ -181,8 +184,8 @@ void _onItemTapped(int index) {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth  = MediaQuery.of(context).size.width;
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
@@ -198,12 +201,7 @@ void _onItemTapped(int index) {
             child: SizedBox(
               height: screenHeight*0.75,
               width: screenWidth,
-              child: Transform(
-                alignment: Alignment.topCenter,
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.001)
-                  ..rotateX(-0.65),
-                child: Stack(
+              child: Stack(
                   children:[
                     if (_shimmerController != null)
                       _HorizonShimmerLayer(animation: _shimmerController!),
@@ -217,7 +215,7 @@ void _onItemTapped(int index) {
                       planets: planets,
                     ),
                   ],
-                ),
+                
               ),
             )
           ),
@@ -469,7 +467,7 @@ class _UnifiedSeaLayerState extends State<_UnifiedSeaLayer> {
       List<Map<String, dynamic>> islandWaveList = [];
       
       // Create 3-5 waves around each island
-      int waveCount = 3 + random.nextInt(3);
+      int waveCount = 3 + random.nextInt(2); // Reduced from 10+ to 3-4 waves
       
       for (int waveIndex = 0; waveIndex < waveCount; waveIndex++) {
         islandWaveList.add({
@@ -479,7 +477,7 @@ class _UnifiedSeaLayerState extends State<_UnifiedSeaLayer> {
           'scale': 0.15 + random.nextDouble() * 0.25, // 0.15 to 0.4 scale
           'speed': 0.1 + random.nextDouble() * 0.3, // 0.1 to 0.4 speed
           'phase': random.nextDouble() * 2 * pi,
-          'opacity': 0.2 + random.nextDouble() * 0.3,
+          'opacity': 0.3 + random.nextDouble() * 0.2, // Reduced opacity range
         });
       }
       
@@ -489,10 +487,6 @@ class _UnifiedSeaLayerState extends State<_UnifiedSeaLayer> {
     return allIslandWaves;
   }
   
-
-  
-
-  
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -501,21 +495,44 @@ class _UnifiedSeaLayerState extends State<_UnifiedSeaLayer> {
         return Column(
           children: [
             Expanded(
-              child: CustomScrollView(
+              child: SingleChildScrollView(
                 controller: widget.scrollController,
                 physics: ClampingScrollPhysics(),
-                slivers: [
-                  SliverIslandList(
-                    planets: widget.planets,
-                    islandWaves: _islandWaves,
-                    shimmerController: widget.shimmerController,
-                    minPlanetSize: widget.minPlanetSize,
-                    maxPlanetSize: widget.maxPlanetSize,
-                    onPlanetTap: widget.onPlanetTap,
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 2.1, // Fixed large container
+                  child: Stack(
+                    children: [
+                      // Position all islands at the bottom of the container
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Column(
+                          children: widget.planets.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final planetData = entry.value;
+                            return AnimatedBuilder(
+                               animation: Listenable.merge([widget.shimmerController, widget.scrollController]),
+                               builder: (context, child) {
+                                return IslandItem(
+                                  index: index,
+                                  planetData: planetData,
+                                  waveData: _islandWaves[index],
+                                  shimmerController: widget.shimmerController,
+                                  minPlanetSize: widget.minPlanetSize,
+                                  maxPlanetSize: widget.maxPlanetSize,
+                                  onTap: () => widget.onPlanetTap(index),
+                                  scrollController: widget.scrollController, // Pass scroll controller
+                                );
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-
             ),
           ],
         );
@@ -804,50 +821,7 @@ class _BottomNavBar extends StatelessWidget {
   }
 }
 
-// --- Custom Sliver for Island List ---
-class SliverIslandList extends StatelessWidget {
-  final List<Map<String, dynamic>> planets;
-  final List<List<Map<String, dynamic>>> islandWaves;
-  final AnimationController shimmerController;
-  final double minPlanetSize;
-  final double maxPlanetSize;
-  final Function(int) onPlanetTap;
 
-  const SliverIslandList({
-    super.key,
-    required this.planets,
-    required this.islandWaves,
-    required this.shimmerController,
-    required this.minPlanetSize,
-    required this.maxPlanetSize,
-    required this.onPlanetTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          return AnimatedBuilder(
-            animation: shimmerController,
-            builder: (context, child) {
-              return IslandItem(
-                index: index,
-                planetData: planets[index],
-                waveData: islandWaves[index],
-                shimmerController: shimmerController,
-                minPlanetSize: minPlanetSize,
-                maxPlanetSize: maxPlanetSize,
-                onTap: () => onPlanetTap(index),
-              );
-            },
-          );
-        },
-        childCount: planets.length,
-      ),
-    );
-  }
-}
 
 class IslandItem extends StatelessWidget {
   final int index;
@@ -857,6 +831,7 @@ class IslandItem extends StatelessWidget {
   final double minPlanetSize;
   final double maxPlanetSize;
   final VoidCallback onTap;
+  final ScrollController scrollController; // Add scroll controller parameter
 
   const IslandItem({
     super.key,
@@ -867,116 +842,134 @@ class IslandItem extends StatelessWidget {
     required this.minPlanetSize,
     required this.maxPlanetSize,
     required this.onTap,
+    required this.scrollController, // Required parameter
   });
 
   double calculatePlanetSize(BuildContext context) {
-    // Get the RenderObject to find actual position
-    final RenderObject? renderObject = context.findRenderObject();
-    if (renderObject == null) return minPlanetSize;
-    
-    final RenderBox renderBox = renderObject as RenderBox;
-    final Offset globalPosition = renderBox.localToGlobal(Offset.zero);
-    
-    // Get viewport height
+    // Use scroll position instead of findRenderObject for much better performance
+    final double scrollOffset = scrollController.hasClients ? scrollController.offset : 0.0;
     final MediaQueryData mediaQuery = MediaQuery.of(context);
-    final double screenHeight = mediaQuery.size.height * 0.75; // Sea area height
+    final double screenHeight = mediaQuery.size.height;
+    final double containerHeight = screenHeight * 2.1;
     
-    // Calculate distance from horizon (top of viewport)
-    double distanceFromHorizon = globalPosition.dy;
+    // Calculate the approximate position of this island based on index and scroll
+    // Assuming each island takes roughly 150px of space
+    final double itemSpacing = 150.0;
+    final double islandAbsolutePosition = index * itemSpacing;
     
-    if (distanceFromHorizon <= 0) {
-      return minPlanetSize * 0.1; // Nearly invisible at horizon
-    } else if (distanceFromHorizon >= screenHeight) {
-      return maxPlanetSize; // Maximum size at bottom
-    } else {
-      // Perspective calculation
-      double normalizedDistance = distanceFromHorizon / screenHeight;
-      double perspectiveFactor = 1.0 - pow(1.0 - normalizedDistance, 2.5);
-      return (maxPlanetSize - minPlanetSize) * perspectiveFactor;
-    }
+    // Calculate island's position relative to the viewport
+    final double islandScreenPosition = islandAbsolutePosition - scrollOffset;
+    
+    // Calculate distance from horizon (top 25% of screen)
+    final double horizonLine = screenHeight * 0.25;
+    final double distanceFromHorizon = islandScreenPosition + horizonLine;
+    
+    // Normalized position (0.0 = at horizon, 1.0 = at bottom)
+    final double normalizedPosition = (distanceFromHorizon / screenHeight).clamp(0.0, 1.0);
+    
+    // Curved perspective calculation
+    double curvedFactor = 1.0 - pow(1.0 - normalizedPosition, 3.2);
+    
+    return curvedFactor * maxPlanetSize;
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final islandSize = calculatePlanetSize(context);
-    final itemHeight = islandSize.clamp(0.0, 300.0); // Min/max heights for stability
+    final islandSize = calculatePlanetSize(context).clamp(10.0, 200.0);
+    final itemHeight = islandSize.clamp(10.0, 200.0); // Min/max heights for stability
     final isLeft = index.isEven;
     final t = shimmerController.value;
     
-    // Calculate perspective positioning
-    double perspectiveFactor = 1.0 - (islandSize / maxPlanetSize);
-    double baseOffsetFromCenter = isLeft ? -screenWidth * 0.25 : screenWidth * 0.25;
-    double perspectiveOffset = baseOffsetFromCenter * (1.0 - perspectiveFactor);
-    double finalX = (screenWidth / 2) + perspectiveOffset - (islandSize / 2);
+    // Calculate curved perspective positioning mimicking Earth's curvature
+    double normalizedDistance = islandSize / maxPlanetSize;
     
-    return SizedBox(
-      height: itemHeight,
-      child: Stack(
-        children: [
-          // Render waves
-          ...waveData.map((wave) {
-            final double waveX = screenWidth * 0.5 + screenWidth * wave['offsetX'] + 
-                                6 * sin(2 * pi * t * wave['speed'] + wave['phase']);
-            final double waveY = itemHeight / 2 + wave['offsetY'] +
-                                4 * sin(2 * pi * t * wave['speed'] + wave['phase'] + pi/4);
-            
-            final double waveScaleFactor = islandSize / maxPlanetSize;
-            final double finalWaveScale = wave['scale'] * waveScaleFactor;
-            final double waveOpacity = (waveScaleFactor * wave['opacity']).clamp(0.0, 1.0);
-            
-            return Positioned(
-              left: waveX - 50,
-              top: waveY,
-              child: Transform.scale(
-                scale: finalWaveScale,
-                child: Opacity(
-                  opacity: waveOpacity,
-                  child: Image.asset(
-                    'assets/images/waves/${wave['imageIndex']}.png',
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Wave ${wave['imageIndex']}',
-                            style: TextStyle(color: Colors.blueGrey, fontSize: 8),
+    // Create a curved path that starts wide, curves inward, then spreads again
+    // This mimics how islands appear to move across the horizon
+    double curvePhase = normalizedDistance.clamp(0.0, 1.0);
+    
+    // Base offset from center (alternating left/right)
+    double baseOffsetFromCenter = isLeft ? -screenWidth * 0.3 : screenWidth * 0.3;
+    
+    // Curved convergence factor - islands curve toward center as they emerge
+    double convergenceCurve = 0.0 + pow(curvePhase, 1.6);
+    
+    // Add a slight "S" curve effect for more natural movement
+    double sCurveEffect = sin(curvePhase * pi * 2) * 0.15 * (1.0 - curvePhase);
+    
+    // Calculate final horizontal position with curved path
+    double curvedOffset = baseOffsetFromCenter * (convergenceCurve + sCurveEffect);
+    double finalX = (screenWidth / 2) + curvedOffset - (islandSize / 2);
+    
+    return RepaintBoundary(
+      child: SizedBox(
+        height: (itemHeight - 40).clamp(0.0, 200.0),
+        child: Stack(
+          children: [
+            // Render waves
+            ...waveData.map((wave) {
+              final double waveX = screenWidth * 0.5 + screenWidth * wave['offsetX'] + 
+                                  6 * sin(2 * pi * t * wave['speed'] + wave['phase']);
+              final double waveY = itemHeight / 2 + wave['offsetY'] +
+                                  4 * sin(2 * pi * t * wave['speed'] + wave['phase'] + pi/4);
+              
+              final double waveScaleFactor = islandSize / maxPlanetSize;
+              final double finalWaveScale = wave['scale'] * waveScaleFactor;
+              final double waveOpacity = (waveScaleFactor * wave['opacity']).clamp(0.0, 1.0);
+              
+              return Positioned(
+                left: waveX - 50,
+                top: waveY,
+                child: Transform.scale(
+                  scale: finalWaveScale,
+                  child: Opacity(
+                    opacity: waveOpacity,
+                    child: Image.asset(
+                      'assets/images/waves/${wave['imageIndex']}.png',
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                        ),
-                      );
-                    },
+                          child: Center(
+                            child: Text(
+                              'Wave ${wave['imageIndex']}',
+                              style: TextStyle(color: Colors.blueGrey, fontSize: 8),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+            
+            // Render island with curved vertical positioning
+            Positioned(
+              left: finalX,
+              top: 0,
+              bottom: 0,        // ← now this child's box stretches top→bottom
+              child: Align(     // ← Align its contents in the middle
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: onTap,
+                  child: Image.asset(
+                    planetData['image'],
+                    width: islandSize,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
-            );
-          }).toList(),
-          
-          // Render island
-          Positioned(
-            left: finalX,
-            top: 0,
-            child: GestureDetector(
-              onTap: onTap,
-              child: Opacity(
-                opacity: 1,
-                child: Image.asset(
-                  planetData['image'],
-                  width: islandSize,
-                  height: islandSize,
-                  fit: BoxFit.contain,
-                ),
-              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
