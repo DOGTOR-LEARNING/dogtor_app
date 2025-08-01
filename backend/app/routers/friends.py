@@ -33,9 +33,6 @@ async def get_friends(user_id: str):
         cursor.execute(query, (user_id, user_id))
         friends = cursor.fetchall()
         
-        cursor.close()
-        connection.close()
-        
         return {
             "status": "success",
             "friends": friends
