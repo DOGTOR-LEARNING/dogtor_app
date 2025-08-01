@@ -71,9 +71,6 @@ async def get_friend_requests(user_id: str):
             cursor.execute(query, (user_id,))
             requests = cursor.fetchall()
             
-            cursor.close()
-            connection.close()
-            
         return {
             "status": "success",
             "requests": requests
@@ -139,9 +136,6 @@ async def send_friend_request(request: FriendRequest):
         cursor.execute(insert_query, (request.requester_id, request.addressee_id))
         connection.commit()
         
-        cursor.close()
-        connection.close()
-        
         return {"status": "success", "message": "好友請求已發送"}
     
     except Exception as e:
@@ -169,9 +163,6 @@ async def respond_friend_request(response: FriendResponse):
         """
         cursor.execute(update_query, (response.status, response.request_id))
         connection.commit()
-        
-        cursor.close()
-        connection.close()
         
         return {
             "status": "success",
