@@ -11,6 +11,7 @@ from models import (
     BattleResultResponse,
     StandardResponse
 )
+# from database import get_db_connection
 from datetime import datetime
 import pymysql
 import os

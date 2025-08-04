@@ -41,23 +41,24 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Initialize Firebase Messaging
-  final messaging = FirebaseMessaging.instance;
+  // // Initialize Firebase Messaging
+  // final messaging = FirebaseMessaging.instance;
   
-  // Request permission for iOS
-  await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+  // // Request permission for iOS
+  // await messaging.requestPermission(
+  //   alert: true,
+  //   badge: true,
+  //   sound: true,
+  // );
   
-  // Get APNS token
-  final apnsToken = await messaging.getAPNSToken();
-  print('APNS Token: $apnsToken');
+  // // Get APNS token
+  // final apnsToken = await messaging.getAPNSToken();
+  // print('APNS Token: $apnsToken');
   
-  // Get FCM token
-  final fcmToken = await messaging.getToken();
-  print('FCM Token: $fcmToken');
+  // // Get FCM token
+  // final fcmToken = await messaging.getToken();
+  // print('FCM Token: $fcmToken');
+  // Firebase Messaging 將在用戶登入後透過 NotificationService.init() 進行初始化
 
   // 初始化 Hive
   // 這樣能載入之前的錯題？
@@ -69,6 +70,19 @@ Future<void> main() async {
 
   
   //await NotificationService.init(); // ← 在這裡初始化推播，包含 token 取得與上傳邏輯
+
+  
+  /*
+  // 暫時列出並清空 shared_preferences 的所有鍵值對
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  print("SharedPreferences 中的所有鍵值對：");
+  prefs.getKeys().forEach((key) {
+    print("$key: ${prefs.get(key)}");
+  });
+  await prefs.clear();
+  print("已清空 SharedPreferences");
+  */
+  
 
   runApp(MyApp());
 }

@@ -11,7 +11,7 @@ import traceback
 router = APIRouter(prefix="/hearts", tags=["Hearts"])
 
 MAX_HEARTS = 5
-RECOVER_DURATION = timedelta(hours=4)  # 4 小時恢復一顆
+RECOVER_DURATION = timedelta(hours=0.2)  # 4 小時恢復一顆
 
 
 def calculate_current_hearts(last_updated, stored_hearts):

@@ -20,3 +20,8 @@ sql-key.json
 *.pt
 *.mdb
 
+# Flutter generated
+**/ephemeral/
+**/flutter_export_environment.sh
+**/Flutter-Generated.xcconfig
+

@@ -23,11 +23,11 @@ class QuestionKnowledgePointMatcher:
         """載入知識點和題庫資料，並檢查已處理的結果"""
         try:
             # 載入知識點資料
-            self.knowledge_points_df = pd.read_csv("processing/jun_math_list.csv")
+            self.knowledge_points_df = pd.read_csv("processing/high_chem_list.csv")
             print(f"載入知識點資料: {len(self.knowledge_points_df)} 筆記錄")
             
             # 載入題庫資料
-            self.question_bank_df = pd.read_csv("processing/question_bank.csv")
+            self.question_bank_df = pd.read_csv("processing/high_chem_qbank.csv")
             print(f"載入題庫資料: {len(self.question_bank_df)} 筆記錄")
             
             # 檢查是否有已處理的結果

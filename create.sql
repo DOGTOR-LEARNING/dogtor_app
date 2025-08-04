@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS friendships (
     id INT AUTO_INCREMENT PRIMARY KEY,
     requester_id VARCHAR(255) NOT NULL,
     addressee_id VARCHAR(255) NOT NULL,
-    status ENUM('pending', 'accepted', 'declined', 'blocked') DEFAULT 'pending',
+    status ENUM('pending','accepted','rejected','blocked') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY unique_friendship (requester_id, addressee_id)
