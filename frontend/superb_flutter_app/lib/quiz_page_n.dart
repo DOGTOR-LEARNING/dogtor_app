@@ -889,7 +889,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
       // 準備請求數據
       final requestData = {
         'user_id': userId,
-        'level_id': levelId,
+        'level_id': levelId?.toString() ?? '',  // 確保 level_id 是字符串類型
         'stars': _calculateStars(correctAnswersCount, questions.length),  // 根據正確率計算星星數
         'ai_comment': _aiAnalysis,
       };

@@ -501,9 +501,10 @@ async def record_answer(request: RecordAnswerRequest):
 async def complete_level(request: CompleteLevelRequest):
     """記錄關卡完成情況"""
     try:
-        print(f"收到關卡完成請求: user_id={request.user_id}, level_id={request.level_id}, stars={request.stars}")
+        print(f"收到關卡完成請求: user_id={request.user_id}, level_id={request.level_id}, stars={request.stars}, ai_comment={request.ai_comment}")
         
         if not request.user_id or not request.level_id:
+            print(f"缺少必要參數: user_id={request.user_id}, level_id={request.level_id}")
             return CompleteLevelResponse(success=False, message="缺少必要參數")
         
         connection = get_db_connection()
