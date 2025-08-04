@@ -201,8 +201,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     
     if (subject == '自然') {
       csvPath = 'assets/edu_data/level_info/junior_science_level.csv';
-    } else if (subject == '化學') {
-      csvPath = 'assets/edu_data/level_info/high_chemistry_level.csv';
+    } else if (subject == '高中化學') {
+      csvPath = 'assets/edu_data/level_info/high_chem_level.csv';
     } else if (subject == '歷史') {
       csvPath = 'assets/edu_data/level_info/junior_his_level.csv';
     } else if (subject == '地理') {
@@ -790,7 +790,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       'image': 'assets/pics/home-island3.png',
     },
     {
-      'name': '化學',
+      'name': '高中化學',
       'image': 'assets/pics/home-island4.png',
     },
     {

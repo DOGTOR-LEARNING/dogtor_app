@@ -128,12 +128,12 @@ void _onItemTapped(int index) {
                                                     ),
                                                   ),
                                                 );
-    } else if (name == '化學') {
+    } else if (name == '高中化學') {
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
                                                     builder: (context) => ChapterDetailPage(
-                                                      subject: '化學',
+                                                      subject: '高中化學',
                                                       csvPath: 'assets/edu_data/level_info/high_chemistry_level.csv',
                                                     ),
                                                   ),
@@ -258,7 +258,7 @@ void _onItemTapped(int index) {
       'image': 'assets/pics/home-island3.png',
     },
     {
-      'name': '化學',
+      'name': '高中化學',
       'image': 'assets/pics/home-island4.png',
     },
     {
