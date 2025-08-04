@@ -134,7 +134,7 @@ void _onItemTapped(int index) {
                                                   MaterialPageRoute(
                                                     builder: (context) => ChapterDetailPage(
                                                       subject: '高中化學',
-                                                      csvPath: 'assets/edu_data/level_info/high_chemistry_level.csv',
+                                                      csvPath: 'assets/edu_data/level_info/high_chem_level.csv',
                                                     ),
                                                   ),
                                                 );
