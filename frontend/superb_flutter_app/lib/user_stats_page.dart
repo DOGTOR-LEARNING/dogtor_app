@@ -2,11 +2,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'dart:convert' show utf8;  // 確保導入 utf8
-import 'dart:math';  // 添加導入math庫，用於min函數
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserStatsPage extends StatefulWidget {
@@ -121,8 +118,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     'improve': '可以提升的內容還未生成'
   };
 
-  // 使用Gemini生成學習建議
-  Future<void> _generateLearningTipsWithGemini() async {
+  // 獲取個人化學習建議
+  Future<void> _fetchPersonalizedLearningTips() async {
     if (_isGeneratingTips) return;
     
     setState(() {
@@ -131,31 +128,18 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     });
     
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      if (userId == null) return;
       
-      // 準備用戶數據提示
-      String prompt = _prepareGeminiPrompt();
+      print("開始獲取學習建議...");
       
-      print("已準備Gemini提示文本: ${prompt.substring(0, min(100, prompt.length))}...");
-      
-      // 若有暱稱則優先使用暱稱
-      String userDisplayName = _nickname.isNotEmpty ? _nickname : (user.displayName ?? '');
-      
-      // 調用後端API發送給Gemini
-      final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/ai/analyze_quiz_performance'),
+      // 調用正確的學習建議API
+      final response = await http.get(
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_suggestions/$userId'),
         headers: {
-          'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
         },
-        body: jsonEncode({
-          'user_id': user.uid,
-          'prompt': prompt,
-          'user_name': userDisplayName,
-          'year_grade': _yearGrade,
-          'user_introduction': _introduction
-        }),
       );
       
       print("API回應狀態碼: ${response.statusCode}");
@@ -163,31 +147,59 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (response.statusCode == 200) {
         final jsonString = utf8.decode(response.bodyBytes);
         final data = jsonDecode(jsonString);
-        if (data['success']) {
-          print("成功獲取個人化學習建議");
-          setState(() {
-            _personalizedTips = List<String>.from(data['suggestions'] ?? []);
-            
-            // 也獲取學習段落內容
-            if (data.containsKey('sections')) {
-              _learningSections = {
-                'priority': data['sections']['priority'] ?? '優先學習內容還未生成',
-                'review': data['sections']['review'] ?? '需要複習的內容還未生成',
-                'improve': data['sections']['improve'] ?? '可以提升的內容還未生成'
-              };
+        
+        print("成功獲取學習建議");
+        setState(() {
+          // 處理後端返回的建議數據
+          List<String> tips = [];
+          
+          // 從弱點知識點生成建議
+          if (data['weak_points'] != null) {
+            List weakPoints = data['weak_points'];
+            for (var point in weakPoints.take(3)) {
+              String subject = point['subject'] ?? '';
+              String chapterName = point['chapter_name'] ?? '';
+              String pointName = point['point_name'] ?? '';
+              double score = (point['score'] as num?)?.toDouble() ?? 0;
+              
+              tips.add('加強練習「$subject - $chapterName」的「$pointName」，目前分數為 ${score.toStringAsFixed(1)}/10');
             }
-            
-            _isGeneratingTips = false;
-            _isLearningTipsLoaded = true;
-          });
-        } else {
-          print("API回應成功但數據處理失敗: ${data['message']}");
-          setState(() {
-            _isGeneratingTips = false;
-            // 使用默認建議
-            _personalizedTips = _learningTips;
-          });
-        }
+          }
+          
+          // 從建議列表生成更多建議
+          if (data['suggestions'] != null) {
+            List suggestions = data['suggestions'];
+            for (var suggestion in suggestions.take(2)) {
+              String reason = suggestion['reason'] ?? '';
+              if (reason.isNotEmpty) {
+                tips.add(reason);
+              }
+            }
+          }
+          
+          // 如果沒有特定建議，提供通用建議
+          if (tips.isEmpty) {
+            tips = [
+              '保持每日學習習慣，持續進步！',
+              '可以嘗試挑戰更難的題目來提升能力',
+              '複習最近學過的內容以鞏固記憶'
+            ];
+          }
+          
+          _personalizedTips = tips;
+          
+          // 設定學習段落內容
+          _learningSections = {
+            'priority': tips.isNotEmpty 
+                ? '根據你的學習數據，建議優先加強：${tips.first}' 
+                : '繼續保持良好的學習節奏',
+            'review': '建議定期複習已學過的章節，鞏固基礎知識',
+            'improve': '可以嘗試更多不同類型的題目，拓展解題思路'
+          };
+          
+          _isGeneratingTips = false;
+          _isLearningTipsLoaded = true;
+        });
       } else {
         print("API調用失敗: ${response.statusCode}");
         setState(() {
@@ -205,149 +217,25 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       });
     }
   }
-  
-  // 準備發送給Gemini的提示文本
-  String _prepareGeminiPrompt() {
-    // 收集用戶數據
-    StringBuffer promptBuffer = StringBuffer();
-    
-    // 添加用戶個人資訊
-    final user = FirebaseAuth.instance.currentUser;
-    String userName = user?.displayName ?? '';
-    
-    // 若有暱稱則優先使用暱稱
-    String userDisplayName = _nickname.isNotEmpty ? _nickname : userName;
-    
-    // 添加用戶個人資訊到提示中
-    promptBuffer.writeln('用戶個人資訊:');
-    if (userDisplayName.isNotEmpty) {
-      promptBuffer.writeln('姓名: $userDisplayName');
-    }
-    if (_yearGrade.isNotEmpty) {
-      // 轉換年級顯示格式，例如 G10 轉為 高一
-      String gradeDisplay = '';
-      if (_yearGrade.startsWith('G')) {
-        String gradeNum = _yearGrade.substring(1);
-        switch (gradeNum) {
-          case '1':
-            gradeDisplay = '國小一年級';
-            break;
-          case '2':
-            gradeDisplay = '國小二年級';
-            break;
-          case '3':
-            gradeDisplay = '國小三年級';
-            break;
-          case '4':
-            gradeDisplay = '國小四年級';
-            break;
-          case '5':
-            gradeDisplay = '國小五年級';
-            break;
-          case '6':
-            gradeDisplay = '國小六年級';
-            break;
-          case '7':
-            gradeDisplay = '國一';
-            break;
-          case '8':
-            gradeDisplay = '國二';
-            break;
-          case '9':
-            gradeDisplay = '國三';
-            break;
-          case '10':
-            gradeDisplay = '高一';
-            break;
-          case '11':
-            gradeDisplay = '高二';
-            break;
-          case '12':
-            gradeDisplay = '高三';
-            break;
-          default:
-            gradeDisplay = '$gradeNum年級';
-        }
-      } else {
-        gradeDisplay = _yearGrade;
-      }
-      promptBuffer.writeln('年級: $gradeDisplay');
-    }
-    if (_introduction.isNotEmpty) {
-      promptBuffer.writeln('自我介紹: $_introduction');
-    }
-    promptBuffer.writeln();
-    
-    // 添加用戶統計信息
-    promptBuffer.writeln('用戶學習數據摘要:');
-    
-    // 添加完成的關卡數據
-    int totalLevels = _stats['total_levels'] ?? 0;
-    int todayLevels = _stats['today_levels'] ?? 0;
-    double accuracy = _stats['accuracy'] ?? 0;
-    promptBuffer.writeln('總完成關卡數: $totalLevels');
-    promptBuffer.writeln('今日完成關卡數: $todayLevels');
-    promptBuffer.writeln('答題正確率: $accuracy%');
-    
-    // 添加弱點知識點 (最多15個)
-    promptBuffer.writeln('\n弱點知識點:');
-    int weakPointCount = 0;
-    for (var point in _weakPoints) {
-      if (weakPointCount >= 15) break;
-      String pointName = point['point_name'] ?? '';
-      String subject = point['subject'] ?? '';
-      double score = (point['score'] as num?)?.toDouble() ?? 0;
-      promptBuffer.writeln('- $pointName (科目: $subject, 分數: $score/10)');
-      weakPointCount++;
-    }
-    
-    // 添加科目能力數據
-    promptBuffer.writeln('\n科目能力:');
-    for (var ability in _subjectAbilities) {
-      String subject = ability['subject'] ?? '';
-      double score = (ability['average_score'] as num?)?.toDouble() ?? 0;
-      promptBuffer.writeln('- $subject: $score/10');
-    }
-    
-    // 添加學習連續性數據
-    promptBuffer.writeln('\n學習連續性:');
-    promptBuffer.writeln('當前連續學習天數: $_currentStreak');
-    
-    // 添加提示指南
-    promptBuffer.writeln('\n請根據上述用戶數據，完成以下兩個任務：');
-    promptBuffer.writeln('\n任務1：生成5條針對性的學習建議，每條建議以簡潔明了的條目形式呈現，適合中學生理解。建議應該涵蓋弱點科目、可提升空間、學習習慣和學習方法等方面，可以跟我們這個 Dogtor : AI 學習關卡是 app 相關，給實際一點的建議，不要說一些中學生難做的事。每條建議應該是一個完整的句子，以動詞開頭，提供明確可行的學習指導。');
-    
-    promptBuffer.writeln('\n任務2：生成三個簡短的學習方向段落，分別是：');
-    promptBuffer.writeln('1. 優先學習（列出2-3個最需要優先學習的知識點或科目）');
-    promptBuffer.writeln('2. 需要複習（列出2-3個需要複習的知識點或科目）');
-    promptBuffer.writeln('3. 可以提升（列出2-3個有潛力提升的知識點或科目）');
-    
-    promptBuffer.writeln('\n請以JSON格式回應，結構如下：');
-    promptBuffer.writeln('{');
-    promptBuffer.writeln('  "suggestions": ["建議1", "建議2", "建議3", "建議4", "建議5"],');
-    promptBuffer.writeln('  "sections": {');
-    promptBuffer.writeln('    "priority": "優先學習的內容...",');
-    promptBuffer.writeln('    "review": "需要複習的內容...",');
-    promptBuffer.writeln('    "improve": "可以提升的內容..."');
-    promptBuffer.writeln('  }');
-    promptBuffer.writeln('}');
-    
-    return promptBuffer.toString();
-  }
+
 
   Future<void> _fetchUserStats() async {
     setState(() {
       _errorMessage = '';
     });
 
+    // 使用 SharedPreferences 檢查用戶登入狀態（與登入頁面一致）
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('user_id');
+    
+    if (userId == null) {
+      setState(() {
+        _errorMessage = '請先登入';
+      });
+      return;
+    }
+
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        setState(() {
-          _errorMessage = '請先登入';
-        });
-        return;
-      }
 
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/user_stats'),
@@ -355,7 +243,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
         },
-        body: jsonEncode({'user_id': user.uid}),
+        body: jsonEncode({'user_id': userId}),
       );
 
       if (response.statusCode == 200) {
@@ -383,16 +271,14 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     
     // 獲取本月科目進度數據
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-      
+      // userId 已經在上面獲取並驗證過了
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/monthly_progress'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
         },
-        body: jsonEncode({'user_id': user.uid}),
+        body: jsonEncode({'user_id': userId}),
       );
 
       if (response.statusCode == 200) {
@@ -415,11 +301,12 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 獲取知識點分數
   Future<void> _fetchKnowledgeScores() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      if (userId == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_knowledge_scores/${user.uid}'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/get_knowledge_scores/$userId'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -448,11 +335,12 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 獲取學習天數數據，包括當前連續天數和歷史最高連續天數
   Future<void> _fetchLearningDays() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      if (userId == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_days/${user.uid}'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_days/$userId'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -481,11 +369,12 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 獲取每週學習統計
   Future<void> _fetchWeeklyStats() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      if (userId == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/weekly/${user.uid}'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/weekly/$userId'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -512,11 +401,12 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 獲取學習建議
   Future<void> _fetchLearningSuggestions() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      if (userId == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_suggestions/${user.uid}'),
+        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_suggestions/$userId'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -528,11 +418,23 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         if (data['success']) {
           setState(() {
             // 確保只獲取分數大於 0 的弱點知識點
-            List<Map<String, dynamic>> weakPoints = List<Map<String, dynamic>>.from(data['weak_points']);
+            List<Map<String, dynamic>> weakPoints = List<Map<String, dynamic>>.from(data['weak_points'] ?? []);
             _weakPoints = weakPoints.where((point) => (point['score'] as num) > 0).toList();
             
-            _recommendedChapters = List<Map<String, dynamic>>.from(data['recommended_chapters']);
-            _learningTips = List<String>.from(data['tips']);
+            _recommendedChapters = List<Map<String, dynamic>>.from(data['recommended_chapters'] ?? []);
+            
+            // 從建議列表提取學習建議文字
+            List<String> tips = [];
+            if (data['suggestions'] != null) {
+              List suggestions = data['suggestions'];
+              for (var suggestion in suggestions) {
+                String reason = suggestion['reason'] ?? '';
+                if (reason.isNotEmpty) {
+                  tips.add(reason);
+                }
+              }
+            }
+            _learningTips = tips;
           });
         }
       }
@@ -544,8 +446,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 獲取科目能力統計
   Future<void> _fetchSubjectAbilities() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      if (userId == null) return;
       
       final response = await http.post(
         Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/subject_abilities'),
@@ -553,7 +456,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
         },
-        body: jsonEncode({'user_id': user.uid}),
+        body: jsonEncode({'user_id': userId}),
       );
       
       if (response.statusCode == 200) {
@@ -697,8 +600,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       onRefresh: () async {
         await _fetchWeeklyStats();
         // 同時刷新月度科目進度數據
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final userId = prefs.getString('user_id');
+        if (userId != null) {
           try {
             final response = await http.post(
               Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/monthly_progress'),
@@ -706,7 +610,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 'Content-Type': 'application/json; charset=utf-8',
                 'Accept': 'application/json; charset=utf-8',
               },
-              body: jsonEncode({'user_id': user.uid}),
+              body: jsonEncode({'user_id': userId}),
             );
 
             if (response.statusCode == 200) {
@@ -2840,7 +2744,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                   
                   // 獲取學習建議和弱點知識點
                   _fetchLearningSuggestions();
-                  _generateLearningTipsWithGemini();
+                  _fetchPersonalizedLearningTips();
                 },
                 child: Container(
                   width: double.infinity,

@@ -8,6 +8,8 @@ from models import ChatRequest, ClassifyTextRequest, ClassifyTextResponse, Analy
 import os
 from dotenv import load_dotenv
 import traceback
+import vertexai
+from vertexai.generative_models import GenerativeModel
 
 # 加載環境變數
 load_dotenv()
@@ -137,41 +139,68 @@ async def classify_text(request: ClassifyTextRequest):
 
 @router.post("/analyze_quiz_performance", response_model=AnalyzeQuizResponse)
 async def analyze_quiz_performance(request: AnalyzeQuizRequest):
-    """分析答題表現並提供建議"""
+    """使用 Gemini AI 分析用戶當前答題表現並提供鼓勵和建議"""
     try:
-        # 構建分析提示
-        accuracy = (request.correct_count / request.total_count) * 100 if request.total_count > 0 else 0
+        # 初始化 Vertex AI
+        vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
         
-        prompt = f"""
-        請分析學生的答題表現並給予適當的鼓勵和建議：
+        # 創建模型實例
+        model = GenerativeModel("gemini-2.0-flash")
         
-        總題數：{request.total_count}
-        答對題數：{request.correct_count}
-        正確率：{accuracy:.1f}%
+        # 準備分析資料
+        answer_history = request.answers
+        correct_answers = [item for item in answer_history if item.get('is_correct', False)]
+        wrong_answers = [item for item in answer_history if not item.get('is_correct', True)]
         
-        錯誤題目分析：
-        """
+        # 統計知識點表現
+        knowledge_stats = {}
+        for item in answer_history:
+            kp = item.get('knowledge_point', '未知')
+            if kp not in knowledge_stats:
+                knowledge_stats[kp] = {'correct': 0, 'total': 0}
+            knowledge_stats[kp]['total'] += 1
+            if item.get('is_correct', False):
+                knowledge_stats[kp]['correct'] += 1
         
-        # 添加錯誤題目詳情
-        for i, answer in enumerate(request.answers):
-            if not answer.get('is_correct', True):
-                prompt += f"\n題目 {i+1}：{answer.get('question_text', '未知題目')[:50]}..."
-                prompt += f"\n知識點：{answer.get('knowledge_point', '未知')}"
-                prompt += f"\n學生選擇：{answer.get('selected_option', '未知')}"
-                prompt += f"\n正確答案：{answer.get('correct_option', '未知')}"
+        # 找出表現較弱的知識點
+        weak_points = []
+        for kp, stats in knowledge_stats.items():
+            if stats['total'] > 0:
+                accuracy = stats['correct'] / stats['total']
+                if accuracy < 0.7 and stats['total'] >= 2:  # 正確率低於70%且至少有2題
+                    weak_points.append(f"{kp} ({stats['correct']}/{stats['total']})")
         
-        prompt += "\n\n請提供：1. 鼓勵的話語 2. 學習建議 3. 需要加強的知識點。請用繁體中文回覆，語氣要親切鼓勵。"
+        # 構建分析提示詞
+        accuracy_percent = (request.correct_count / request.total_count * 100) if request.total_count > 0 else 0
         
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "你是一位親切的老師，專門分析學生的學習狀況並給予建議。"},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=500
-        )
+        prompt = f"""請以溫暖鼓勵的語氣，分析這位學生在這次測驗中的表現：
+
+**測驗資訊：**
+- 成績：{request.correct_count}/{request.total_count} ({accuracy_percent:.0f}%)
+
+**知識點表現：**
+"""
         
-        ai_comment = response.choices[0].message.content
+        for kp, stats in knowledge_stats.items():
+            accuracy = (stats['correct'] / stats['total'] * 100) if stats['total'] > 0 else 0
+            prompt += f"- {kp}：{stats['correct']}/{stats['total']} ({accuracy:.0f}%)\n"
+        
+        if wrong_answers:
+            prompt += f"\n**答錯的題目：**\n"
+            for i, item in enumerate(wrong_answers[:5], 1):  # 只分析前5題錯誤
+                prompt += f"{i}. {item.get('knowledge_point', '未知')} - 選了「{item.get('user_answer', '未知')}」，正確答案是「{item.get('correct_answer', '未知')}」\n"
+        
+        prompt += f"""
+請用繁體中文提供：
+1. 一句鼓勵的話
+2. 如果有表現較弱的知識點，簡單指出需要加強的地方
+3. 給出1個具體的學習建議
+
+請保持正面鼓勵的語氣，控制在40字以內，可以使用 emoji。"""
+        
+        # 生成分析
+        response = model.generate_content(prompt)
+        ai_comment = response.text.strip()
         
         return AnalyzeQuizResponse(
             success=True,
