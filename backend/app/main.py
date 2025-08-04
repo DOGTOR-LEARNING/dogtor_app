@@ -47,6 +47,21 @@ app.include_router(admin.router)
 app.include_router(online_status.router)  # 新增：在線狀態路由
 app.include_router(battle.router)  # 新增：對戰模式路由
 
+# Cron 任務端點（供 Google Cloud Scheduler 調用）
+@app.post("/cron_push_heart_reminder")
+async def cron_push_heart_reminder():
+    """定時發送愛心恢復提醒（Cron 任務 - 根路徑）"""
+    # 直接調用 notifications 路由中的功能
+    from routers.notifications import cron_push_heart_reminder as notifications_cron
+    return await notifications_cron()
+
+@app.post("/cron_push_learning_reminder")
+async def cron_push_learning_reminder():
+    """定時發送學習提醒（Cron 任務 - 根路徑）"""
+    # 直接調用 notifications 路由中的功能
+    from routers.notifications import cron_push_learning_reminder as notifications_learning_cron
+    return await notifications_learning_cron()
+
 # 健康檢查端點
 @app.get("/", tags=["Health"])
 async def root():
