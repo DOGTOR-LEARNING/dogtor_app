@@ -133,7 +133,7 @@ async def get_subjects_and_chapters():
             # 獲取所有科目和章節
             sql = """
             SELECT DISTINCT subject, chapter_name
-            FROM chapters
+            FROM chapter_list
             ORDER BY subject, chapter_name
             """
             cursor.execute(sql)
@@ -267,7 +267,7 @@ async def get_system_stats():
             stats['total_answers'] = cursor.fetchone()['total_answers']
             
             # 科目統計
-            sql = "SELECT COUNT(DISTINCT subject) as total_subjects FROM chapters"
+            sql = "SELECT COUNT(DISTINCT subject) as total_subjects FROM chapter_list"
             cursor.execute(sql)
             stats['total_subjects'] = cursor.fetchone()['total_subjects']
             

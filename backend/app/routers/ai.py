@@ -3,7 +3,7 @@ AI 相關 API
 """
 from fastapi import APIRouter, HTTPException
 from openai import OpenAI
-from models import ChatRequest, ClassifyTextRequest, ClassifyTextResponse, AnalyzeQuizRequest, AnalyzeQuizResponse
+from models import ChatRequest, ClassifyTextRequest, ClassifyTextResponse, AnalyzeQuizRequest, AnalyzeQuizResponse, AnalyzeQuizPerformanceRequest
 #from database import get_openai_client
 import os
 from dotenv import load_dotenv
@@ -135,10 +135,13 @@ async def classify_text(request: ClassifyTextRequest):
     )
 
 @router.post("/analyze_image")
+async def analyze_image():
+    """圖片分析功能（待實作）"""
+    return {"success": False, "message": "圖片分析功能尚未實作"}
 
 
 @router.post("/analyze_quiz_performance", response_model=AnalyzeQuizResponse)
-async def analyze_quiz_performance(request: AnalyzeQuizRequest):
+async def analyze_quiz_performance(request: AnalyzeQuizPerformanceRequest):
     """使用 Gemini AI 分析用戶當前答題表現並提供鼓勵和建議"""
     try:
         # 初始化 Vertex AI
@@ -148,7 +151,7 @@ async def analyze_quiz_performance(request: AnalyzeQuizRequest):
         model = GenerativeModel("gemini-2.0-flash")
         
         # 準備分析資料
-        answer_history = request.answers
+        answer_history = request.answer_history
         correct_answers = [item for item in answer_history if item.get('is_correct', False)]
         wrong_answers = [item for item in answer_history if not item.get('is_correct', True)]
         
@@ -188,7 +191,7 @@ async def analyze_quiz_performance(request: AnalyzeQuizRequest):
         if wrong_answers:
             prompt += f"\n**答錯的題目：**\n"
             for i, item in enumerate(wrong_answers[:5], 1):  # 只分析前5題錯誤
-                prompt += f"{i}. {item.get('knowledge_point', '未知')} - 選了「{item.get('user_answer', '未知')}」，正確答案是「{item.get('correct_answer', '未知')}」\n"
+                prompt += f"{i}. {item.get('knowledge_point', '未知')} - 選了「{item.get('selected_option', '未知')}」，正確答案是「{item.get('correct_option', '未知')}」\n"
         
         prompt += f"""
 請用繁體中文提供：
@@ -202,9 +205,12 @@ async def analyze_quiz_performance(request: AnalyzeQuizRequest):
         response = model.generate_content(prompt)
         ai_comment = response.text.strip()
         
+        # 返回包含兩個欄位名稱的回應以確保兼容性
         return AnalyzeQuizResponse(
             success=True,
-            ai_comment=ai_comment
+            ai_comment=ai_comment,
+            analysis=ai_comment,  # 前端期望的欄位名稱
+            message="分析完成"
         )
         
     except Exception as e:

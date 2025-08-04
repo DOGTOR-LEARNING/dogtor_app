@@ -2130,7 +2130,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               ],
             ),
             const SizedBox(height: 16),
-            if (_subjectAbilities.isEmpty)
+            if (_subjectAbilities.isEmpty || _subjectAbilities.length < 3)
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -2139,8 +2139,11 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 ),
                 child: Center(
                   child: Text(
-                    '尚未獲取科目能力數據',
+                    _subjectAbilities.isEmpty 
+                        ? '尚未獲取科目能力數據'
+                        : '需要至少3個科目的數據才能顯示雷達圖',
                     style: TextStyle(color: Colors.white70),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               )
@@ -2174,7 +2177,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                       fontSize: 12,
                     ),
                     getTitle: (index, angle) {
-                      if (_subjectAbilities.isEmpty || index >= _subjectAbilities.length) {
+                      if (_subjectAbilities.isEmpty || 
+                          _subjectAbilities.length < 3 ||
+                          index >= _subjectAbilities.length) {
                         return RadarChartTitle(text: '', angle: angle);
                       }
                       // 使用科目名稱
@@ -2221,8 +2226,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
 
   // 獲取能力雷達圖數據
   List<RadarEntry> _getAbilityDataEntries() {
-    // 如果數據為空，返回空列表
-    if (_subjectAbilities.isEmpty) {
+    // 如果數據不足3個，返回空列表（雷達圖不會顯示）
+    if (_subjectAbilities.isEmpty || _subjectAbilities.length < 3) {
       return [];
     }
     

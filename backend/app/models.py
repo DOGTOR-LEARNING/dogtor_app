@@ -486,12 +486,62 @@ class AnalyzeQuizRequest(BaseModel):
         }
 
 
+class AnalyzeQuizPerformanceRequest(BaseModel):
+    """測驗表現分析請求模型（用於前端）"""
+    user_id: str = Field(description="用戶 ID", example="user_12345")
+    answer_history: List[dict] = Field(
+        description="答題歷史記錄",
+        example=[
+            {
+                "question_id": 101,
+                "question_text": "請問以下哪個選項是正確的？",
+                "knowledge_point": "二次函數",
+                "selected_option": "A",
+                "correct_option": "A",
+                "is_correct": True,
+                "explanation": "這是正確答案的解釋"
+            }
+        ]
+    )
+    subject: Optional[str] = Field(None, description="科目", example="數學")
+    knowledge_points: Optional[str] = Field(None, description="知識點", example="二次函數、頂點公式")
+    correct_count: int = Field(description="答對題數", example=8, ge=0)
+    total_count: int = Field(description="總題數", example=10, ge=0)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user_12345",
+                "answer_history": [
+                    {
+                        "question_id": 101,
+                        "question_text": "請問以下哪個選項是正確的？",
+                        "knowledge_point": "二次函數",
+                        "selected_option": "A",
+                        "correct_option": "A",
+                        "is_correct": True,
+                        "explanation": "這是正確答案的解釋"
+                    }
+                ],
+                "subject": "數學",
+                "knowledge_points": "二次函數、頂點公式",
+                "correct_count": 8,
+                "total_count": 10
+            }
+        }
+
+
 class AnalyzeQuizResponse(BaseModel):
     """測驗分析回應模型"""
     success: bool = Field(description="是否成功", example=True)
     ai_comment: Optional[str] = Field(
         None,
         description="AI 評語",
+        example="表現良好！建議加強練習二次函數的應用題型"
+    )
+    analysis: Optional[str] = Field(
+        None,
+        description="AI 分析結果（與 ai_comment 相同，為前端兼容性）",
         example="表現良好！建議加強練習二次函數的應用題型"
     )
     message: Optional[str] = Field(None, description="回應訊息", example="分析完成")
@@ -501,6 +551,7 @@ class AnalyzeQuizResponse(BaseModel):
             "example": {
                 "success": True,
                 "ai_comment": "表現良好！建議加強練習二次函數的應用題型",
+                "analysis": "表現良好！建議加強練習二次函數的應用題型",
                 "message": "分析完成"
             }
         }
@@ -545,9 +596,6 @@ class MonthlyProgressRequest(BaseModel):
             }
         }
     )
-
-    year: int
-    month: int
 
 
 # 新增：用戶在線狀態相關模型
@@ -694,8 +742,22 @@ class SubjectAbilitiesRequest(BaseModel):
 
 
 class LearningDaysResponse(BaseModel):
-    learning_days: int
-    streak_days: int
+    """學習天數統計回應模型"""
+    success: bool = Field(description="是否成功", example=True)
+    current_streak: int = Field(description="當前連續學習天數", example=7)
+    total_streak: int = Field(description="總學習天數", example=30)
+    message: str = Field(description="回應訊息", example="學習天數統計獲取成功")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "success": True,
+                "current_streak": 7,
+                "total_streak": 30,
+                "message": "學習天數統計獲取成功"
+            }
+        }
+    )
 
 
 class PushNotificationRequest(BaseModel):
