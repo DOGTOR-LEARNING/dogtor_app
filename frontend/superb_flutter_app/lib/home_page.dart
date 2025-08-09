@@ -466,18 +466,18 @@ class _UnifiedSeaLayerState extends State<_UnifiedSeaLayer> {
     for (int islandIndex = 0; islandIndex < widget.planets.length; islandIndex++) {
       List<Map<String, dynamic>> islandWaveList = [];
       
-      // Create 3-5 waves around each island
-      int waveCount = 3 + random.nextInt(2); // Reduced from 10+ to 3-4 waves
+      // Create 6-10 waves around each island (more visible but still light)
+      int waveCount = 6 + random.nextInt(5);
       
       for (int waveIndex = 0; waveIndex < waveCount; waveIndex++) {
         islandWaveList.add({
           'imageIndex': random.nextInt(6) + 1,
-          'offsetX': (random.nextDouble() - 0.5) * 0.6, // -0.3 to 0.3 screen width
-          'offsetY': (random.nextDouble() - 0.5) * 120, // ±60 pixels from island center
-          'scale': 0.15 + random.nextDouble() * 0.25, // 0.15 to 0.4 scale
-          'speed': 0.1 + random.nextDouble() * 0.3, // 0.1 to 0.4 speed
+          'offsetX': (random.nextDouble() - 0.5) * 0.8, // wider spread
+          'offsetY': (random.nextDouble() - 0.5) * 160, // ±80 pixels from island center
+          'scale': 0.25 + random.nextDouble() * 0.35, // larger waves: 0.25 to 0.6
+          'speed': 0.08 + random.nextDouble() * 0.22, // slightly slower for calmer look
           'phase': random.nextDouble() * 2 * pi,
-          'opacity': 0.3 + random.nextDouble() * 0.2, // Reduced opacity range
+          'opacity': 0.5 + random.nextDouble() * 0.3, // stronger opacity
         });
       }
       
@@ -514,16 +514,17 @@ class _UnifiedSeaLayerState extends State<_UnifiedSeaLayer> {
                             return AnimatedBuilder(
                                animation: Listenable.merge([widget.shimmerController, widget.scrollController]),
                                builder: (context, child) {
-                                return IslandItem(
-                                  index: index,
-                                  planetData: planetData,
-                                  waveData: _islandWaves[index],
-                                  shimmerController: widget.shimmerController,
-                                  minPlanetSize: widget.minPlanetSize,
-                                  maxPlanetSize: widget.maxPlanetSize,
-                                  onTap: () => widget.onPlanetTap(index),
-                                  scrollController: widget.scrollController, // Pass scroll controller
-                                );
+                                                                 return IslandItem(
+                                   index: index,
+                                   planetData: planetData,
+                                   waveData: _islandWaves[index],
+                                   shimmerController: widget.shimmerController,
+                                   minPlanetSize: widget.minPlanetSize,
+                                   maxPlanetSize: widget.maxPlanetSize,
+                                   onTap: () => widget.onPlanetTap(index),
+                                   scrollController: widget.scrollController, // Pass scroll controller
+                                   totalPlanets: widget.planets.length,
+                                 );
                               },
                             );
                           }).toList(),
@@ -832,6 +833,7 @@ class IslandItem extends StatelessWidget {
   final double maxPlanetSize;
   final VoidCallback onTap;
   final ScrollController scrollController; // Add scroll controller parameter
+  final int totalPlanets;
 
   const IslandItem({
     super.key,
@@ -843,6 +845,7 @@ class IslandItem extends StatelessWidget {
     required this.maxPlanetSize,
     required this.onTap,
     required this.scrollController, // Required parameter
+    required this.totalPlanets,
   });
 
   double calculatePlanetSize(BuildContext context) {
@@ -850,36 +853,43 @@ class IslandItem extends StatelessWidget {
     final double scrollOffset = scrollController.hasClients ? scrollController.offset : 0.0;
     final MediaQueryData mediaQuery = MediaQuery.of(context);
     final double screenHeight = mediaQuery.size.height;
-    final double containerHeight = screenHeight * 2.1;
-    
+    final double seaLayerHeight = screenHeight * 0.75; // height of the sea layer viewport
+
     // Calculate the approximate position of this island based on index and scroll
-    // Assuming each island takes roughly 150px of space
+    // Fixed stride so consecutive islands don't drift
     final double itemSpacing = 150.0;
-    final double islandAbsolutePosition = index * itemSpacing;
-    
-    // Calculate island's position relative to the viewport
-    final double islandScreenPosition = islandAbsolutePosition - scrollOffset;
-    
-    // Calculate distance from horizon (top 25% of screen)
-    final double horizonLine = screenHeight * 0.25;
-    final double distanceFromHorizon = islandScreenPosition + horizonLine;
-    
-    // Normalized position (0.0 = at horizon, 1.0 = at bottom)
-    final double normalizedPosition = (distanceFromHorizon / screenHeight).clamp(0.0, 1.0);
-    
-    // Curved perspective calculation
-    double curvedFactor = 1.0 - pow(1.0 - normalizedPosition, 3.2);
-    
-    return curvedFactor * maxPlanetSize;
+    final double containerHeight = screenHeight * 2.1;
+    final double columnHeight = totalPlanets * itemSpacing;
+    final double baseTop = containerHeight - columnHeight;
+    final double yAbsTop = baseTop + index * itemSpacing;
+
+    // Use the island's vertical center for a natural shrink-to-point at the horizon
+    final double yCenterViewport = (yAbsTop + itemSpacing / 2) - scrollOffset;
+
+    // Normalized position within sea layer (0 = horizon, 1 = bottom)
+    final double normalizedPosition = (yCenterViewport / seaLayerHeight).clamp(0.0, 1.0);
+
+    // Curved perspective for natural size change
+    final double curvedFactor = 1.0 - pow(1.0 - normalizedPosition, 3.2);
+
+    // Size goes to 0 exactly at the horizon
+    return (curvedFactor * maxPlanetSize).clamp(0.0, maxPlanetSize);
   }
+
+
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final islandSize = calculatePlanetSize(context).clamp(10.0, 200.0);
+    final islandSize = calculatePlanetSize(context).clamp(0.0, 200.0);
     final itemHeight = islandSize.clamp(10.0, 200.0); // Min/max heights for stability
     final isLeft = index.isEven;
     final t = shimmerController.value;
+    
+    // If island size is 0 (at/above horizon), don't render anything
+    if (islandSize <= 0.0) {
+      return SizedBox(height: (itemHeight - 40).clamp(0.0, 200.0));
+    }
     
     // Calculate curved perspective positioning mimicking Earth's curvature
     double normalizedDistance = islandSize / maxPlanetSize;
@@ -903,22 +913,22 @@ class IslandItem extends StatelessWidget {
     
     return RepaintBoundary(
       child: SizedBox(
-        height: (itemHeight - 40).clamp(0.0, 200.0),
+        height: 150.0,
         child: Stack(
           children: [
             // Render waves
             ...waveData.map((wave) {
               final double waveX = screenWidth * 0.5 + screenWidth * wave['offsetX'] + 
                                   6 * sin(2 * pi * t * wave['speed'] + wave['phase']);
-              final double waveY = itemHeight / 2 + wave['offsetY'] +
+              final double waveY = 75.0 + wave['offsetY'] +
                                   4 * sin(2 * pi * t * wave['speed'] + wave['phase'] + pi/4);
               
-              final double waveScaleFactor = islandSize / maxPlanetSize;
-              final double finalWaveScale = wave['scale'] * waveScaleFactor;
-              final double waveOpacity = (waveScaleFactor * wave['opacity']).clamp(0.0, 1.0);
-              
-              return Positioned(
-                left: waveX - 50,
+                             // Shrink waves with island progress toward horizon (simple and smooth)
+               final double finalWaveScale = (wave['scale'] * normalizedDistance).clamp(0.0, 2.0);
+               final double waveOpacity = (wave['opacity']).clamp(0.0, 1.0);
+               
+               return Positioned(
+                left: waveX - 60,
                 top: waveY,
                 child: Transform.scale(
                   scale: finalWaveScale,
@@ -926,8 +936,8 @@ class IslandItem extends StatelessWidget {
                     opacity: waveOpacity,
                     child: Image.asset(
                       'assets/images/waves/${wave['imageIndex']}.png',
-                      width: 100,
-                      height: 100,
+                      width: 120,
+                      height: 120,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
