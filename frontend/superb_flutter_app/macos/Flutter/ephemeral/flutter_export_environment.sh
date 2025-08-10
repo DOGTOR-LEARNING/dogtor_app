@@ -1,7 +1,7 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=/Users/dinoting/Develope/flutter"
-export "FLUTTER_APPLICATION_PATH=/Users/dinoting/superb_app/frontend/superb_flutter_app"
+export "FLUTTER_ROOT=/Users/bowen/flutter"
+export "FLUTTER_APPLICATION_PATH=/Users/bowen/superb_app/frontend/superb_flutter_app"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=0.3.0"

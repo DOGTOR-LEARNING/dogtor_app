@@ -181,7 +181,6 @@ async def send_learning_reminder(request: LearningReminderRequest):
         if 'connection' in locals():
             connection.close()
 
-
 @router.post("/cron_push_heart_reminder", response_model=StandardResponse)
 async def cron_push_heart_reminder():
     """定時發送愛心恢復提醒（Cron 任務）"""
@@ -190,29 +189,25 @@ async def cron_push_heart_reminder():
         with connection.cursor() as cursor:
             # 查找愛心不滿且有 token 的用戶
             sql = """
-            SELECT DISTINCT u.user_id, ut.token
-            FROM users u
-            JOIN user_tokens ut ON u.user_id = ut.user_id
-            WHERE u.hearts < u.max_hearts 
-            AND ut.is_active = 1
-            AND u.user_id NOT IN (
-                SELECT user_id FROM reminder_history 
-                WHERE sent_at > DATE_SUB(NOW(), INTERVAL 2 HOUR)
-                AND subject = 'heart_reminder'
-            )
+            SELECT ut.firebase_token
+                FROM user_tokens ut
+                JOIN user_heart uh ON ut.user_id = uh.user_id
+                WHERE uh.hearts = 5
             """
             cursor.execute(sql)
-            users_tokens = cursor.fetchall()
+            full_heart_tokens = [row["firebase_token"] for row in cursor.fetchall()]
             
             total_sent = 0
-            for record in users_tokens:
-                user_id = record['user_id']
-                token = record['token']
-                
-                title = "💖 愛心已恢復！"
-                body = "你的愛心已經恢復了，快來繼續學習吧！"
+
+            for token in full_heart_tokens:
+                user_id = token['user_id']
+                token = token['token']
+
+                title = "體力已回滿！"
+                body = "快來 Dogtor 答題吧 ⚔️"
                 
                 result = send_push_notification(token, title, body)
+                '''
                 if result != "error":
                     total_sent += 1
                     
@@ -222,11 +217,12 @@ async def cron_push_heart_reminder():
                     VALUES (%s, 'heart_reminder', '', '', NOW(), 1)
                     """
                     cursor.execute(sql, (user_id,))
+                '''
             
             connection.commit()
             return StandardResponse(
                 success=True,
-                message=f"愛心提醒已發送給 {total_sent} 位用戶"
+                message=f"體力回復提醒已發送給 {total_sent} 位用戶"
             )
     
     except Exception as e:
@@ -236,67 +232,6 @@ async def cron_push_heart_reminder():
     finally:
         if 'connection' in locals():
             connection.close()
-
-
-@router.post("/cron_push_learning_reminder", response_model=StandardResponse)
-async def cron_push_learning_reminder():
-    """定時發送學習提醒（Cron 任務）"""
-    try:
-        connection = get_db_connection()
-        with connection.cursor() as cursor:
-            # 查找超過 24 小時沒有學習的用戶
-            sql = """
-            SELECT DISTINCT u.user_id, ut.token, u.name
-            FROM users u
-            JOIN user_tokens ut ON u.user_id = ut.user_id
-            WHERE ut.is_active = 1
-            AND u.user_id NOT IN (
-                SELECT user_id FROM user_answers 
-                WHERE answered_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
-            )
-            AND u.user_id NOT IN (
-                SELECT user_id FROM reminder_history 
-                WHERE sent_at > DATE_SUB(NOW(), INTERVAL 12 HOUR)
-                AND subject = 'daily_reminder'
-            )
-            """
-            cursor.execute(sql)
-            inactive_users = cursor.fetchall()
-            
-            total_sent = 0
-            for record in inactive_users:
-                user_id = record['user_id']
-                token = record['token']
-                name = record['name'] or "同學"
-                
-                title = "📚 該學習囉！"
-                body = f"{name}，今天還沒有學習呢！保持每日學習習慣很重要哦～"
-                
-                result = send_push_notification(token, title, body)
-                if result != "error":
-                    total_sent += 1
-                    
-                    # 記錄提醒歷史
-                    sql = """
-                    INSERT INTO reminder_history (user_id, subject, chapter, difficulty_level, sent_at, success_count)
-                    VALUES (%s, 'daily_reminder', '', '', NOW(), 1)
-                    """
-                    cursor.execute(sql, (user_id,))
-            
-            connection.commit()
-            return StandardResponse(
-                success=True,
-                message=f"學習提醒已發送給 {total_sent} 位用戶"
-            )
-    
-    except Exception as e:
-        print(f"[cron_push_learning_reminder] Error: {e}")
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-    finally:
-        if 'connection' in locals():
-            connection.close()
-
 
 @router.post("/validate_tokens", response_model=Dict[str, Any])
 async def validate_tokens():
@@ -399,6 +334,76 @@ async def notify_daily_report():
     
     except Exception as e:
         print(f"[notify_daily_report] Error: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        if 'connection' in locals():
+            connection.close()
+
+@router.post("/cron_push_learning_reminder", response_model=StandardResponse)
+async def cron_push_learning_reminder():
+    """定時發送學習提醒（Cron 任務）"""
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # 查找超過 24 小時沒有學習的用戶
+            sql = """
+                SELECT ut.user_id, ut.firebase_token, u.name
+                FROM user_tokens ut
+                INNER JOIN users u ON ut.user_id = u.user_id
+                LEFT JOIN (
+                    SELECT user_id, MAX(answered_at) as last_answered
+                    FROM user_level
+                    WHERE answered_at >= NOW() - INTERVAL 24 HOUR
+                    GROUP BY user_id
+                ) recent_activity ON ut.user_id = recent_activity.user_id
+                WHERE recent_activity.user_id IS NULL
+                  AND ut.firebase_token IS NOT NULL
+            """
+            cursor.execute(sql)
+            inactive_users = cursor.fetchall()
+            
+            total_sent = 0
+            for record in inactive_users:
+                user_id = record['user_id']
+                token = record['token']
+                name = record['name'] or "同學"
+
+                # 檢查 12 小時內是否已發送過學習提醒，避免重複推播
+                cursor.execute("""
+                    SELECT COUNT(*) as cnt
+                    FROM reminder_history
+                    WHERE user_id = %s
+                      AND message = %s
+                      AND sent_at >= NOW() - INTERVAL 12 HOUR
+                """, (user_id, "daily_learning_reminder"))
+                
+                if cursor.fetchone()['cnt'] > 0:
+                    continue  # 跳過已發送過的用戶
+                
+                title = "📚 該學習囉！"
+                body = f"{name}，今天還沒有學習呢！保持每日學習習慣很重要哦～"
+                
+                result = send_push_notification(token, title, body)
+                '''
+                if result != "error":
+                    total_sent += 1
+                    
+                    # 記錄提醒歷史
+                    sql = """
+                    INSERT INTO reminder_history (user_id, subject, chapter, difficulty_level, sent_at, success_count)
+                    VALUES (%s, 'daily_reminder', '', '', NOW(), 1)
+                    """
+                    cursor.execute(sql, (user_id,))
+                '''
+            connection.commit()
+            return StandardResponse(
+                success=True,
+                message=f"學習提醒已發送給 {total_sent} 位用戶"
+            )
+    
+    except Exception as e:
+        print(f"[cron_push_learning_reminder] Error: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     finally:

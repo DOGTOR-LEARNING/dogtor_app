@@ -609,6 +609,13 @@ async def complete_level(request: CompleteLevelRequest):
                     """, (request.user_id, knowledge_id, score))
                     
                     updated_count += 1
+
+                    # 更新使用者狀態
+                    cursor.execute("""
+                    UPDATE users
+                    SET last_complete_level = %s 
+                    WHERE user_id = %s
+                    """, (current_time, request.user_id))
                 
                 connection.commit()
                 
