@@ -274,7 +274,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
           'Accept': 'application/json; charset=utf-8',
         },
         body: json.encode({
-          'query': query,
+          'search_term': query,
           'current_user_id': _userId,
         }),
       );

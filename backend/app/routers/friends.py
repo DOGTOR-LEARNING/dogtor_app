@@ -206,11 +206,11 @@ async def search_users(request: SearchUsersRequest):
             sql = """
             SELECT user_id, name, nickname, photo_url, year_grade, introduction
             FROM users 
-            WHERE (name LIKE %s OR nickname LIKE %s OR user_id LIKE %s)
+            WHERE (name LIKE %s OR nickname LIKE %s OR user_id LIKE %s OR email LIKE %s)
             AND user_id != %s
             LIMIT 20
             """
-            search_pattern = f"%{request.query}%"
+            search_pattern = f"%{request.search_term}%"
             cursor.execute(sql, (search_pattern, search_pattern, search_pattern, request.current_user_id))
             users = cursor.fetchall()
             
