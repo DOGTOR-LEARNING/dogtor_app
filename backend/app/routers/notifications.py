@@ -200,8 +200,6 @@ async def cron_push_heart_reminder():
             total_sent = 0
 
             for token in full_heart_tokens:
-                user_id = token['user_id']
-                token = token['token']
 
                 title = "體力已回滿！"
                 body = "快來 Dogtor 答題吧 ⚔️"
@@ -304,41 +302,162 @@ async def debug_push_notification(request: dict = Body(...)):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-@router.get("/notify-daily-report", response_model=Dict[str, Any])
+# 修改處理每日使用量通知的 API
+@app.get("/notify-daily-report")
 async def notify_daily_report():
-    """每日報告通知"""
     try:
+        print("開始執行每日報告功能...")
+        import smtplib
+        from email.mime.text import MIMEText
+        from datetime import datetime, timedelta, timezone
+        
+        # 獲取環境變數
+        GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
+        APP_PASSWORD = os.getenv("APP_PASSWORD")
+        RECEIVERS = os.getenv("RECEIVERS", "").split(",") if os.getenv("RECEIVERS") else []
+        
+        print(f"環境變數檢查: GMAIL_ADDRESS={'已設置' if GMAIL_ADDRESS else '未設置'}")
+        print(f"環境變數檢查: APP_PASSWORD={'已設置' if APP_PASSWORD else '未設置'}")
+        print(f"環境變數檢查: RECEIVERS={RECEIVERS}")
+        
+        # 發送郵件
+        def send_email(subject, body):
+            print(f"準備發送郵件: 主題={subject}, 收件人={RECEIVERS}")
+            if not GMAIL_ADDRESS or not APP_PASSWORD or not RECEIVERS:
+                print("警告: 郵件發送信息不完整，無法發送郵件")
+                return False
+                
+            try:
+                msg = MIMEText(body, "plain", "utf-8")
+                msg["Subject"] = subject
+                msg["From"] = GMAIL_ADDRESS
+                msg["To"] = ", ".join(RECEIVERS)
+                
+                print("連接到 SMTP 服務器...")
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                    print("登錄 SMTP 服務器...")
+                    server.login(GMAIL_ADDRESS, APP_PASSWORD)
+                    print("發送郵件...")
+                    server.sendmail(GMAIL_ADDRESS, RECEIVERS, msg.as_string())
+                    print("郵件發送成功")
+                return True
+            except Exception as e:
+                print(f"發送郵件時出錯: {e}")
+                import traceback
+                print(traceback.format_exc())
+                return False
+        
+        # 獲取當日關卡數據
+        print("開始獲取當日關卡數據...")
+        
+        # 設置時區為台北時間
+        taipei_tz = timezone(timedelta(hours=8))
+        now = datetime.now(taipei_tz)
+        
+        # 計算昨天的日期（台北時間）
+        today = now.date()
+        yesterday = today - timedelta(days=1)
+        yesterday_start = datetime.combine(yesterday, datetime.min.time(), tzinfo=taipei_tz)
+        yesterday_end = datetime.combine(yesterday, datetime.max.time(), tzinfo=taipei_tz)
+        
+        yesterday_start_str = yesterday_start.strftime('%Y-%m-%d %H:%M:%S')
+        yesterday_end_str = yesterday_end.strftime('%Y-%m-%d %H:%M:%S')
+        
+        print(f"當前時間（台北）: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"查詢日期範圍: {yesterday_start_str} 至 {yesterday_end_str}")
+        
+        # 連接到資料庫
         connection = get_db_connection()
-        with connection.cursor() as cursor:
-            # 獲取今日活躍用戶統計
-            sql = """
-            SELECT 
-                COUNT(DISTINCT user_id) as active_users,
-                COUNT(*) as total_questions,
-                SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct_answers
-            FROM user_answers 
-            WHERE DATE(answered_at) = CURDATE()
-            """
-            cursor.execute(sql)
-            daily_stats = cursor.fetchone()
-            
-            # 可以將這些統計發送給管理員或記錄到日誌
-            print(f"📊 今日統計：活躍用戶 {daily_stats['active_users']} 人，"
-                  f"答題 {daily_stats['total_questions']} 題，"
-                  f"正確 {daily_stats['correct_answers']} 題")
-            
-            return {
-                "date": datetime.now().strftime('%Y-%m-%d'),
-                "stats": daily_stats
-            }
-    
-    except Exception as e:
-        print(f"[notify_daily_report] Error: {e}")
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-    finally:
-        if 'connection' in locals():
+        connection.charset = 'utf8mb4'
+        
+        try:
+            with connection.cursor() as cursor:
+                # 設置連接的字符集
+                cursor.execute("SET NAMES utf8mb4")
+                cursor.execute("SET CHARACTER SET utf8mb4")
+                cursor.execute("SET character_set_connection=utf8mb4")
+                
+                # 獲取昨天完成的關卡數量
+                cursor.execute("""
+                SELECT COUNT(*) as total_levels, COUNT(DISTINCT user_id) as total_users
+                FROM user_level
+                WHERE answered_at BETWEEN %s AND %s
+                """, (yesterday_start_str, yesterday_end_str))
+                
+                level_stats = cursor.fetchone()
+                total_levels = level_stats['total_levels'] if level_stats else 0
+                total_users = level_stats['total_users'] if level_stats else 0
+                
+                # 獲取昨天的答題數量
+                cursor.execute("""
+                SELECT COUNT(*) as total_answers, COUNT(DISTINCT user_id) as answer_users
+                FROM user_question_stats
+                WHERE last_attempted_at BETWEEN %s AND %s
+                """, (yesterday_start_str, yesterday_end_str))
+                
+                # 獲取昨天活躍的前5名用戶
+                cursor.execute("""
+                SELECT user_id, COUNT(*) as level_count
+                FROM user_level
+                WHERE answered_at BETWEEN %s AND %s
+                GROUP BY user_id
+                ORDER BY level_count DESC
+                LIMIT 5
+                """, (yesterday_start_str, yesterday_end_str))
+                
+                top_users = cursor.fetchall()
+                
+                # 獲取用戶名稱
+                top_user_details = []
+                for user in top_users:
+                    cursor.execute("SELECT name FROM users WHERE user_id = %s", (user['user_id'],))
+                    user_info = cursor.fetchone()
+                    user_name = user_info['name'] if user_info and user_info['name'] else user['user_id']
+                    top_user_details.append({
+                        "name": user_name,
+                        "level_count": user['level_count']
+                    })
+        
+        finally:
             connection.close()
+        
+        # 構建郵件內容
+        today_str = today.strftime("%Y-%m-%d")
+        yesterday_str = yesterday.strftime("%Y-%m-%d")
+        subject = f"【Dogtor 每日系統報告】{today_str}"
+        
+        print("構建郵件內容...")
+        body = f"""Dogtor 每日使用報告 ({yesterday_str})：
+
+【使用統計】
+昨日完成關卡數：{total_levels} 個
+昨日活躍用戶數：{total_users} 人
+"""
+
+        if top_user_details:
+            body += "\n【昨日最活躍用戶】\n"
+            for i, user in enumerate(top_user_details, 1):
+                body += f"{i}. {user['name']} - 完成 {user['level_count']} 個關卡\n"
+        
+        body += """
+祝您有美好的一天！
+
+（本報告由系統自動生成，請勿直接回覆）
+"""
+        
+        print("郵件內容構建完成，開始發送...")
+        email_sent = send_email(subject, body)
+        
+        if email_sent:
+            return {"status": "success", "message": "每日報告已發送"}
+        else:
+            return {"status": "warning", "message": "每日報告生成成功，但郵件發送失敗"}
+            
+    except Exception as e:
+        print(f"發送每日報告時出錯: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return {"status": "error", "message": f"發送每日報告時出錯: {str(e)}"}
 
 @router.post("/cron_push_learning_reminder", response_model=StandardResponse)
 async def cron_push_learning_reminder():
