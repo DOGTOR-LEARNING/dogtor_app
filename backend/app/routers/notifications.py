@@ -303,13 +303,14 @@ async def debug_push_notification(request: dict = Body(...)):
 
 
 # 修改處理每日使用量通知的 API
-@app.get("/notify-daily-report")
+@router.get("/notify-daily-report", response_model=Dict[str, Any])
 async def notify_daily_report():
     try:
         print("開始執行每日報告功能...")
         import smtplib
         from email.mime.text import MIMEText
         from datetime import datetime, timedelta, timezone
+        import os
         
         # 獲取環境變數
         GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
