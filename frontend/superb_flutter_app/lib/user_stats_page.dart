@@ -2641,8 +2641,7 @@ class _UserStatsPageState extends State<UserStatsPage>
                                       child: Text(subject,
                                           style:
                                               TextStyle(color: Colors.white)),
-                                    ))
-                                ,
+                                    )),
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -2698,8 +2697,7 @@ class _UserStatsPageState extends State<UserStatsPage>
                                       child: Text(chapter,
                                           style:
                                               TextStyle(color: Colors.white)),
-                                    ))
-                                ,
+                                    )),
                           ],
                           onChanged: (value) {
                             setState(() {

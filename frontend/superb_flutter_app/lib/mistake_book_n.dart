@@ -571,7 +571,9 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                           SizedBox(width: 8),
                                           // Stars for difficulty
                                           Text(
-                                            '★' * _getDifficultyStars(mistake['difficulty']),
+                                            '★' *
+                                                _getDifficultyStars(
+                                                    mistake['difficulty']),
                                             style: TextStyle(
                                               color: Color(0xFFFFA368),
                                               fontSize: 16,
@@ -939,7 +941,9 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                               ),
                             ),
                             Text(
-                              '★' * _getDifficultyStars(widget.mistake['difficulty']),
+                              '★' *
+                                  _getDifficultyStars(
+                                      widget.mistake['difficulty']),
                               style: TextStyle(
                                 color: Color(0xFFFFA368),
                                 fontSize: 16,

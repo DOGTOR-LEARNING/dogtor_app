@@ -16,7 +16,6 @@ import 'notification_status_page.dart'; // Import the NotificationStatusPage
 import 'heart_display_widget.dart'; // 引入新的生命樹組件
 // 引入生命不足對話框
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 

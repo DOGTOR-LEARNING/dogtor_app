@@ -10,7 +10,8 @@ class ChapterDetailPage extends StatefulWidget {
   final String subject;
   final String csvPath;
 
-  const ChapterDetailPage({super.key, required this.subject, required this.csvPath});
+  const ChapterDetailPage(
+      {super.key, required this.subject, required this.csvPath});
 
   @override
   _ChapterDetailPageState createState() => _ChapterDetailPageState();
