@@ -11,15 +11,17 @@ class NotificationService {
   static Future<void> init(String userId) async {
     try {
       print("🔧 初始化通知服務，用戶ID: $userId");
-      
+
       print("📱 用戶 ID: $userId");
-      NotificationSettings settings = await _messaging.requestPermission(
+      NotificationSettings settings = await _messaging
+          .requestPermission(
         alert: true,
         badge: true,
         sound: true,
         criticalAlert: false,
         provisional: false,
-      ).timeout(
+      )
+          .timeout(
         Duration(seconds: 10),
         onTimeout: () {
           print("⚠️ 權限請求超時");
@@ -40,7 +42,8 @@ class NotificationService {
 
           _messaging.onTokenRefresh.listen((newToken) async {
             print("🔁 Token 更新：${newToken.substring(0, 20)}...");
-            await _uploadTokenIfNeeded(newToken, userId: userId, isRefresh: true);
+            await _uploadTokenIfNeeded(newToken,
+                userId: userId, isRefresh: true);
           });
 
           FirebaseMessaging.onMessage.listen((message) {
@@ -66,10 +69,10 @@ class NotificationService {
         } else {
           print("❌ 無法獲取 FCM token");
         }
-
       } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
         print("🚫 使用者拒絕授權通知");
-      } else if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+      } else if (settings.authorizationStatus ==
+          AuthorizationStatus.notDetermined) {
         print("❓ 通知權限尚未確定");
       }
     } catch (e) {
@@ -102,7 +105,8 @@ class NotificationService {
 
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/notifications/register_token'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/notifications/register_token'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "user_id": userId,

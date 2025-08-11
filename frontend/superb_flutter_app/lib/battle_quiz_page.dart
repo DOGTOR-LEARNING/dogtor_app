@@ -32,24 +32,24 @@ class _BattleQuizPageState extends State<BattleQuizPage>
   bool isLoading = true;
   String? selectedAnswer;
   bool? isCorrect;
-  
+
   // 對戰相關狀態
   int playerScore = 0;
   int opponentScore = 0;
   List<bool> playerAnswers = [];
   List<bool> opponentAnswers = [];
-  
+
   // 計時器相關
   late Timer _questionTimer;
   int timeLeft = 15; // 每題15秒
   bool timeUp = false;
-  
+
   // 動畫控制器
   late AnimationController _timerController;
   late AnimationController _scoreController;
   late Animation<double> _timerAnimation;
   late Animation<double> _scoreAnimation;
-  
+
   // 對戰狀態
   bool battleFinished = false;
   bool waitingForOpponent = false;
@@ -76,12 +76,12 @@ class _BattleQuizPageState extends State<BattleQuizPage>
       duration: Duration(seconds: 15),
       vsync: this,
     );
-    
+
     _scoreController = AnimationController(
       duration: Duration(milliseconds: 500),
       vsync: this,
     );
-    
+
     _timerAnimation = Tween<double>(
       begin: 1.0,
       end: 0.0,
@@ -89,7 +89,7 @@ class _BattleQuizPageState extends State<BattleQuizPage>
       parent: _timerController,
       curve: Curves.linear,
     ));
-    
+
     _scoreAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -110,7 +110,8 @@ class _BattleQuizPageState extends State<BattleQuizPage>
   Future<void> _fetchBattleQuestions() async {
     try {
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/battle/questions/${widget.battleId}'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/battle/questions/${widget.battleId}'),
         headers: {'Accept': 'application/json; charset=utf-8'},
       );
 
@@ -122,7 +123,7 @@ class _BattleQuizPageState extends State<BattleQuizPage>
             isLoading = false;
             battleStatus = "對戰開始！";
           });
-          
+
           // 添加短暫延遲讓用戶準備
           await Future.delayed(Duration(seconds: 2));
           _startQuestion();
@@ -143,7 +144,7 @@ class _BattleQuizPageState extends State<BattleQuizPage>
       isLoading = false;
       battleStatus = message;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -177,7 +178,7 @@ class _BattleQuizPageState extends State<BattleQuizPage>
         timer.cancel();
         return;
       }
-      
+
       setState(() {
         timeLeft--;
       });
@@ -191,12 +192,12 @@ class _BattleQuizPageState extends State<BattleQuizPage>
 
   void _timeUp() {
     if (!mounted) return;
-    
+
     setState(() {
       timeUp = true;
       battleStatus = "時間到！";
     });
-    
+
     // 如果時間到還沒選答案，自動提交空答案
     if (selectedAnswer == null) {
       _submitAnswer('');
@@ -205,12 +206,12 @@ class _BattleQuizPageState extends State<BattleQuizPage>
 
   void _selectAnswer(String answer) {
     if (timeUp || selectedAnswer != null) return;
-    
+
     setState(() {
       selectedAnswer = answer;
       battleStatus = "已選擇答案";
     });
-    
+
     // 延遲提交，讓用戶看到選擇效果
     Future.delayed(Duration(milliseconds: 800), () {
       if (mounted) {
@@ -221,25 +222,26 @@ class _BattleQuizPageState extends State<BattleQuizPage>
 
   Future<void> _submitAnswer(String answer) async {
     if (!mounted) return;
-    
+
     _questionTimer.cancel();
     _timerController.stop();
-    
+
     setState(() {
       battleStatus = "提交中...";
     });
-    
+
     try {
       final currentQuestion = questions[currentQuestionIndex];
       final userId = await _getUserId();
-      
+
       if (userId == null) {
         _showError('用戶未登入');
         return;
       }
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/battle/submit_answer'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/battle/submit_answer'),
         headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: json.encode({
           'battle_id': widget.battleId,
@@ -258,14 +260,14 @@ class _BattleQuizPageState extends State<BattleQuizPage>
             isCorrect = data['is_correct'];
             battleStatus = isCorrect! ? "答對了！+${data['score'] ?? 10}" : "答錯了！";
           });
-          
+
           _updateScores(data);
-          
+
           // 觸發分數動畫
           _scoreController.forward().then((_) {
             _scoreController.reset();
           });
-          
+
           // 等待一下再進入下一題
           await Future.delayed(Duration(seconds: 2));
           if (mounted) {
@@ -290,12 +292,12 @@ class _BattleQuizPageState extends State<BattleQuizPage>
     setState(() {
       playerScore = data['player_score'] ?? playerScore;
       opponentScore = data['opponent_score'] ?? opponentScore;
-      
+
       // 更新答題記錄
       if (playerAnswers.length <= currentQuestionIndex) {
         playerAnswers.add(isCorrect!);
       }
-      
+
       // 模擬對手答題（實際應從後端獲取）
       if (opponentAnswers.length <= currentQuestionIndex) {
         opponentAnswers.add(data['opponent_correct'] ?? false);
@@ -311,7 +313,8 @@ class _BattleQuizPageState extends State<BattleQuizPage>
 
     try {
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/battle/result/${widget.battleId}'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/battle/result/${widget.battleId}'),
         headers: {'Accept': 'application/json; charset=utf-8'},
       );
 
@@ -329,7 +332,7 @@ class _BattleQuizPageState extends State<BattleQuizPage>
   void _showResultDialog(Map<String, dynamic> result) {
     final isWinner = result['winner'] == 'player';
     final isDraw = result['winner'] == 'draw';
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -342,8 +345,14 @@ class _BattleQuizPageState extends State<BattleQuizPage>
           child: Column(
             children: [
               Icon(
-                isDraw ? Icons.handshake : (isWinner ? Icons.emoji_events : Icons.sentiment_dissatisfied),
-                color: isDraw ? accentColor : (isWinner ? correctColor : incorrectColor),
+                isDraw
+                    ? Icons.handshake
+                    : (isWinner
+                        ? Icons.emoji_events
+                        : Icons.sentiment_dissatisfied),
+                color: isDraw
+                    ? accentColor
+                    : (isWinner ? correctColor : incorrectColor),
                 size: 64,
               ),
               SizedBox(height: 16),
@@ -352,7 +361,9 @@ class _BattleQuizPageState extends State<BattleQuizPage>
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: isDraw ? accentColor : (isWinner ? correctColor : incorrectColor),
+                  color: isDraw
+                      ? accentColor
+                      : (isWinner ? correctColor : incorrectColor),
                 ),
               ),
             ],
@@ -373,10 +384,20 @@ class _BattleQuizPageState extends State<BattleQuizPage>
                 children: [
                   Column(
                     children: [
-                      Text('你', style: TextStyle(fontSize: 16, color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                      Text('你',
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.bold)),
                       SizedBox(height: 8),
-                      Text('$playerScore', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: playerColor)),
-                      Text('分', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                      Text('$playerScore',
+                          style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: playerColor)),
+                      Text('分',
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.grey[600])),
                     ],
                   ),
                   Container(
@@ -386,17 +407,27 @@ class _BattleQuizPageState extends State<BattleQuizPage>
                   ),
                   Column(
                     children: [
-                      Text(widget.opponentName, style: TextStyle(fontSize: 16, color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                      Text(widget.opponentName,
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.bold)),
                       SizedBox(height: 8),
-                      Text('$opponentScore', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: opponentColor)),
-                      Text('分', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                      Text('$opponentScore',
+                          style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: opponentColor)),
+                      Text('分',
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.grey[600])),
                     ],
                   ),
                 ],
               ),
             ),
             SizedBox(height: 20),
-            
+
             // 詳細統計
             Container(
               padding: EdgeInsets.all(16),
@@ -410,8 +441,10 @@ class _BattleQuizPageState extends State<BattleQuizPage>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('答對題數：', style: TextStyle(fontSize: 16)),
-                      Text('${playerAnswers.where((a) => a).length}/${playerAnswers.length}', 
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                          '${playerAnswers.where((a) => a).length}/${playerAnswers.length}',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   SizedBox(height: 8),
@@ -419,8 +452,12 @@ class _BattleQuizPageState extends State<BattleQuizPage>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('正確率：', style: TextStyle(fontSize: 16)),
-                      Text('${(playerAnswers.where((a) => a).length / playerAnswers.length * 100).toStringAsFixed(1)}%', 
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: correctColor)),
+                      Text(
+                          '${(playerAnswers.where((a) => a).length / playerAnswers.length * 100).toStringAsFixed(1)}%',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: correctColor)),
                     ],
                   ),
                   SizedBox(height: 8),
@@ -429,8 +466,9 @@ class _BattleQuizPageState extends State<BattleQuizPage>
                     children: [
                       Text('科目章節：', style: TextStyle(fontSize: 16)),
                       Expanded(
-                        child: Text('${widget.subject} - ${widget.chapter}', 
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        child: Text('${widget.subject} - ${widget.chapter}',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.right),
                       ),
                     ],
@@ -452,7 +490,8 @@ class _BattleQuizPageState extends State<BattleQuizPage>
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: Text('返回', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+                  child: Text('返回',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 16)),
                 ),
               ),
               SizedBox(width: 8),
@@ -471,7 +510,8 @@ class _BattleQuizPageState extends State<BattleQuizPage>
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: Text('再戰一局', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text('再戰一局',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -491,7 +531,8 @@ class _BattleQuizPageState extends State<BattleQuizPage>
     }
   }
 
-  Widget _buildPlayerAvatar(String name, String? photoUrl, Color color, bool isPlayer) {
+  Widget _buildPlayerAvatar(
+      String name, String? photoUrl, Color color, bool isPlayer) {
     return Column(
       children: [
         Container(
@@ -555,7 +596,7 @@ class _BattleQuizPageState extends State<BattleQuizPage>
     return Row(
       children: List.generate(questions.length, (index) {
         Color dotColor = Colors.white.withOpacity(0.3);
-        
+
         if (index < currentQuestionIndex) {
           // 已完成的題目
           if (index < playerAnswers.length) {
@@ -565,7 +606,7 @@ class _BattleQuizPageState extends State<BattleQuizPage>
           // 當前題目
           dotColor = accentColor;
         }
-        
+
         return Container(
           margin: EdgeInsets.symmetric(horizontal: 2),
           width: 12,
@@ -599,7 +640,8 @@ class _BattleQuizPageState extends State<BattleQuizPage>
                 SizedBox(height: 8),
                 Text(
                   '正在載入題目',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.7), fontSize: 14),
                 ),
               ],
             ),
@@ -638,265 +680,284 @@ class _BattleQuizPageState extends State<BattleQuizPage>
     return WillPopScope(
       onWillPop: () async {
         if (battleFinished) return true;
-        
+
         // 顯示退出確認對話框
         return await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('確認離開'),
-            content: Text('對戰進行中，確定要離開嗎？離開將視為放棄對戰。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text('取消'),
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text('確認離開'),
+                content: Text('對戰進行中，確定要離開嗎？離開將視為放棄對戰。'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: Text('離開', style: TextStyle(color: incorrectColor)),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text('離開', style: TextStyle(color: incorrectColor)),
-              ),
-            ],
-          ),
-        ) ?? false;
+            ) ??
+            false;
       },
       child: Scaffold(
         backgroundColor: backgroundColor,
         body: SafeArea(
           child: Column(
             children: [
-            // 頂部對戰資訊
-            Container(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // 玩家資訊和分數
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildPlayerAvatar('你', null, playerColor, true),
-                      Column(
-                        children: [
-                          Row(
-                            children: [
-                              _buildScoreDisplay(playerScore, playerColor),
-                              SizedBox(width: 16),
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                child: Text(
-                                  'VS',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 16),
-                              _buildScoreDisplay(opponentScore, opponentColor),
-                            ],
-                          ),
-                          SizedBox(height: 12),
-                          _buildProgressIndicator(),
-                          SizedBox(height: 8),
-                          Text(
-                            '${widget.subject} - ${widget.chapter}',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      _buildPlayerAvatar(widget.opponentName, widget.opponentPhotoUrl, opponentColor, false),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-                  
-                  // 計時器
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 80,
-                        height: 80,
-                        child: AnimatedBuilder(
-                          animation: _timerAnimation,
-                          builder: (context, child) {
-                            return CircularProgressIndicator(
-                              value: _timerAnimation.value,
-                              strokeWidth: 6,
-                              backgroundColor: Colors.white.withOpacity(0.3),
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                timeLeft <= 5 ? incorrectColor : accentColor,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      Text(
-                        '$timeLeft',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    battleStatus,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // 題目區域
-            Expanded(
-              child: Container(
-                margin: EdgeInsets.all(16),
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: primaryColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+              // 頂部對戰資訊
+              Container(
+                padding: EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 題目編號
-                    Text(
-                      '第 ${currentQuestionIndex + 1} 題',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // 題目內容
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    // 玩家資訊和分數
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildPlayerAvatar('你', null, playerColor, true),
+                        Column(
                           children: [
-                            MarkdownBody(
-                              data: currentQuestion['question'] ?? '',
-                              styleSheet: MarkdownStyleSheet(
-                                p: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 24),
-                            
-                            // 選項
-                            Column(
-                              children: (currentQuestion['options'] as List).asMap().entries.map<Widget>((entry) {
-                                final index = entry.key;
-                                final option = entry.value;
-                                final isSelected = selectedAnswer == option;
-                                
-                                Color optionColor = Colors.grey[100]!;
-                                Color textColor = Colors.black;
-                                IconData? icon;
-                                
-                                if (selectedAnswer != null) {
-                                  final correctAnswerIndex = int.tryParse(currentQuestion['correct_answer']) ?? 0;
-                                  final isCorrectOption = index == correctAnswerIndex;
-                                  
-                                  if (isCorrectOption) {
-                                    optionColor = correctColor.withOpacity(0.2);
-                                    textColor = correctColor;
-                                    icon = Icons.check_circle;
-                                  } else if (isSelected) {
-                                    optionColor = incorrectColor.withOpacity(0.2);
-                                    textColor = incorrectColor;
-                                    icon = Icons.cancel;
-                                  }
-                                } else if (isSelected) {
-                                  optionColor = accentColor.withOpacity(0.2);
-                                  textColor = accentColor;
-                                }
-                                
-                                return Padding(
-                                  padding: EdgeInsets.only(bottom: 12),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: () => _selectAnswer(option),
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        padding: EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: optionColor,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: isSelected ? accentColor : Colors.transparent,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 24,
-                                              height: 24,
-                                              decoration: BoxDecoration(
-                                                color: textColor,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  String.fromCharCode(65 + index), // A, B, C, D
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(width: 12),
-                                            Expanded(
-                                              child: Text(
-                                                option,
-                                                style: TextStyle(
-                                                  color: textColor,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                            if (icon != null)
-                                              Icon(icon, color: textColor, size: 24),
-                                          ],
-                                        ),
-                                      ),
+                            Row(
+                              children: [
+                                _buildScoreDisplay(playerScore, playerColor),
+                                SizedBox(width: 16),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Text(
+                                    'VS',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                );
-                              }).toList(),
+                                ),
+                                SizedBox(width: 16),
+                                _buildScoreDisplay(
+                                    opponentScore, opponentColor),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            _buildProgressIndicator(),
+                            SizedBox(height: 8),
+                            Text(
+                              '${widget.subject} - ${widget.chapter}',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ],
                         ),
+                        _buildPlayerAvatar(widget.opponentName,
+                            widget.opponentPhotoUrl, opponentColor, false),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+
+                    // 計時器
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: AnimatedBuilder(
+                            animation: _timerAnimation,
+                            builder: (context, child) {
+                              return CircularProgressIndicator(
+                                value: _timerAnimation.value,
+                                strokeWidth: 6,
+                                backgroundColor: Colors.white.withOpacity(0.3),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  timeLeft <= 5 ? incorrectColor : accentColor,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        Text(
+                          '$timeLeft',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      battleStatus,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+
+              // 題目區域
+              Expanded(
+                child: Container(
+                  margin: EdgeInsets.all(16),
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 題目編號
+                      Text(
+                        '第 ${currentQuestionIndex + 1} 題',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // 題目內容
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              MarkdownBody(
+                                data: currentQuestion['question'] ?? '',
+                                styleSheet: MarkdownStyleSheet(
+                                  p: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 24),
+
+                              // 選項
+                              Column(
+                                children: (currentQuestion['options'] as List)
+                                    .asMap()
+                                    .entries
+                                    .map<Widget>((entry) {
+                                  final index = entry.key;
+                                  final option = entry.value;
+                                  final isSelected = selectedAnswer == option;
+
+                                  Color optionColor = Colors.grey[100]!;
+                                  Color textColor = Colors.black;
+                                  IconData? icon;
+
+                                  if (selectedAnswer != null) {
+                                    final correctAnswerIndex = int.tryParse(
+                                            currentQuestion[
+                                                'correct_answer']) ??
+                                        0;
+                                    final isCorrectOption =
+                                        index == correctAnswerIndex;
+
+                                    if (isCorrectOption) {
+                                      optionColor =
+                                          correctColor.withOpacity(0.2);
+                                      textColor = correctColor;
+                                      icon = Icons.check_circle;
+                                    } else if (isSelected) {
+                                      optionColor =
+                                          incorrectColor.withOpacity(0.2);
+                                      textColor = incorrectColor;
+                                      icon = Icons.cancel;
+                                    }
+                                  } else if (isSelected) {
+                                    optionColor = accentColor.withOpacity(0.2);
+                                    textColor = accentColor;
+                                  }
+
+                                  return Padding(
+                                    padding: EdgeInsets.only(bottom: 12),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () => _selectAnswer(option),
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Container(
+                                          padding: EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: optionColor,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? accentColor
+                                                  : Colors.transparent,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 24,
+                                                height: 24,
+                                                decoration: BoxDecoration(
+                                                  color: textColor,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    String.fromCharCode(65 +
+                                                        index), // A, B, C, D
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  option,
+                                                  style: TextStyle(
+                                                    color: textColor,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (icon != null)
+                                                Icon(icon,
+                                                    color: textColor, size: 24),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

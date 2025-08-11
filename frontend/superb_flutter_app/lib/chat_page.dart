@@ -18,7 +18,7 @@ class _ChatPageState extends State<ChatPage> {
   String _response = ""; // 存儲 AI 的回應
   final ImagePicker _picker = ImagePicker();
   XFile? _selectedImage; // 添加這個變量來存儲選擇的圖片
-  
+
   final List<String> _subjects = [
     '國文',
     '英文',
@@ -33,16 +33,16 @@ class _ChatPageState extends State<ChatPage> {
     '地理',
     '公民'
   ];
-  
-  String? _selectedSubject;  // 添加這個變量來存儲選擇的科目
+
+  String? _selectedSubject; // 添加這個變量來存儲選擇的科目
   bool _isLoading = false; // 添加這個變量來追踪加載狀態
-  List<String> _items = [];  // Initialize _items to an empty list
-  String? _selectedItem;     // Initialize _selectedItem to null
+  List<String> _items = []; // Initialize _items to an empty list
+  String? _selectedItem; // Initialize _selectedItem to null
 
   @override
   void initState() {
     super.initState();
-    _loadItems();  // Now fetches from backend
+    _loadItems(); // Now fetches from backend
   }
 
   Future<void> _loadItems() async {
@@ -76,11 +76,13 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       // 載入 CSV 檔案
-      final String data = await DefaultAssetBundle.of(context).loadString(csvPath);
+      final String data =
+          await DefaultAssetBundle.of(context).loadString(csvPath);
       final List<String> rows = data.split('\n');
-      
+
       // 從 CSV 中提取章節名稱
-      final List<String> chapters = rows.skip(1)
+      final List<String> chapters = rows
+          .skip(1)
           .where((row) => row.trim().isNotEmpty)
           .map((row) {
             final cols = row.split(',');
@@ -88,10 +90,11 @@ class _ChatPageState extends State<ChatPage> {
           })
           .toSet() // 去除重複項
           .toList();
-      
+
       setState(() {
         _items = chapters;
-        _selectedItem = chapters.isNotEmpty ? chapters[0] : null; // 選擇第一個章節或設為 null
+        _selectedItem =
+            chapters.isNotEmpty ? chapters[0] : null; // 選擇第一個章節或設為 null
       });
     } catch (e) {
       print('Error loading chapters: $e');
@@ -138,7 +141,7 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       Map<String, dynamic> requestBody = {
         "user_message": _controller.text,
@@ -154,13 +157,15 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/ai/chat"),
+        Uri.parse(
+            "https://superb-backend-1041765261654.asia-east1.run.app/ai/chat"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Server error: ${response.statusCode}\nBody: ${response.body}');
+        throw Exception(
+            'Server error: ${response.statusCode}\nBody: ${response.body}');
       }
 
       final responseData = jsonDecode(utf8.decode(response.bodyBytes));
@@ -191,7 +196,8 @@ class _ChatPageState extends State<ChatPage> {
                 title: Text('從相簿選擇', style: TextStyle(color: Colors.white)),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+                  final XFile? image =
+                      await _picker.pickImage(source: ImageSource.gallery);
                   if (image != null) {
                     _handleSelectedImage(image);
                   }
@@ -202,7 +208,8 @@ class _ChatPageState extends State<ChatPage> {
                 title: Text('拍照', style: TextStyle(color: Colors.white)),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+                  final XFile? photo =
+                      await _picker.pickImage(source: ImageSource.camera);
                   if (photo != null) {
                     _handleSelectedImage(photo);
                   }
@@ -281,7 +288,7 @@ class _ChatPageState extends State<ChatPage> {
         "description": _controller.text,
         "difficulty": difficulty,
         "simple_answer": "", // Placeholder for now
-        "detailed_answer": _response, 
+        "detailed_answer": _response,
       };
 
       if (_selectedImage != null) {
@@ -291,7 +298,8 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/submit_question"),
+        Uri.parse(
+            "https://superb-backend-1041765261654.asia-east1.run.app/submit_question"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
@@ -316,7 +324,6 @@ class _ChatPageState extends State<ChatPage> {
         padding: EdgeInsets.zero,
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
-        
         child: Stack(
           children: [
             Column(
@@ -347,7 +354,8 @@ class _ChatPageState extends State<ChatPage> {
                               child: DropdownButtonFormField<String>(
                                 value: _selectedSubject,
                                 decoration: InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                     borderSide: BorderSide.none,
@@ -355,7 +363,8 @@ class _ChatPageState extends State<ChatPage> {
                                   filled: true,
                                   fillColor: Colors.transparent,
                                 ),
-                                icon: Icon(Icons.arrow_drop_down, color: Color(0xFF1E3875)),
+                                icon: Icon(Icons.arrow_drop_down,
+                                    color: Color(0xFF1E3875)),
                                 dropdownColor: Colors.white,
                                 style: TextStyle(
                                   color: Color(0xFF1E3875),
@@ -368,7 +377,8 @@ class _ChatPageState extends State<ChatPage> {
                                   );
                                 }).toList(),
                                 onChanged: _onSubjectChanged,
-                                hint: Text('選擇科目', style: TextStyle(color: Color(0xFF1E3875))),
+                                hint: Text('選擇科目',
+                                    style: TextStyle(color: Color(0xFF1E3875))),
                               ),
                             ),
                           ),
@@ -383,7 +393,8 @@ class _ChatPageState extends State<ChatPage> {
                                 isExpanded: true,
                                 value: _selectedItem,
                                 decoration: InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                     borderSide: BorderSide.none,
@@ -391,7 +402,8 @@ class _ChatPageState extends State<ChatPage> {
                                   filled: true,
                                   fillColor: Colors.transparent,
                                 ),
-                                icon: Icon(Icons.arrow_drop_down, color: Color(0xFF1E3875)),
+                                icon: Icon(Icons.arrow_drop_down,
+                                    color: Color(0xFF1E3875)),
                                 dropdownColor: Colors.white,
                                 style: TextStyle(
                                   color: Color(0xFF1E3875),
@@ -408,7 +420,8 @@ class _ChatPageState extends State<ChatPage> {
                                     _selectedItem = newValue;
                                   });
                                 },
-                                hint: Text('選擇章節', style: TextStyle(color: Color(0xFF1E3875))),
+                                hint: Text('選擇章節',
+                                    style: TextStyle(color: Color(0xFF1E3875))),
                               ),
                             ),
                           ),
@@ -417,7 +430,6 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                   ],
                 ),
-                
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.9),
@@ -430,15 +442,18 @@ class _ChatPageState extends State<ChatPage> {
                           controller: _controller,
                           style: TextStyle(color: Color(0xFF1E3875)),
                           decoration: InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
                             ),
                             hintText: "輸入您的問題",
-                            hintStyle: TextStyle(color: Color(0xFF1E3875).withOpacity(0.6)),
+                            hintStyle: TextStyle(
+                                color: Color(0xFF1E3875).withOpacity(0.6)),
                             prefixIcon: IconButton(
-                              icon: Icon(Icons.photo_camera, color: Color(0xFF1E3875)),
+                              icon: Icon(Icons.photo_camera,
+                                  color: Color(0xFF1E3875)),
                               onPressed: _handleImageSelection,
                             ),
                           ),
@@ -451,12 +466,13 @@ class _ChatPageState extends State<ChatPage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color.fromARGB(255, 76, 94, 135),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.horizontal(right: Radius.circular(8)),
+                              borderRadius: BorderRadius.horizontal(
+                                  right: Radius.circular(8)),
                             ),
                             padding: EdgeInsets.symmetric(horizontal: 16),
                           ),
                           child: Icon(
-                            Icons.send,  // 或者用 Icons.send
+                            Icons.send, // 或者用 Icons.send
                             color: Colors.white,
                           ),
                           //child: Text("查詢", style: TextStyle(color: Colors.white)),
@@ -491,7 +507,8 @@ class _ChatPageState extends State<ChatPage> {
                                     fit: BoxFit.cover,
                                   );
                                 }
-                                return Center(child: CircularProgressIndicator());
+                                return Center(
+                                    child: CircularProgressIndicator());
                               },
                             ),
                           ),
@@ -510,30 +527,30 @@ class _ChatPageState extends State<ChatPage> {
                   SizedBox(height: 16),
                 ],
                 Expanded(
-                  child: _isLoading 
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(
-                              color: Colors.white,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              '思考中...',
-                              style: TextStyle(
+                  child: _isLoading
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(
                                 color: Colors.white,
-                                fontSize: 16,
                               ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _buildResponse(_response),
+                              SizedBox(height: 16),
+                              Text(
+                                '思考中...',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _buildResponse(_response),
                 ),
               ],
             ),
-            
+
             // 添加返回按鈕
             Positioned(
               top: 40,
@@ -553,7 +570,6 @@ class _ChatPageState extends State<ChatPage> {
         onPressed: _showDifficultyDialog,
         backgroundColor: Colors.white,
         child: Icon(Icons.add),
-        
       ),
     );
   }

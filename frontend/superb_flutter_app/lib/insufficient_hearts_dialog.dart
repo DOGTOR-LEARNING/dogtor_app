@@ -15,17 +15,19 @@ class InsufficientHeartsDialog {
 
 class _InsufficientHeartsDialogWidget extends StatefulWidget {
   final Duration? remainingTime;
-  
+
   const _InsufficientHeartsDialogWidget({
     Key? key,
     this.remainingTime,
   }) : super(key: key);
 
   @override
-  _InsufficientHeartsDialogWidgetState createState() => _InsufficientHeartsDialogWidgetState();
+  _InsufficientHeartsDialogWidgetState createState() =>
+      _InsufficientHeartsDialogWidgetState();
 }
 
-class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDialogWidget> 
+class _InsufficientHeartsDialogWidgetState
+    extends State<_InsufficientHeartsDialogWidget>
     with SingleTickerProviderStateMixin {
   Duration? _remainingTime;
   Timer? _countdownTimer;
@@ -37,13 +39,13 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
   void initState() {
     super.initState();
     _remainingTime = widget.remainingTime;
-    
+
     // 初始化動畫
     _animationController = AnimationController(
       duration: Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _scaleAnimation = Tween<double>(
       begin: 0.8,
       end: 1.0,
@@ -51,7 +53,7 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
       parent: _animationController,
       curve: Curves.easeOutBack,
     ));
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -59,10 +61,10 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     // 啟動動畫
     _animationController.forward();
-    
+
     // 開始倒數計時
     _startCountdown();
   }
@@ -76,7 +78,7 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
 
   void _startCountdown() {
     if (_remainingTime == null || _remainingTime!.inSeconds <= 0) return;
-    
+
     _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (_remainingTime != null && _remainingTime!.inSeconds > 0) {
         setState(() {
@@ -92,11 +94,11 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
 
   String _formatTime() {
     if (_remainingTime == null) return '計算中...';
-    
+
     final hours = _remainingTime!.inHours;
     final minutes = _remainingTime!.inMinutes % 60;
     final seconds = _remainingTime!.inSeconds % 60;
-    
+
     if (hours > 0) {
       return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     } else {
@@ -122,8 +124,8 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Color(0xFF1E5B8C),  // 深藍色
-                      Color(0xFF2A7AB8),  // 較淺的藍色
+                      Color(0xFF1E5B8C), // 深藍色
+                      Color(0xFF2A7AB8), // 較淺的藍色
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
@@ -166,12 +168,13 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
                         ),
                       ],
                     ),
-                    
+
                     SizedBox(height: 20),
-                    
+
                     // 當前生命顯示
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(15),
@@ -188,8 +191,9 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
                           ),
                           SizedBox(width: 8),
                           Row(
-                            children: List.generate(5, (index) => 
-                              Icon(
+                            children: List.generate(
+                              5,
+                              (index) => Icon(
                                 Icons.favorite_border,
                                 color: Colors.red.shade300,
                                 size: 20,
@@ -199,9 +203,9 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
                         ],
                       ),
                     ),
-                    
+
                     SizedBox(height: 16),
-                    
+
                     // 提示文字
                     Text(
                       '你需要生命來進行關卡挑戰\n生命每4小時恢復1顆\n每日12點會重置為滿血',
@@ -212,9 +216,9 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
                         height: 1.4,
                       ),
                     ),
-                    
+
                     SizedBox(height: 20),
-                    
+
                     // 倒數計時
                     if (_remainingTime != null)
                       Container(
@@ -265,9 +269,9 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
                           ],
                         ),
                       ),
-                    
+
                     SizedBox(height: 24),
-                    
+
                     // 關閉按鈕
                     SizedBox(
                       width: double.infinity,
@@ -302,4 +306,4 @@ class _InsufficientHeartsDialogWidgetState extends State<_InsufficientHeartsDial
       },
     );
   }
-} 
+}

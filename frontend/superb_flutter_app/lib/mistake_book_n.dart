@@ -6,7 +6,6 @@ import 'add_mistake_page.dart';
 import 'package:hive/hive.dart';
 import 'dart:typed_data';
 
-
 class MistakeBookPage extends StatefulWidget {
   @override
   _MistakeBookPageState createState() => _MistakeBookPageState();
@@ -46,15 +45,19 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
           'chapter': value['chapter'],
           'description': value['description'],
           'difficulty': value['difficulty'],
-          'answer': value['answer'] ?? value['detailed_answer'] ?? '', // 支援舊格式的向後相容
+          'answer':
+              value['answer'] ?? value['detailed_answer'] ?? '', // 支援舊格式的向後相容
           'tag': value['tag'],
           'note': value['note'] ?? '', // 給自己的小提醒
-          'created_at': value['created_at'] ?? value['timestamp'] ?? '', // 支援舊格式的向後相容
+          'created_at':
+              value['created_at'] ?? value['timestamp'] ?? '', // 支援舊格式的向後相容
           // 支援新的分離圖片欄位，同時向後相容舊格式
-          'question_image_base64': value['question_image_base64'] ?? value['image_base64'] ?? '',
+          'question_image_base64':
+              value['question_image_base64'] ?? value['image_base64'] ?? '',
           'answer_image_base64': value['answer_image_base64'] ?? '',
           // 保留舊欄位以向後相容
-          "image_base64": value['image_base64'] ?? value['question_image_base64'] ?? '',
+          "image_base64":
+              value['image_base64'] ?? value['question_image_base64'] ?? '',
           'is_sync': value['is_sync'] ?? false, // 同步狀態
         });
       });
@@ -78,7 +81,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
     try {
       var box = await Hive.openBox('questionsBox');
       List<String> unsyncedIds = [];
-      
+
       // 找出所有未同步的資料
       box.toMap().forEach((key, value) {
         if (value['is_sync'] == false || value['is_sync'] == null) {
@@ -109,7 +112,8 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
   }
 
   // 同步單筆錯題到雲端
-  Future<void> _syncSingleMistake(String qId, Map<dynamic, dynamic> mistakeData, var box) async {
+  Future<void> _syncSingleMistake(
+      String qId, Map<dynamic, dynamic> mistakeData, var box) async {
     try {
       final requestBody = {
         'summary': mistakeData['summary'] ?? '',
@@ -120,14 +124,16 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
         'answer': mistakeData['answer'] ?? '',
         'tag': mistakeData['tag'] ?? '',
         'note': mistakeData['note'] ?? '',
-        'created_at': mistakeData['created_at'] ?? DateTime.now().toIso8601String(),
+        'created_at':
+            mistakeData['created_at'] ?? DateTime.now().toIso8601String(),
         'question_image_base64': mistakeData['question_image_base64'] ?? '',
         'answer_image_base64': mistakeData['answer_image_base64'] ?? '',
         'user_id': 'default_user', // 預設用戶ID
       };
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
       );
@@ -136,7 +142,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
         // 同步成功，解析回應獲取雲端 ID
         final responseData = jsonDecode(response.body);
         final cloudId = responseData['q_id']?.toString();
-        
+
         if (cloudId != null && cloudId != qId) {
           // 如果雲端 ID 不同於本地 ID，需要更新本地儲存
           // 刪除舊的本地 ID 記錄
@@ -180,18 +186,20 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
         },
       );
 
-      final response = await http.get(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/'));
-      
+      final response = await http.get(Uri.parse(
+          'https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/'));
+
       Navigator.pop(context); // 關閉載入對話框
-      
+
       if (response.statusCode == 200) {
-        final cloudMistakes = (jsonDecode(utf8.decode(response.bodyBytes)) as List)
-            .map((mistake) => Map<String, dynamic>.from(mistake))
-            .toList();
+        final cloudMistakes =
+            (jsonDecode(utf8.decode(response.bodyBytes)) as List)
+                .map((mistake) => Map<String, dynamic>.from(mistake))
+                .toList();
 
         // 開啟Hive box並更新資料
         var box = await Hive.openBox('questionsBox');
-        
+
         for (var cloudMistake in cloudMistakes) {
           await box.put(cloudMistake['id'].toString(), {
             'summary': cloudMistake['summary'] ?? '',
@@ -202,9 +210,11 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
             'answer': cloudMistake['answer'] ?? '',
             'tag': cloudMistake['tag'] ?? '',
             'note': cloudMistake['note'] ?? '', // 給自己的小提醒
-            'created_at': cloudMistake['created_at'] ?? DateTime.now().toIso8601String(),
+            'created_at':
+                cloudMistake['created_at'] ?? DateTime.now().toIso8601String(),
             // 同步時使用新的分離圖片欄位
-            'question_image_base64': cloudMistake['question_image_base64'] ?? '',
+            'question_image_base64':
+                cloudMistake['question_image_base64'] ?? '',
             'answer_image_base64': cloudMistake['answer_image_base64'] ?? '',
             // 保留舊欄位以向後相容
             'image_base64': cloudMistake['question_image_base64'] ?? '',
@@ -241,8 +251,8 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
       _filteredMistakes = _mistakes.where((mistake) {
         bool matchesSearch = _searchQuery.isEmpty ||
             mistake['q_id'].toString().contains(_searchQuery);
-        bool matchesSubject = _selectedSubject == "全部" ||
-            mistake['subject'] == _selectedSubject;
+        bool matchesSubject =
+            _selectedSubject == "全部" || mistake['subject'] == _selectedSubject;
 
         return matchesSearch && matchesSubject;
       }).toList();
@@ -297,7 +307,8 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                         onTap: () => Navigator.pop(context),
                         child: Row(
                           children: [
-                            Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                            Icon(Icons.arrow_back,
+                                color: Colors.white, size: 24),
                             SizedBox(width: 4),
                           ],
                         ),
@@ -318,10 +329,10 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                     ],
                   ),
                 ),
-                
+
                 // Spacer to push content below the image
                 SizedBox(height: 100),
-                
+
                 // Search and filter container with rounded design
                 Container(
                   margin: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -332,10 +343,10 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                         child: Container(
                           height: 45,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(25),
-                            border: Border.all(color: Colors.white.withOpacity(0.1))
-                          ),
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(25),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.1))),
                           child: TextField(
                             onChanged: (value) {
                               setState(() {
@@ -345,12 +356,15 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                             },
                             decoration: InputDecoration(
                               hintText: "依題號搜尋...",
-                              hintStyle: TextStyle(color: Colors.white70, fontSize: 15),
+                              hintStyle: TextStyle(
+                                  color: Colors.white70, fontSize: 15),
                               filled: true,
                               fillColor: Colors.transparent,
                               border: InputBorder.none,
-                              prefixIcon: Icon(Icons.search, color: Colors.white70, size: 20),
-                              contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              prefixIcon: Icon(Icons.search,
+                                  color: Colors.white70, size: 20),
+                              contentPadding:
+                                  EdgeInsets.symmetric(vertical: 12),
                             ),
                             style: TextStyle(color: Colors.white, fontSize: 15),
                           ),
@@ -379,28 +393,34 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                             value: _selectedSubject,
                             borderRadius: BorderRadius.circular(15),
                             dropdownColor: Colors.blue.shade500,
-                            icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+                            icon: Icon(Icons.arrow_drop_down,
+                                color: Colors.white),
                             padding: EdgeInsets.symmetric(horizontal: 4),
-                            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600),
                             items: ["全部", "數學", "國文", "自然", "歷史"]
                                 .map((subject) => DropdownMenuItem<String>(
                                       value: subject,
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Text(subject, style: TextStyle(color: Colors.white)),
+                                          Text(subject,
+                                              style: TextStyle(
+                                                  color: Colors.white)),
                                         ],
                                       ),
                                     ))
                                 .toList(),
                             onChanged: (newValue) {
-                            if (newValue != _selectedSubject) {
-                              setState(() {
-                                _selectedSubject = newValue!;
-                                _filterMistakes();
-                              });
-                            }
-                          },
+                              if (newValue != _selectedSubject) {
+                                setState(() {
+                                  _selectedSubject = newValue!;
+                                  _filterMistakes();
+                                });
+                              }
+                            },
                           ),
                         ),
                       ),
@@ -432,7 +452,8 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.sync, color: Colors.white, size: 20),
+                                  Icon(Icons.sync,
+                                      color: Colors.white, size: 20),
                                   SizedBox(width: 4),
                                   Text(
                                     '同步',
@@ -458,21 +479,28 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     itemCount: _filteredMistakes.length,
                     itemBuilder: (context, index) {
-                      final mistake = _filteredMistakes[_filteredMistakes.length - index - 1];
-                      final Uint8List? imageBytes = mistake['image_base64'] != null && mistake['image_base64'].isNotEmpty
-                          ? base64Decode(mistake['image_base64'])
-                          : null;
-                      final currentDate = mistake['created_at']?.split('T')[0] ?? '';
+                      final mistake = _filteredMistakes[
+                          _filteredMistakes.length - index - 1];
+                      final Uint8List? imageBytes =
+                          mistake['image_base64'] != null &&
+                                  mistake['image_base64'].isNotEmpty
+                              ? base64Decode(mistake['image_base64'])
+                              : null;
+                      final currentDate =
+                          mistake['created_at']?.split('T')[0] ?? '';
                       final nextDate = (index > 0)
-                          ? _filteredMistakes[_filteredMistakes.length - index]['created_at']?.split('T')[0] ?? ''
+                          ? _filteredMistakes[_filteredMistakes.length - index]
+                                      ['created_at']
+                                  ?.split('T')[0] ??
+                              ''
                           : null;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          
                           if (index == 0 || currentDate != nextDate)
                             Padding(
-                              padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, left: 4.0),
+                              padding: const EdgeInsets.only(
+                                  top: 8.0, bottom: 8.0, left: 4.0),
                               child: Text(
                                 currentDate,
                                 style: TextStyle(
@@ -482,7 +510,6 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                 ),
                               ),
                             ),
-                          
                           Container(
                             margin: EdgeInsets.only(bottom: 12, top: 4),
                             decoration: BoxDecoration(
@@ -505,10 +532,11 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                   final refreshNeeded = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => MistakeDetailPage(mistake: mistake),
+                                      builder: (context) =>
+                                          MistakeDetailPage(mistake: mistake),
                                     ),
                                   );
-                                  
+
                                   // If we got back true, refresh the mistakes list
                                   if (refreshNeeded == true) {
                                     //_loadMistakes();
@@ -517,14 +545,18 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                 child: Padding(
                                   padding: EdgeInsets.all(16),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              mistake['description'] ?? mistake['summary'] ?? '無標題',
+                                              mistake['description'] ??
+                                                  mistake['summary'] ??
+                                                  '無標題',
                                               style: TextStyle(
                                                 color: Color(0xFF102031),
                                                 fontSize: 18,
@@ -552,13 +584,13 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                         spacing: 8,
                                         runSpacing: 8,
                                         children: [
-                                          if(mistake['subject'] != '')...[
+                                          if (mistake['subject'] != '') ...[
                                             _buildChipTag(mistake['subject']),
                                           ],
-                                          if(mistake['chapter'] != '')...[
+                                          if (mistake['chapter'] != '') ...[
                                             _buildChipTag(mistake['chapter']),
                                           ],
-                                          if(mistake['tag'] != '')...[
+                                          if (mistake['tag'] != '') ...[
                                             _buildChipTag(mistake['tag']),
                                           ],
                                         ],
@@ -568,7 +600,8 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                       // Check for image_base64 and display image if available
                                       if (imageBytes != null) ...[
                                         ClipRRect(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                           child: Image.memory(
                                             imageBytes,
                                             height: 80,
@@ -580,15 +613,20 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
 
                                       // Image preview from cloud run with better error handling
                                       FutureBuilder(
-                                        future: http.head(Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg')),
+                                        future: http.head(Uri.parse(
+                                            'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg')),
                                         builder: (context, snapshot) {
-                                          if (snapshot.connectionState == ConnectionState.waiting) {
+                                          if (snapshot.connectionState ==
+                                              ConnectionState.waiting) {
                                             return SizedBox.shrink();
-                                          } else if (snapshot.hasError || snapshot.data?.statusCode != 200) {
+                                          } else if (snapshot.hasError ||
+                                              snapshot.data?.statusCode !=
+                                                  200) {
                                             return SizedBox.shrink();
                                           } else {
                                             return ClipRRect(
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                               child: Image.network(
                                                 'https://superb-backend-1041765261654.asia-east1.run.app/static/${mistake['q_id']}.jpg',
                                                 height: 80,
@@ -655,27 +693,27 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
 }
 
 Widget _buildChipTag(String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade100,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            text,
-            style: TextStyle(
-              color: Colors.blue.shade800,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.blue.shade100,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            color: Colors.blue.shade800,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
 class MistakeDetailPage extends StatefulWidget {
   final Map<String, dynamic> mistake;
@@ -687,7 +725,6 @@ class MistakeDetailPage extends StatefulWidget {
 }
 
 class _MistakeDetailPageState extends State<MistakeDetailPage> {
-
   // 刪除確認對話框
   Future<void> _showDeleteConfirmationDialog() async {
     return showDialog<void>(
@@ -759,7 +796,8 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
 
       // 呼叫後端 delete_mistake_book API
       final response = await http.delete(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/$qId'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/mistake-book/$qId'),
       );
 
       Navigator.pop(context); // 關閉載入對話框
@@ -789,7 +827,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
           'answer_image_base64': widget.mistake['answer_image_base64'],
           'is_sync': widget.mistake['is_sync'] ?? false,
         });
-        
+
         throw Exception('雲端刪除失敗：狀態碼 ${response.statusCode}');
       }
     } catch (e) {
@@ -808,11 +846,12 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
     return Scaffold(
       backgroundColor: Color(0xFF102031),
       appBar: AppBar(
-        title: Text('錯題詳情', style: TextStyle(
-          fontSize: 18, 
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-        )),
+        title: Text('錯題詳情',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            )),
         backgroundColor: Color(0xFF102031),
         elevation: 0,
         leading: IconButton(
@@ -831,7 +870,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                   ),
                 ),
               );
-              
+
               if (result == true) {
                 Navigator.pop(context, true);
               }
@@ -839,7 +878,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
             child: Text(
               '編輯',
               style: TextStyle(
-                color: Colors.white, 
+                color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -852,7 +891,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
             child: Text(
               '刪除',
               style: TextStyle(
-                color: Colors.red, 
+                color: Colors.red,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -912,13 +951,16 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            if(widget.mistake['subject'] != null && widget.mistake['subject'] != '')...[
+                            if (widget.mistake['subject'] != null &&
+                                widget.mistake['subject'] != '') ...[
                               _buildChipTag(widget.mistake['subject']),
                             ],
-                            if(widget.mistake['chapter'] != null && widget.mistake['chapter'] != '')...[
+                            if (widget.mistake['chapter'] != null &&
+                                widget.mistake['chapter'] != '') ...[
                               _buildChipTag(widget.mistake['chapter']),
                             ],
-                            if(widget.mistake['tag'] != null && widget.mistake['tag'] != '')...[
+                            if (widget.mistake['tag'] != null &&
+                                widget.mistake['tag'] != '') ...[
                               _buildChipTag(widget.mistake['tag']),
                             ],
                           ],
@@ -936,7 +978,8 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -950,7 +993,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                             ),
                           ),
                           SizedBox(height: 12),
-                          
+
                           // Description text
                           Text(
                             widget.mistake['description'],
@@ -960,16 +1003,18 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                               height: 1.5,
                             ),
                           ),
-                          
+
                           // 題目圖片（從 Hive 讀取）
-                          if (widget.mistake['question_image_base64'] != null && 
-                              widget.mistake['question_image_base64'].isNotEmpty) ...[
+                          if (widget.mistake['question_image_base64'] != null &&
+                              widget.mistake['question_image_base64']
+                                  .isNotEmpty) ...[
                             Container(
                               margin: EdgeInsets.only(top: 16),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: Image.memory(
-                                  base64Decode(widget.mistake['question_image_base64']),
+                                  base64Decode(
+                                      widget.mistake['question_image_base64']),
                                   width: double.infinity,
                                   fit: BoxFit.contain,
                                 ),
@@ -982,7 +1027,8 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                   ],
 
                   // Detailed answer section with local state management
-                  if (widget.mistake['answer'] != null && widget.mistake['answer'].isNotEmpty) ...[
+                  if (widget.mistake['answer'] != null &&
+                      widget.mistake['answer'].isNotEmpty) ...[
                     _DetailedAnswerSection(
                       detailedAnswer: widget.mistake['answer'],
                       answerImageBase64: widget.mistake['answer_image_base64'],
@@ -990,7 +1036,8 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                   ],
 
                   // 給自己的小提醒區域
-                  if (widget.mistake['note'] != null && widget.mistake['note'].isNotEmpty) ...[
+                  if (widget.mistake['note'] != null &&
+                      widget.mistake['note'].isNotEmpty) ...[
                     Container(
                       width: double.infinity,
                       margin: EdgeInsets.only(bottom: 20),
@@ -998,7 +1045,8 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                        border:
+                            Border.all(color: Colors.orange.withOpacity(0.3)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1034,13 +1082,13 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                       ),
                     ),
                   ],
-                  
+
                   // Add extra space at the bottom
                   SizedBox(height: 120),
                 ],
               ),
             ),
-            
+
             // Island image at bottom right - fixed position
             Positioned(
               right: -120,
@@ -1141,7 +1189,7 @@ class _DetailedAnswerSectionState extends State<_DetailedAnswerSection> {
               ],
             ),
           ),
-          
+
           // Content container with animations
           Container(
             clipBehavior: Clip.hardEdge,
@@ -1168,7 +1216,7 @@ class _DetailedAnswerSectionState extends State<_DetailedAnswerSection> {
                       ),
                     ),
                     // 詳解圖片（如果有的話）
-                    if (widget.answerImageBase64 != null && 
+                    if (widget.answerImageBase64 != null &&
                         widget.answerImageBase64!.isNotEmpty) ...[
                       Container(
                         margin: EdgeInsets.only(top: 16),

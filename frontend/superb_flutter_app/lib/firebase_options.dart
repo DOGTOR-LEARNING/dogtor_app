@@ -59,7 +59,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1041765261654',
     projectId: 'dogtor-454402',
     storageBucket: 'dogtor-454402.firebasestorage.app',
-    iosClientId: '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com',
+    iosClientId:
+        '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com',
     iosBundleId: 'com.dogtor.superbFlutterApp',
   );
 
@@ -69,7 +70,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1041765261654',
     projectId: 'dogtor-454402',
     storageBucket: 'dogtor-454402.firebasestorage.app',
-    iosClientId: '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com',
+    iosClientId:
+        '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com',
     iosBundleId: 'com.dogtor.superbFlutterApp',
   );
 
@@ -80,5 +82,4 @@ class DefaultFirebaseOptions {
     projectId: 'dogtor-454402',
     storageBucket: 'dogtor-454402.firebasestorage.app',
   );
-
 }

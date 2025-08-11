@@ -8,7 +8,7 @@ class HeartDisplayWidget extends StatefulWidget {
   final VoidCallback? onTap;
   final double size;
   final bool showCountdown;
-  
+
   const HeartDisplayWidget({
     Key? key,
     this.onTap,
@@ -20,17 +20,17 @@ class HeartDisplayWidget extends StatefulWidget {
   _HeartDisplayWidgetState createState() => _HeartDisplayWidgetState();
 }
 
-class _HeartDisplayWidgetState extends State<HeartDisplayWidget> 
+class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
     with TickerProviderStateMixin {
   int _hearts = 0;
   bool _isLoading = false;
   String? _nextHeartTime;
   Timer? _updateTimer;
   Timer? _countdownTimer;
-  
+
   // 倒數相關變數
   Duration? _remainingTime;
-  
+
   // 動畫控制器
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -40,13 +40,13 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
   @override
   void initState() {
     super.initState();
-    
+
     // 初始化動畫
     _pulseController = AnimationController(
       duration: Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _pulseAnimation = Tween<double>(
       begin: 0.9,
       end: 1.1,
@@ -54,12 +54,12 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
       parent: _pulseController,
       curve: Curves.easeInOut,
     ));
-    
+
     _heartChangeController = AnimationController(
       duration: Duration(milliseconds: 500),
       vsync: this,
     );
-    
+
     _heartChangeAnimation = Tween<double>(
       begin: 1.0,
       end: 1.3,
@@ -67,7 +67,7 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
       parent: _heartChangeController,
       curve: Curves.elasticOut,
     ));
-    
+
     _loadHearts();
     _startUpdateTimer();
   }
@@ -90,7 +90,7 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
 
   void _startCountdownTimer() {
     if (_remainingTime == null || _remainingTime!.inSeconds <= 0) return;
-    
+
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (_remainingTime != null && _remainingTime!.inSeconds > 0) {
@@ -107,7 +107,7 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
 
   Future<void> _loadHearts() async {
     if (_isLoading) return;
-    
+
     setState(() {
       _isLoading = true;
     });
@@ -124,7 +124,8 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
       }
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/hearts/check_heart'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/hearts/check_heart'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -134,20 +135,20 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
         if (data['success']) {
           final newHearts = data['hearts'] as int;
           final nextHeartIn = data['next_heart_in'] as String?;
-          
+
           // 如果心數增加了，播放動畫
           if (newHearts > _hearts && _hearts > 0) {
             _heartChangeController.forward().then((_) {
               _heartChangeController.reverse();
             });
           }
-          
+
           setState(() {
             _hearts = newHearts;
             _nextHeartTime = nextHeartIn;
             _isLoading = false;
           });
-          
+
           // 解析倒數時間
           if (nextHeartIn != null && nextHeartIn.isNotEmpty) {
             _parseAndStartCountdown(nextHeartIn);
@@ -173,13 +174,13 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
         final hours = int.tryParse(parts[0]) ?? 0;
         final minutes = int.tryParse(parts[1]) ?? 0;
         final seconds = int.tryParse(parts[2].split('.')[0]) ?? 0;
-        
+
         _remainingTime = Duration(
           hours: hours,
           minutes: minutes,
           seconds: seconds,
         );
-        
+
         _startCountdownTimer();
       }
     } catch (e) {
@@ -190,11 +191,11 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
 
   String _formatCountdown() {
     if (_remainingTime == null) return '';
-    
+
     final hours = _remainingTime!.inHours;
     final minutes = _remainingTime!.inMinutes % 60;
     final seconds = _remainingTime!.inSeconds % 60;
-    
+
     if (hours > 0) {
       return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     } else {
@@ -277,7 +278,7 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
                 ),
               ],
             ),
-            
+
             // 倒數計時顯示
             if (widget.showCountdown && _remainingTime != null && _hearts < 5)
               Padding(
@@ -335,4 +336,4 @@ class _HeartDisplayWidgetState extends State<HeartDisplayWidget>
       }),
     );
   }
-} 
+}
