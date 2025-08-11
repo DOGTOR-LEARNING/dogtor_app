@@ -1,0 +1,82 @@
+  build-android:
+    name: Build Android
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: frontend/superb_flutter_app
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+    
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+    
+    - name: Install dependencies
+      run: flutter pub get
+    
+    - name: Setup Android signing
+      run: |
+        echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode > android/app/keystore.jks
+        echo "storeFile=keystore.jks" >> android/key.properties
+        echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/key.properties
+        echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}" >> android/key.properties
+        echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/key.properties
+    
+    - name: Build APK
+      run: flutter build apk --release
+    
+    - name: Build App Bundle
+      run: flutter build appbundle --release
+    
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-apk
+        path: frontend/superb_flutter_app/build/app/outputs/flutter-apk/app-release.apk
+    
+    - name: Upload App Bundle
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-aab
+        path: frontend/superb_flutter_app/build/app/outputs/bundle/release/app-release.aab
+
+  deploy-android:
+    name: Deploy to Google Play
+    needs: build-android
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    defaults:
+      run:
+        working-directory: frontend/superb_flutter_app
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download App Bundle
+      uses: actions/download-artifact@v4
+      with:
+        name: release-aab
+        path: frontend/superb_flutter_app/build/app/outputs/bundle/release/
+    
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.2'
+        bundler-cache: true
+        working-directory: frontend/superb_flutter_app
+    
+    - name: Deploy to Google Play
+      run: bundle exec fastlane android deploy
+      env:
+        GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
