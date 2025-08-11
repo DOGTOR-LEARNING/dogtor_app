@@ -2,26 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui'; // 添加這行來引入 ImageFilter
 import 'dart:math'; // 添加這行來引入 pow 函數
-import 'main.dart'; // 引入原來的 AI 問問題頁面
-import 'auth_page.dart'; // Import the AuthPage
+// 引入原來的 AI 問問題頁面
+// Import the AuthPage
 import 'mistake_book_n.dart'; // Import the MistakeBookPage
 // import 'chapter_detail_page.dart';  // 默認深藍色
 import 'chapter_detail_page_n.dart'; // 藍橘配色
 import 'chat_page_s.dart';
 import 'user_profile_page.dart'; // 引入新的用戶中心頁面
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter/rendering.dart';
 import 'user_stats_page.dart'; // Import the UserStatsPage
 import 'friends_page.dart'; // 引入新的好友頁面
 
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedIndex = 1;
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
   String? _userPhotoUrl; // 添加用戶頭像 URL 狀態變量
 
   // 新增：透視相關參數
@@ -43,7 +44,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _currentFocusIndex = 0;
 
   // 追蹤已經看過的島嶼
-  Set<int> _viewedIslands = {};
+  final Set<int> _viewedIslands = {};
 
   @override
   void initState() {
@@ -105,8 +106,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (index == _currentFocusIndex) return true;
 
     // 如果在消失點後面或超出屏幕，不顯示
-    if (zPosition < 0 || _calculateScreenY(zPosition) > _screenHeight + 200)
+    if (zPosition < 0 || _calculateScreenY(zPosition) > _screenHeight + 200) {
       return false;
+    }
 
     // 如果已經看過，且不在視野中心附近，不顯示
     if (_viewedIslands.contains(index) &&
@@ -475,7 +477,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 child: SingleChildScrollView(
                                   controller: _scrollController,
                                   physics: BouncingScrollPhysics(),
-                                  child: Container(
+                                  child: SizedBox(
                                     height: planets.length * 700.0 +
                                         500, // 足夠長的滾動區域
                                     width: 1,
@@ -529,7 +531,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                             _navigateToSubjectPage(
                                                 planet['name']);
                                           },
-                                          child: Container(
+                                          child: SizedBox(
                                             width: islandSize,
                                             height: islandSize,
                                             child: Image.asset(
@@ -560,7 +562,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                     ),
                                   ),
                                 );
-                              }).toList(),
+                              }),
 
                               // 確保底部有足夠的空間，防止與導航欄重疊
                               Container(
@@ -612,7 +614,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 final chatSize = Size(baseWidth * 0.79,
                     baseWidth * 1.11); // 141/179 ≈ 0.79, 199/179 ≈ 1.11
 
-                return Container(
+                return SizedBox(
                   height: baseWidth * 1.41, // 使用最高按鈕的高度
                   child: Stack(
                     clipBehavior: Clip.none, // 允許子元素超出邊界
@@ -702,7 +704,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       Positioned(
                         bottom: baseWidth * 0.1,
                         left: (screenWidth - studySize.width) / 2,
-                        child: Container(
+                        child: SizedBox(
                           width: studySize.width * 1.17,
                           height: studySize.height * 1.17,
                           child: GestureDetector(
@@ -735,7 +737,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       Positioned(
                         bottom: -screenWidth * 0.06,
                         left: 0,
-                        child: Container(
+                        child: SizedBox(
                           width: screenWidth * 1.2,
                           height: baseWidth,
                           child: Image.asset(
@@ -748,7 +750,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       Positioned(
                         right: screenWidth * 0.05,
                         bottom: baseWidth * 0.19,
-                        child: Container(
+                        child: SizedBox(
                           width: chatSize.width * 1.2,
                           height: chatSize.height * 1.2,
                           child: GestureDetector(
@@ -781,7 +783,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       Positioned(
                         left: screenWidth * 0.04,
                         bottom: baseWidth * 0.16,
-                        child: Container(
+                        child: SizedBox(
                           width: questionSize.width * 1.2,
                           height: questionSize.height * 1.2,
                           child: GestureDetector(

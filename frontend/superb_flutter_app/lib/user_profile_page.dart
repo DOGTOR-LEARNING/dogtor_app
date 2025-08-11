@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class UserProfilePage extends StatefulWidget {
+  const UserProfilePage({super.key});
+
   @override
   _UserProfilePageState createState() => _UserProfilePageState();
 }
@@ -200,7 +202,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       print('用戶數據更新成功');
     } catch (e) {
       print('更新用戶數據時出錯: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -716,8 +718,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
               color: Colors.blue.shade50,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.blue.shade700, size: 18),
             alignment: Alignment.center,
+            child: Icon(icon, color: Colors.blue.shade700, size: 18),
           ),
           SizedBox(width: 12),
           Expanded(

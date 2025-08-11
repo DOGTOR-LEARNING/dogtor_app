@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'dart:convert' show utf8;
 import 'package:http/http.dart' as http;
 import 'package:flutter/cupertino.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,7 +17,7 @@ class FriendProfilePage extends StatefulWidget {
   static const Color cardBlue = Color(0xFFECF6F9); // 卡片背景色
   static const Color progressGreen = Color(0xFF4CAF50); // 進度綠色
 
-  const FriendProfilePage({Key? key, required this.friend}) : super(key: key);
+  const FriendProfilePage({super.key, required this.friend});
 
   @override
   _FriendProfilePageState createState() => _FriendProfilePageState();
@@ -406,11 +405,11 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('我知道了'),
             style: TextButton.styleFrom(
               foregroundColor: FriendProfilePage.primaryBlue,
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             ),
+            child: Text('我知道了'),
           ),
         ],
       ),

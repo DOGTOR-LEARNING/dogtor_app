@@ -11,7 +11,7 @@ class AddMistakePage extends StatefulWidget {
   final bool isEditMode;
   final Map<String, dynamic>? mistakeToEdit;
 
-  AddMistakePage({
+  const AddMistakePage({super.key, 
     this.isEditMode = false,
     this.mistakeToEdit,
   });

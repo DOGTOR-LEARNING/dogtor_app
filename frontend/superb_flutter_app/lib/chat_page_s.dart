@@ -11,6 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
+
   @override
   _ChatPageState createState() => _ChatPageState();
 }
@@ -45,7 +47,7 @@ class _ChatPageState extends State<ChatPage> {
 
   // Filter tags with placeholder text
   final List<String> _filterTags = ['選擇年級', '選擇科目', '選擇章節'];
-  List<String> _activeFilters = [];
+  final List<String> _activeFilters = [];
 
   // 年級選項和顯示名稱
   final List<String> _gradeOptions = [
@@ -460,7 +462,9 @@ class _ChatPageState extends State<ChatPage> {
   // Modify sendMessage method to handle single response and include user info
   void sendMessage() async {
     if (_controller.text.isEmpty && _selectedImage == null ||
-        _hasSubmittedQuestion) return;
+        _hasSubmittedQuestion) {
+      return;
+    }
 
     FocusScope.of(context).unfocus();
 

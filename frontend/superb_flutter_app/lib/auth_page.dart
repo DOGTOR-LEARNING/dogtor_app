@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'home_page.dart';
 
 class AuthPage extends StatefulWidget {
+  const AuthPage({super.key});
+
   @override
   _AuthPageState createState() => _AuthPageState();
 }

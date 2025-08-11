@@ -4,11 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'home_page.dart';
 import 'onboarding_chat.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'notification_service.dart';
-import 'dart:io';
 
 class LoginPage extends StatelessWidget {
   // 使用您的 Google 客戶端 ID
@@ -33,6 +31,8 @@ class LoginPage extends StatelessWidget {
   // API 端點，用於檢查和創建用戶
   final String apiUrl =
       'https://superb-backend-1041765261654.asia-east1.run.app';
+
+  LoginPage({super.key});
 
   // 檢查用戶是否已登入
   Future<bool> _checkIfUserIsLoggedIn() async {
@@ -346,8 +346,9 @@ class LoginPage extends StatelessWidget {
           )
         : CircleAvatar(
             // 使用默認頭像
-            child: Icon(Icons.person),
             radius: 30,
+            // 使用默認頭像
+            child: Icon(Icons.person),
           );
   }
 }

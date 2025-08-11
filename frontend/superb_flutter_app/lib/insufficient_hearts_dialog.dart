@@ -17,9 +17,8 @@ class _InsufficientHeartsDialogWidget extends StatefulWidget {
   final Duration? remainingTime;
 
   const _InsufficientHeartsDialogWidget({
-    Key? key,
     this.remainingTime,
-  }) : super(key: key);
+  });
 
   @override
   _InsufficientHeartsDialogWidgetState createState() =>

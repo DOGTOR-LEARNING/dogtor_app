@@ -59,6 +59,8 @@ dependencies:
   connectivity_plus: ^6.0.3
 
 
+  flutter_markdown: any
+  flutter_svg: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

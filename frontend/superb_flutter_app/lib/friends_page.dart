@@ -6,6 +6,8 @@ import 'friend_profile_page.dart';
 import 'battle_prepare_page.dart'; // 啟用對戰準備頁面導入
 
 class FriendsPage extends StatefulWidget {
+  const FriendsPage({super.key});
+
   @override
   _FriendsPageState createState() => _FriendsPageState();
 }
@@ -16,11 +18,11 @@ class _FriendsPageState extends State<FriendsPage>
   String? _userId;
   List<Map<String, dynamic>> _friendsList = [];
   List<Map<String, dynamic>> _pendingRequests = [];
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
   bool _isLoading = true;
-  Map<String, bool> _onlineStatus = {}; // 新增：存儲好友在線狀態
+  final Map<String, bool> _onlineStatus = {}; // 新增：存儲好友在線狀態
 
   // 定義主題顏色
   final Color primaryBlue = Color(0xFF319cb6); // 新的主藍色
@@ -695,6 +697,7 @@ class _FriendsPageState extends State<FriendsPage>
                             friend['photo_url'].isNotEmpty
                         ? NetworkImage(friend['photo_url'])
                         : null,
+                    backgroundColor: primaryBlue,
                     child: friend['photo_url'] == null ||
                             friend['photo_url'].isEmpty
                         ? Text(
@@ -707,7 +710,6 @@ class _FriendsPageState extends State<FriendsPage>
                             ),
                           )
                         : null,
-                    backgroundColor: primaryBlue,
                   ),
                   // 在線狀態指示器
                   Positioned(
@@ -853,11 +855,11 @@ class _FriendsPageState extends State<FriendsPage>
                         request['requester_photo'].isNotEmpty
                     ? NetworkImage(request['requester_photo'])
                     : null,
+                backgroundColor: primaryBlue,
                 child: request['requester_photo'] == null ||
                         request['requester_photo'].isEmpty
                     ? Icon(Icons.person, color: Colors.white, size: 30)
                     : null,
-                backgroundColor: primaryBlue,
               ),
               title: Text(
                 request['requester_name'] ?? '未知用戶',
@@ -1101,6 +1103,7 @@ class _FriendsPageState extends State<FriendsPage>
                                         user['photo_url'].isNotEmpty
                                     ? NetworkImage(user['photo_url'])
                                     : null,
+                                backgroundColor: primaryBlue,
                                 child: user['photo_url'] == null ||
                                         user['photo_url'].isEmpty
                                     ? Text(
@@ -1115,7 +1118,6 @@ class _FriendsPageState extends State<FriendsPage>
                                         ),
                                       )
                                     : null,
-                                backgroundColor: primaryBlue,
                               ),
                               title: Text(
                                 '${user['nickname'] ?? ''}${user['nickname'] != null && user['name'] != null ? ' (' : ''}${user['name'] ?? ''}${user['nickname'] != null && user['name'] != null ? ')' : ''}',
@@ -1348,6 +1350,11 @@ class _FriendsPageState extends State<FriendsPage>
                                                                 user[
                                                                     'user_id']);
                                                           },
+                                                          style: TextButton
+                                                              .styleFrom(
+                                                            foregroundColor:
+                                                                accentOrange,
+                                                          ),
                                                           child: Text(
                                                             '確定',
                                                             style: TextStyle(
@@ -1355,11 +1362,6 @@ class _FriendsPageState extends State<FriendsPage>
                                                                   FontWeight
                                                                       .bold,
                                                             ),
-                                                          ),
-                                                          style: TextButton
-                                                              .styleFrom(
-                                                            foregroundColor:
-                                                                accentOrange,
                                                           ),
                                                         ),
                                                       ],

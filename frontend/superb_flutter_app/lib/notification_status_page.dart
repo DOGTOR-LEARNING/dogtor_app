@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class NotificationStatusPage extends StatefulWidget {
-  const NotificationStatusPage({Key? key}) : super(key: key);
+  const NotificationStatusPage({super.key});
 
   @override
   _NotificationStatusPageState createState() => _NotificationStatusPageState();
@@ -267,10 +267,10 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
                               SizedBox(height: 8),
                               ElevatedButton(
                                 onPressed: _checkNotificationPermission,
-                                child: Text('刷新權限狀態'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Color(0xFF319cb6),
                                 ),
+                                child: Text('刷新權限狀態'),
                               ),
                             ],
                           )
@@ -308,17 +308,17 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
                           children: [
                             ElevatedButton(
                               onPressed: _getCurrentToken,
-                              child: Text('刷新令牌'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF319cb6),
                               ),
+                              child: Text('刷新令牌'),
                             ),
                             ElevatedButton(
                               onPressed: _registerToken,
-                              child: Text('註冊令牌'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFFf59b03),
                               ),
+                              child: Text('註冊令牌'),
                             ),
                           ],
                         ),
@@ -328,17 +328,17 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
                           children: [
                             ElevatedButton(
                               onPressed: _sendTestNotification,
-                              child: Text('發送測試通知'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF4CAF50),
                               ),
+                              child: Text('發送測試通知'),
                             ),
                             ElevatedButton(
                               onPressed: _checkTokensValidity,
-                              child: Text('檢查令牌有效性'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF9C27B0),
                               ),
+                              child: Text('檢查令牌有效性'),
                             ),
                           ],
                         ),

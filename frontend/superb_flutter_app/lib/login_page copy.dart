@@ -23,6 +23,8 @@ class LoginPage extends StatelessWidget {
   final String apiUrl =
       'https://superb-backend-1041765261654.asia-east1.run.app';
 
+  LoginPage({super.key});
+
   // 檢查用戶是否已登入
   Future<bool> _checkIfUserIsLoggedIn() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

@@ -7,6 +7,8 @@ import 'package:hive/hive.dart';
 import 'dart:typed_data';
 
 class MistakeBookPage extends StatefulWidget {
+  const MistakeBookPage({super.key});
+
   @override
   _MistakeBookPageState createState() => _MistakeBookPageState();
 }
@@ -569,7 +571,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
                                           SizedBox(width: 8),
                                           // Stars for difficulty
                                           Text(
-                                            '${'★' * _getDifficultyStars(mistake['difficulty'])}',
+                                            '★' * _getDifficultyStars(mistake['difficulty']),
                                             style: TextStyle(
                                               color: Color(0xFFFFA368),
                                               fontSize: 16,
@@ -718,7 +720,7 @@ Widget _buildChipTag(String text) {
 class MistakeDetailPage extends StatefulWidget {
   final Map<String, dynamic> mistake;
 
-  MistakeDetailPage({required this.mistake});
+  const MistakeDetailPage({super.key, required this.mistake});
 
   @override
   _MistakeDetailPageState createState() => _MistakeDetailPageState();
@@ -899,7 +901,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
           ),
         ],
       ),
-      body: Container(
+      body: SizedBox(
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
         child: Stack(
@@ -937,7 +939,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
                               ),
                             ),
                             Text(
-                              '${'★' * _getDifficultyStars(widget.mistake['difficulty'])}',
+                              '★' * _getDifficultyStars(widget.mistake['difficulty']),
                               style: TextStyle(
                                 color: Color(0xFFFFA368),
                                 fontSize: 16,
@@ -1126,7 +1128,7 @@ class _DetailedAnswerSection extends StatefulWidget {
   final String detailedAnswer;
   final String? answerImageBase64;
 
-  _DetailedAnswerSection({
+  const _DetailedAnswerSection({
     required this.detailedAnswer,
     this.answerImageBase64,
   });

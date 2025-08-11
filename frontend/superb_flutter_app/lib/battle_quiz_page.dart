@@ -13,13 +13,13 @@ class BattleQuizPage extends StatefulWidget {
   final String subject;
 
   const BattleQuizPage({
-    Key? key,
+    super.key,
     required this.battleId,
     required this.opponentName,
     this.opponentPhotoUrl,
     required this.chapter,
     required this.subject,
-  }) : super(key: key);
+  });
 
   @override
   _BattleQuizPageState createState() => _BattleQuizPageState();

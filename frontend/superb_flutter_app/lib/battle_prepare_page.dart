@@ -10,11 +10,11 @@ class BattlePreparePage extends StatefulWidget {
   final String? opponentPhotoUrl;
 
   const BattlePreparePage({
-    Key? key,
+    super.key,
     required this.opponentId,
     required this.opponentName,
     this.opponentPhotoUrl,
-  }) : super(key: key);
+  });
 
   @override
   _BattlePreparePageState createState() => _BattlePreparePageState();
@@ -96,8 +96,7 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'https://superb-backend-1041765261654.asia-east1.run.app/quiz/random_chapter' +
-                (selectedSubject != null ? '?subject=$selectedSubject' : '')),
+            'https://superb-backend-1041765261654.asia-east1.run.app/quiz/random_chapter${selectedSubject != null ? '?subject=$selectedSubject' : ''}'),
         headers: {'Accept': 'application/json; charset=utf-8'},
       );
 
@@ -560,7 +559,7 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
   Widget _buildStartBattleButton() {
     final canStart = selectedSubject != null && selectedChapter != null;
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: 56,
       child: ElevatedButton(

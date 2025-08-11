@@ -10,11 +10,11 @@ class HeartDisplayWidget extends StatefulWidget {
   final bool showCountdown;
 
   const HeartDisplayWidget({
-    Key? key,
+    super.key,
     this.onTap,
     this.size = 40.0,
     this.showCountdown = true,
-  }) : super(key: key);
+  });
 
   @override
   _HeartDisplayWidgetState createState() => _HeartDisplayWidgetState();

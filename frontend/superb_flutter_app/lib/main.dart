@@ -1,13 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
-import 'package:markdown/markdown.dart' as md;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'home_page.dart';
 import 'auth_page.dart';
 import 'mistake_book_n.dart';
@@ -17,15 +9,10 @@ import 'onboarding_chat.dart';
 import 'login_page.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'notification_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,6 +75,8 @@ Future<void> main() async {
 // MyApp: 應用程序的根組件
 // 負責設置應用的整體主題、顏色方案和字體樣式
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

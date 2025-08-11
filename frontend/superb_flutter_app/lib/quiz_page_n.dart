@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert' show utf8;
-import 'dart:convert' show latin1;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -15,12 +12,12 @@ class QuizPage extends StatefulWidget {
   final String levelNum;
 
   const QuizPage({
-    Key? key,
+    super.key,
     required this.chapter,
     required this.section,
     required this.knowledgePoints,
     required this.levelNum,
-  }) : super(key: key);
+  });
 
   @override
   _QuizPageState createState() => _QuizPageState();
@@ -41,7 +38,7 @@ class _QuizPageState extends State<QuizPage>
   late Animation<double> _animation;
 
   // 修改 _errorController 的聲明，移除 final 關鍵字
-  TextEditingController _errorController = TextEditingController();
+  final TextEditingController _errorController = TextEditingController();
 
   // 打字機動畫相關
   String _displayedQuestion = "";
@@ -55,7 +52,7 @@ class _QuizPageState extends State<QuizPage>
   // AI 分析相關
   bool _isAnalyzing = false;
   String _aiAnalysis = "";
-  List<Map<String, dynamic>> _answerHistory = []; // 記錄答題歷史
+  final List<Map<String, dynamic>> _answerHistory = []; // 記錄答題歷史
 
   // 修改 UI 風格，使其與 chat_page_s.dart 一致
 
@@ -621,7 +618,7 @@ class _QuizPageState extends State<QuizPage>
               ),
               SizedBox(height: 8),
               Text(
-                '${correctAnswersCount}/${questions.length} 題答對',
+                '$correctAnswersCount/${questions.length} 題答對',
                 style: _textStyle(
                     color: const Color.fromARGB(255, 28, 49, 88), fontSize: 16),
               ),
@@ -731,7 +728,7 @@ class _QuizPageState extends State<QuizPage>
               ),
             ],
           ),
-          content: Container(
+          content: SizedBox(
             width: double.maxFinite,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1053,7 +1050,7 @@ class _QuizPageState extends State<QuizPage>
         backgroundColor: primaryColor,
         elevation: 0,
         title: Text(
-          '${widget.section}',
+          widget.section,
           style: _textStyle(
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
         ),
@@ -1418,7 +1415,7 @@ class _QuizPageState extends State<QuizPage>
                                                                     255,
                                                                     37,
                                                                     37,
-                                                                    37)!,
+                                                                    37),
                                                                 width: 1),
                                                         tableColumnWidth:
                                                             const FlexColumnWidth(

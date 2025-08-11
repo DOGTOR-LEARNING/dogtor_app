@@ -7,7 +7,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserStatsPage extends StatefulWidget {
-  const UserStatsPage({Key? key}) : super(key: key);
+  const UserStatsPage({super.key});
 
   @override
   _UserStatsPageState createState() => _UserStatsPageState();
@@ -937,18 +937,20 @@ class _UserStatsPageState extends State<UserStatsPage>
                             sideTitles: SideTitles(
                               showTitles: true,
                               getTitlesWidget: (double value, TitleMeta meta) {
-                                if (value == 0)
+                                if (value == 0) {
                                   return const Text('0',
                                       style: TextStyle(
                                           color: Colors.white70,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 10));
-                                if (value % 2 == 0)
+                                }
+                                if (value % 2 == 0) {
                                   return Text(value.toInt().toString(),
                                       style: const TextStyle(
                                           color: Colors.white70,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 10));
+                                }
                                 return const Text('');
                               },
                               reservedSize: 30,
@@ -1691,7 +1693,7 @@ class _UserStatsPageState extends State<UserStatsPage>
             ),
           ],
         ),
-        content: Container(
+        content: SizedBox(
           width: double.maxFinite,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1749,7 +1751,7 @@ class _UserStatsPageState extends State<UserStatsPage>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
+          SizedBox(
             width: 70,
             child: Text(
               day,
@@ -2468,7 +2470,7 @@ class _UserStatsPageState extends State<UserStatsPage>
                             Expanded(
                               flex: 2,
                               child: Text(
-                                '${correctAttempts}/${totalAttempts}題',
+                                '$correctAttempts/$totalAttempts題',
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 14,
@@ -2499,7 +2501,7 @@ class _UserStatsPageState extends State<UserStatsPage>
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),
@@ -2640,7 +2642,7 @@ class _UserStatsPageState extends State<UserStatsPage>
                                           style:
                                               TextStyle(color: Colors.white)),
                                     ))
-                                .toList(),
+                                ,
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -2697,7 +2699,7 @@ class _UserStatsPageState extends State<UserStatsPage>
                                           style:
                                               TextStyle(color: Colors.white)),
                                     ))
-                                .toList(),
+                                ,
                           ],
                           onChanged: (value) {
                             setState(() {

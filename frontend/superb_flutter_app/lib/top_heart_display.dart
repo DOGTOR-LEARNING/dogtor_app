@@ -9,10 +9,10 @@ class TopHeartDisplay extends StatefulWidget {
   final Function(Duration?)? onInsufficientHearts; // 當心數不足時的回調，傳遞剩餘時間
 
   const TopHeartDisplay({
-    Key? key,
+    super.key,
     this.onTap,
     this.onInsufficientHearts,
-  }) : super(key: key);
+  });
 
   @override
   _TopHeartDisplayState createState() => _TopHeartDisplayState();

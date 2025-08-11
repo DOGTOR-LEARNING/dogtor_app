@@ -9,6 +9,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
 class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
+
   @override
   _ChatPageState createState() => _ChatPageState();
 }
@@ -280,9 +282,9 @@ class _ChatPageState extends State<ChatPage> {
 
   void _submitQuestion(String difficulty) async {
     try {
-      String q_id = DateTime.now().millisecondsSinceEpoch.toString();
+      String qId = DateTime.now().millisecondsSinceEpoch.toString();
       Map<String, dynamic> requestBody = {
-        "q_id": q_id,
+        "q_id": qId,
         "subject": _selectedSubject,
         "chapter": _selectedItem,
         "description": _controller.text,
@@ -459,7 +461,7 @@ class _ChatPageState extends State<ChatPage> {
                           ),
                         ),
                       ),
-                      Container(
+                      SizedBox(
                         height: 56,
                         child: ElevatedButton(
                           onPressed: sendMessage,

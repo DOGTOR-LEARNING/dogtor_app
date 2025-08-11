@@ -10,7 +10,7 @@ class ChapterDetailPage extends StatefulWidget {
   final String subject;
   final String csvPath;
 
-  ChapterDetailPage({required this.subject, required this.csvPath});
+  const ChapterDetailPage({super.key, required this.subject, required this.csvPath});
 
   @override
   _ChapterDetailPageState createState() => _ChapterDetailPageState();
@@ -45,7 +45,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage>
 
   // 動畫控制器q
   late AnimationController _animationController;
-  Map<String, Animation<double>> _animations = {};
+  final Map<String, Animation<double>> _animations = {};
 
   // 滾動控制器
   late ScrollController _scrollController;
@@ -561,7 +561,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage>
                       controller: _scrollController, // 使用滾動控制器
                       padding: EdgeInsets.all(16),
                       itemCount:
-                          sections.length > 0 ? getUniqueChapters().length : 0,
+                          sections.isNotEmpty ? getUniqueChapters().length : 0,
                       itemBuilder: (context, index) {
                         final chapterName = getUniqueChapters()[index];
                         final isExpanded =
@@ -572,7 +572,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage>
                             _getChapterYearGrade(chapterName);
                         final currentBook = _getChapterBook(chapterName);
                         final String gradeBookKey =
-                            '${currentYearGrade}_${currentBook}';
+                            '${currentYearGrade}_$currentBook';
                         final bool isGradeBookExpanded =
                             expandedGradeBooks[gradeBookKey] ?? true;
 

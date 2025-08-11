@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui'; // 添加這行來引入 ImageFilter
-import 'main.dart'; // 引入原來的 AI 問問題頁面
-import 'auth_page.dart'; // Import the AuthPage
+// 引入原來的 AI 問問題頁面
+// Import the AuthPage
 import 'mistake_book_n.dart'; // Import the MistakeBookPage
 import 'dart:math';
 // import 'chapter_detail_page.dart';  // 默認深藍色
@@ -10,17 +10,16 @@ import 'chapter_detail_page_n.dart'; // 藍橘配色
 import 'chat_page_s.dart';
 import 'user_profile_page.dart'; // 引入新的用戶中心頁面
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter/rendering.dart';
 import 'user_stats_page.dart'; // Import the UserStatsPage
 import 'friends_page.dart'; // 引入新的好友頁面
 import 'notification_status_page.dart'; // Import the NotificationStatusPage
 import 'heart_display_widget.dart'; // 引入新的生命樹組件
-import 'insufficient_hearts_dialog.dart'; // 引入生命不足對話框
+// 引入生命不足對話框
 
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -506,7 +505,7 @@ class _UnifiedSeaLayerState extends State<_UnifiedSeaLayer> {
               child: SingleChildScrollView(
                 controller: widget.scrollController,
                 physics: ClampingScrollPhysics(),
-                child: Container(
+                child: SizedBox(
                   height: MediaQuery.of(context).size.height *
                       2.1, // Fixed large container
                   child: Stack(
@@ -576,7 +575,7 @@ class _BottomNavBar extends StatelessWidget {
     final chatSize = Size(
         baseWidth * 0.79, baseWidth * 1.11); // 141/179 ≈ 0.79, 199/179 ≈ 1.11
 
-    return Container(
+    return SizedBox(
       height: baseWidth * 1.41, // 使用最高按鈕的高度
       child: Stack(
         clipBehavior: Clip.none, // 允許子元素超出邊界
@@ -726,7 +725,7 @@ class _BottomNavBar extends StatelessWidget {
           Positioned(
             bottom: -screenWidth * 0.06,
             left: 0,
-            child: Container(
+            child: SizedBox(
               width: screenWidth * 1.2,
               height: baseWidth,
               child: Image.asset(
@@ -740,7 +739,7 @@ class _BottomNavBar extends StatelessWidget {
           Positioned(
             left: screenWidth * 0.04,
             bottom: baseWidth * 0.16,
-            child: Container(
+            child: SizedBox(
               width: questionSize.width * 1.2,
               height: questionSize.height * 1.2,
               child: GestureDetector(
@@ -774,7 +773,7 @@ class _BottomNavBar extends StatelessWidget {
           Positioned(
             right: screenWidth * 0.05,
             bottom: baseWidth * 0.19,
-            child: Container(
+            child: SizedBox(
               width: chatSize.width * 1.2,
               height: chatSize.height * 1.2,
               child: GestureDetector(
@@ -808,7 +807,7 @@ class _BottomNavBar extends StatelessWidget {
           Positioned(
             bottom: baseWidth * 0.1,
             left: (screenWidth - studySize.width) / 2,
-            child: Container(
+            child: SizedBox(
               width: studySize.width * 1.17,
               height: studySize.height * 1.17,
               child: GestureDetector(
@@ -986,7 +985,7 @@ class IslandItem extends StatelessWidget {
                   ),
                 ),
               );
-            }).toList(),
+            }),
 
             // Render island with curved vertical positioning
             Positioned(
