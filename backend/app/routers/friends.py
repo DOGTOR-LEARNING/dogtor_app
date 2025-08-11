@@ -211,7 +211,7 @@ async def search_users(request: SearchUsersRequest):
             LIMIT 20
             """
             search_pattern = f"%{request.search_term}%"
-            cursor.execute(sql, (search_pattern, search_pattern, search_pattern, request.current_user_id))
+            cursor.execute(sql, (search_pattern, search_pattern, search_pattern, search_pattern, request.current_user_id))
             users = cursor.fetchall()
             
             # 檢查每個用戶的好友狀態

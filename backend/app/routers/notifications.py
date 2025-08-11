@@ -155,6 +155,7 @@ async def send_learning_reminder(request: LearningReminderRequest):
             success_count = 0
             for token_record in tokens:
                 token = token_record['token']
+                print(f"發送愛心恢復提醒到 token: {token}")
                 result = send_push_notification(token, title, body)
                 if result != "error":
                     success_count += 1
@@ -200,7 +201,7 @@ async def cron_push_heart_reminder():
             total_sent = 0
 
             for token in full_heart_tokens:
-
+                print(f"發送愛心恢復提醒到 token: {token}")
                 title = "體力已回滿！"
                 body = "快來 Dogtor 答題吧 ⚔️"
                 
@@ -488,6 +489,7 @@ async def cron_push_learning_reminder():
                 user_id = record['user_id']
                 token = record['token']
                 name = record['name'] or "同學"
+                print(f"發送學習提醒到用戶 {user_id} (token: {token})")
 
                 # 檢查 12 小時內是否已發送過學習提醒，避免重複推播
                 cursor.execute("""
