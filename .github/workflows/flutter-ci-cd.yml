@@ -73,11 +73,11 @@ jobs:
         bundler-cache: true
         working-directory: frontend/superb_flutter_app
 
-    #- name: Upgrade lockfile to Bundler 2
-    #  working-directory: frontend/superb_flutter_app
-    #  run: |
-    #    gem install bundler -v 2.7.1
-    #    bundle _2.7.1_ update --bundler
+    - name: Upgrade lockfile to Bundler 2
+      working-directory: frontend/superb_flutter_app
+      run: |
+        gem install bundler -v 2.7.1
+        bundle _2.7.1_ update --bundler
 
     #- name: Bundle install
     #  working-directory: frontend/superb_flutter_app
