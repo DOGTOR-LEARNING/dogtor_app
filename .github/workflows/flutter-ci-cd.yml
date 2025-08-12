@@ -14,7 +14,6 @@ on:
 
 env:
   FLUTTER_VERSION: '3.32.8'
-  FASTLANE_USER: ${{ vars.FASTLANE_USER }}
 
 jobs:
   test:
@@ -63,33 +62,43 @@ jobs:
         flutter-version: ${{ env.FLUTTER_VERSION }}
         cache: true
     
-    - name: Install dependencies
-      run: |
-        flutter pub get
-        cd ios
-        pod install
+    - name: Install Flutter dependencies
+      run: flutter pub get
     
-    - name: Check Flutter and CocoaPods versions
-      run: |
-        flutter --version
-        pod --version
-
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.2'
+        bundler-cache: true
+        working-directory: frontend/superb_flutter_app
+    
+    - name: Install Fastlane dependencies
+      run: bundle install
+      working-directory: frontend/superb_flutter_app/ios
+    
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: '15.2'
     
-    - name: Build iOS (no signing)
-      run: flutter build ios --release --no-codesign
+    - name: Build iOS with Fastlane (with signing)
+      run: bundle exec fastlane ios build
+      working-directory: frontend/superb_flutter_app/ios
+      env:
+        MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+        FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
     
-    - name: Upload iOS build
+    - name: Upload iOS build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ios-build
-        path: frontend/superb_flutter_app/build/ios/iphoneos/Runner.app
+        path: |
+          frontend/superb_flutter_app/ios/build/Runner.ipa
+          frontend/superb_flutter_app/ios/build/Runner.app.dSYM.zip
 
-  deploy-ios:
-    name: Deploy to App Store
+  deploy-testflight:
+    name: Deploy to TestFlight
     needs: build-ios
     runs-on: macos-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -106,7 +115,7 @@ jobs:
         flutter-version: ${{ env.FLUTTER_VERSION }}
         cache: true
     
-    - name: Install dependencies
+    - name: Install Flutter dependencies
       run: flutter pub get
     
     - name: Setup Ruby
@@ -116,8 +125,56 @@ jobs:
         bundler-cache: true
         working-directory: frontend/superb_flutter_app
     
-    - name: Deploy to App Store
-      run: bundle exec fastlane ios deploy
+    - name: Install Fastlane dependencies
+      run: bundle install
+      working-directory: frontend/superb_flutter_app/ios
+    
+    - name: Deploy to TestFlight
+      run: bundle exec fastlane ios beta
+      working-directory: frontend/superb_flutter_app/ios
       env:
         MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+        FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+        APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+
+  deploy-appstore:
+    name: Deploy to App Store
+    needs: build-ios
+    runs-on: macos-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, '[release]')
+    defaults:
+      run:
+        working-directory: frontend/superb_flutter_app
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+    
+    - name: Install Flutter dependencies
+      run: flutter pub get
+    
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.2'
+        bundler-cache: true
+        working-directory: frontend/superb_flutter_app
+    
+    - name: Install Fastlane dependencies
+      run: bundle install
+      working-directory: frontend/superb_flutter_app/ios
+    
+    - name: Deploy to App Store
+      run: bundle exec fastlane ios deploy
+      working-directory: frontend/superb_flutter_app/ios
+      env:
+        MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+        FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
         APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
