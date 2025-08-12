@@ -2,13 +2,15 @@ name: Flutter CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
     paths:
       - 'frontend/superb_flutter_app/**'
+      - '.github/workflows/flutter-ci-cd.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'frontend/superb_flutter_app/**'
+      - '.github/workflows/flutter-ci-cd.yml'
 
 env:
   FLUTTER_VERSION: '3.32.8'

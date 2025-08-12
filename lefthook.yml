@@ -1,0 +1,53 @@
+# Lefthook 配置檔案
+min_version: 1.5.0
+
+pre-commit:
+  parallel: true
+  commands:
+    # Flutter 格式化檢查
+    flutter-format:
+      glob: "frontend/superb_flutter_app/**/*.dart"
+      run: cd frontend/superb_flutter_app && dart format --output=none --set-exit-if-changed {staged_files}
+      stage_fixed: true
+    
+    # Flutter 分析
+    flutter-analyze:
+      glob: "frontend/superb_flutter_app/**/*.dart"
+      run: cd frontend/superb_flutter_app && flutter analyze --no-fatal-infos --no-fatal-warnings
+      
+    # Python 格式化檢查
+    python-format:
+      glob: "backend/**/*.py"
+      run: cd backend && python -m black --check --diff {staged_files}
+      
+    # Python lint 檢查
+    python-lint:
+      glob: "backend/**/*.py"
+      run: cd backend && python -m flake8 {staged_files}
+
+#pre-push:
+#  parallel: true
+#  commands:
+#    # Flutter 測試
+#    flutter-test:
+#      glob: "frontend/superb_flutter_app/**/*.dart"
+#      run: cd frontend/superb_flutter_app && flutter test
+#
+#    # Python 測試
+#    python-test:
+#      glob: "backend/**/*.py"
+#      run: cd backend && python -m pytest
+
+commit-msg:
+  commands:
+    # 檢查 commit message 格式
+    commitlint:
+      run: echo "{1}" | npx commitlint --verbose
+
+# 跳過特定檔案
+skip_output:
+  - meta
+  - execution_info
+
+# 設定執行環境
+source_dir: "."
