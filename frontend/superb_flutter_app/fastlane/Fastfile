@@ -1,3 +1,5 @@
+require 'logger'
+
 default_platform(:ios)
 
 platform :ios do
