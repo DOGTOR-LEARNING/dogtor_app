@@ -64,8 +64,16 @@ jobs:
         cache: true
     
     - name: Install dependencies
-      run: flutter pub get
+      run: |
+        flutter pub get
+        cd ios
+        pod install
     
+    - name: Check Flutter and CocoaPods versions
+      run: |
+        flutter --version
+        pod --version
+
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:

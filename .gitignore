@@ -5,23 +5,63 @@ venv/
 .env.local
 *.pyc
 sql-key.json
+
+# macOS
+.DS_Store
 /backend/.DS_Store
-/frontend/.DS_Storefrontend/superb_flutter_app/ios/build/
+/frontend/.DS_Store
+
+# Flutter build outputs
 /frontend/superb_flutter_app/build/
-/frontend/superb_flutter_app/ios
+
+# CocoaPods generated files
+/frontend/superb_flutter_app/ios/Pods/
+/frontend/superb_flutter_app/ios/build/
+/frontend/superb_flutter_app/macos/Pods/
+
+# Flutter generated files
+/frontend/superb_flutter_app/ios/Flutter/Flutter-Generated.xcconfig
+/frontend/superb_flutter_app/ios/Flutter/flutter_export_environment.sh
+
+# Xcode user settings
+/frontend/superb_flutter_app/ios/Runner.xcworkspace/xcuserdata/
+/frontend/superb_flutter_app/ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+/frontend/superb_flutter_app/ios/Runner.xcodeproj/xcuserdata/
+
+# iOS Fastlane
+/frontend/superb_flutter_app/ios/fastlane/report.xml
+/frontend/superb_flutter_app/ios/fastlane/Preview.html
+
+# Additional iOS files
+/frontend/superb_flutter_app/ios/Runner.app.dSYM.zip
+/frontend/superb_flutter_app/ios/Runner.ipa
 
 /frontend/superb_flutter_app/macos/Pods/
 
+# Backend specific
 /backend/agent/tools/mdb/hphy_mdbs/
 
-# Machine Learning Models (now managed by Git LFS)
-# *.pt  - tracked by LFS
-# *.mdb - tracked by LFS
+# Machine Learning Models (managed by Git LFS)
+# Note: *.pt and *.mdb are tracked by LFS, not ignored
 *.pt
 *.mdb
 
-# Flutter generated
+# Flutter generated (global patterns)
 **/ephemeral/
 **/flutter_export_environment.sh
 **/Flutter-Generated.xcconfig
+
+# Node.js dependencies (for commitlint)
+node_modules/
+package-lock.json
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
 
