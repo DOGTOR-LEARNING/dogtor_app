@@ -12,7 +12,9 @@ platform :ios do
     # 設置 Flutter 環境
     sh("flutter", "clean")
     sh("flutter", "pub", "get")
-    sh("pod", "install")
+    Dir.chdir("ios") do
+      sh("pod", "install")
+    end
     
     # 下載匹配的證書和描述檔案
     match(
