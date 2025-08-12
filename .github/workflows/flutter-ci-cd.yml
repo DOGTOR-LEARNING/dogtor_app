@@ -71,20 +71,21 @@ jobs:
         ruby-version: '3.2'
         bundler: 'latest'
         bundler-cache: true
+        working-directory: frontend/superb_flutter_app
 
-    - name: Upgrade lockfile to Bundler 2
-      working-directory: frontend/superb_flutter_app
-      run: |
-        gem install bundler -v 2.7.1
-        bundle _2.7.1_ update --bundler
+    #- name: Upgrade lockfile to Bundler 2
+    #  working-directory: frontend/superb_flutter_app
+    #  run: |
+    #    gem install bundler -v 2.7.1
+    #    bundle _2.7.1_ update --bundler
 
-    - name: Bundle install
-      working-directory: frontend/superb_flutter_app
-      run: bundle _2.7.1_ install --jobs 4
+    #- name: Bundle install
+    #  working-directory: frontend/superb_flutter_app
+    #  run: bundle install --jobs 4 #bundle _2.7.1_ install --jobs 4
     
     - name: Install Fastlane dependencies
       run: bundle install
-      working-directory: frontend/superb_flutter_app/ios
+      working-directory: frontend/superb_flutter_app
     
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
@@ -93,7 +94,7 @@ jobs:
     
     - name: Build iOS with Fastlane (with signing)
       run: bundle exec fastlane ios build
-      working-directory: frontend/superb_flutter_app/ios
+      working-directory: frontend/superb_flutter_app
       env:
         MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
         FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
@@ -135,13 +136,13 @@ jobs:
         bundler-cache: true
         working-directory: frontend/superb_flutter_app
     
-    - name: Install Fastlane dependencies
-      run: bundle install
-      working-directory: frontend/superb_flutter_app/ios
+    #- name: Install Fastlane dependencies
+    #  run: bundle install
+    #  working-directory: frontend/superb_flutter_app
     
     - name: Deploy to TestFlight
       run: bundle exec fastlane ios beta
-      working-directory: frontend/superb_flutter_app/ios
+      working-directory: frontend/superb_flutter_app
       env:
         MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
         FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
@@ -176,13 +177,13 @@ jobs:
         bundler-cache: true
         working-directory: frontend/superb_flutter_app
     
-    - name: Install Fastlane dependencies
-      run: bundle install
-      working-directory: frontend/superb_flutter_app/ios
+    #- name: Install Fastlane dependencies
+    #  run: bundle install
+    #  working-directory: frontend/superb_flutter_app
     
     - name: Deploy to App Store
       run: bundle exec fastlane ios deploy
-      working-directory: frontend/superb_flutter_app/ios
+      working-directory: frontend/superb_flutter_app
       env:
         MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
         FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
