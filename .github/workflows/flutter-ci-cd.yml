@@ -84,7 +84,7 @@ jobs:
     #  run: bundle install --jobs 4 #bundle _2.7.1_ install --jobs 4
     
     - name: Install Fastlane dependencies
-      run: bundle install
+      run: bundle _2.7.1_ install --jobs 4
       working-directory: frontend/superb_flutter_app
     
     - name: Setup Xcode
