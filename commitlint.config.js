@@ -18,6 +18,8 @@ module.exports = {
       ]
     ],
     'subject-max-length': [2, 'always', 100],
-    'header-max-length': [2, 'always', 100]
+    'header-max-length': [2, 'always', 100],
+    'subject-empty': [2, 'never'], // 禁止主題為空
+    'type-empty': [2, 'never']    // 禁止類型為空
   }
 };

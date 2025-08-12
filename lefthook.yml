@@ -42,7 +42,7 @@ commit-msg:
   commands:
     # 檢查 commit message 格式
     commitlint:
-      run: echo "{1}" | npx commitlint --verbose
+      run: npx commitlint --edit {1}
 
 # 跳過特定檔案
 skip_output:
