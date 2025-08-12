@@ -12,7 +12,7 @@ platform :ios do
     # 設置 Flutter 環境
     sh("flutter", "clean")
     sh("flutter", "pub", "get")
-    Dir.chdir("ios") do
+    Dir.chdir("/Users/bowen/superb_app/frontend/superb_flutter_app/ios") do
       sh("pod", "install")
     end
     
