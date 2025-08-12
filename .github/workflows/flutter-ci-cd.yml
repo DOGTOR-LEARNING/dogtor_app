@@ -64,14 +64,23 @@ jobs:
     
     - name: Install Flutter dependencies
       run: flutter pub get
-    
+        
     - name: Setup Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '2.6.10'
-        bundler: 'latest'
-        bundler-cache: true
-        working-directory: frontend/superb_flutter_app
+        ruby-version: '3.2'
+        bundler: '2.7.1'
+        bundler-cache: false   # 先不要自動 bundle
+
+    - name: Upgrade lockfile to Bundler 2
+      working-directory: frontend/superb_flutter_app
+      run: |
+        gem install bundler -v 2.7.1
+        bundle _2.7.1_ update --bundler
+
+    - name: Bundle install
+      working-directory: frontend/superb_flutter_app
+      run: bundle _2.7.1_ install --jobs 4
     
     - name: Install Fastlane dependencies
       run: bundle install
