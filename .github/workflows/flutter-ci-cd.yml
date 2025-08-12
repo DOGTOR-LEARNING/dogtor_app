@@ -71,7 +71,7 @@ jobs:
         ruby-version: '3.2'
         bundler: 'latest'
         bundler-cache: true
-        working-directory: frontend/superb_flutter_app
+        #working-directory: frontend/superb_flutter_app
 
     - name: Upgrade lockfile to Bundler 2
       working-directory: frontend/superb_flutter_app
@@ -84,8 +84,8 @@ jobs:
     #  run: bundle install --jobs 4 #bundle _2.7.1_ install --jobs 4
     
     - name: Install Fastlane dependencies
-      run: bundle _2.7.1_ install --jobs 4
       working-directory: frontend/superb_flutter_app
+      run: bundle _2.7.1_ install --jobs 4
     
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
