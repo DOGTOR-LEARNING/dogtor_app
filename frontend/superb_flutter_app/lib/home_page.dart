@@ -307,11 +307,19 @@ class _BaseSeaSkyLayer extends StatelessWidget {
       children: [
         Expanded(
           flex: 1,
-          child: Container(color: Color(0xFFB3E5FC)), // Sky blue
+          child: Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/home-background-sky.png'),
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+              ),
+            ),
+          ),
         ),
         Expanded(
           flex: 3,
-          child: Container(color: Color(0xFF1976D2)), // Ocean blue
+          child: Container(color: Color.fromARGB(255, 4, 91, 178)), // Ocean blue
         ),
       ],
     );
@@ -321,42 +329,54 @@ class _BaseSeaSkyLayer extends StatelessWidget {
 class _HorizonShimmerLayer extends StatelessWidget {
   final AnimationController animation;
   const _HorizonShimmerLayer({required this.animation});
+
   @override
   Widget build(BuildContext context) {
-    final List<Color> shimmerColors = [
-      Colors.white.withOpacity(0.4),
-      Colors.blueAccent.withOpacity(0.4),
-      Colors.lightBlueAccent.withOpacity(0.4),
-    ];
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, child) {
-        final double t = animation.value;
-        List<Widget> shimmers = [];
-        for (int i = 0; i < 3; i++) {
-          final double shimmerHeight = 200 + i * 13;
-          final double shimmerWidth = MediaQuery.of(context).size.width * 1.5;
-          final double y = i * 25 + 20 * sin(2 * pi * t + i)-100;
-          final double x = 20 * sin(2 * pi * t + i * 1.5);
-          shimmers.add(Positioned(
-            top: y,
-            left: (MediaQuery.of(context).size.width - shimmerWidth) / 2 + x,
-            child: Opacity(
-              opacity: 0.6 - i * 0.1,
-              child: CustomPaint(
-                size: Size(shimmerWidth, shimmerHeight),
-                painter: WaveShimmerPainter(
-                  color: shimmerColors[i],
-                  animationValue: t + i * 0.3,
-                  waveCount: 3 + i,
-                  amplitude: 15 - i * 3,
+    // Natural vertical gradient around the horizon that fades into the ocean
+    const double horizonBandHeight = 220;
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          // Fill the entire sea area with a vertical gradient that fades to transparent at the bottom
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.05, 0.1, 0.35, 1.0],
+                  colors: [
+                    const Color.fromARGB(0, 255, 240, 192).withOpacity(0.35),
+                    const Color.fromARGB(0, 254, 252, 216).withOpacity(0.25),
+                    const Color.fromARGB(0, 250, 237, 164).withOpacity(0.15),
+                    Colors.transparent,
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
-          ));
-        }
-        return Stack(children: shimmers);
-      },
+          ),
+          // Subtle highlight at the horizon line
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 4,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.white.withOpacity(0.65),
+                    Colors.white.withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
