@@ -46,12 +46,12 @@ platform :ios do
     )
     
     # 綁定 Release 組態的 Provisioning Profile
-    # update_project_provisioning(
-    #  xcodeproj: "ios/Runner.xcodeproj",
-    #  target_filter: "Runner",
-    #  build_configuration: "Release",
-    #  profile: PROF
-    #)
+    update_project_provisioning(
+      xcodeproj: "ios/Runner.xcodeproj",
+      target_filter: "Runner",
+      build_configuration: "Release",
+      profile: "match Development com.dogtor.superbFlutterApp"
+    )
     
     # 構建應用
     build_app(
@@ -59,14 +59,14 @@ platform :ios do
       scheme: "Runner",
       configuration: "Release",
       export_method: "development",
-      export_options: { 
-        provisioningProfiles: { BUNDLE => PROF } 
-      },
+      #export_options: { 
+      #  provisioningProfiles: { BUNDLE => PROF } 
+      #},
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
+        # "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'" # Avoid affecting other third-party plugins 
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
