@@ -50,7 +50,8 @@ platform :ios do
       xcodeproj: "ios/Runner.xcodeproj",
       target_filter: "Runner",
       build_configuration: "Release",
-      profile: "match Development com.dogtor.superbFlutterApp"
+      # 建議：直接省略 profile，會用 SIGH_PROFILE_PATH 的預設
+      # profile: lane_context[SharedValues::SIGH_PROFILE_PATH]
     )
     
     # 構建應用
