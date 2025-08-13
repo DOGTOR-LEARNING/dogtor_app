@@ -83,6 +83,10 @@ platform :ios do
       #export_options: { 
       #  provisioningProfiles: { BUNDLE => PROF } 
       #},
+      export_options: {
+        signingStyle: "manual"
+        # 不加 provisioningProfiles
+      }
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
