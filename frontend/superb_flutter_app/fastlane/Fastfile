@@ -46,13 +46,13 @@ platform :ios do
     )
     
     # 綁定 Release 組態的 Provisioning Profile
-    update_project_provisioning(
-      xcodeproj: "ios/Runner.xcodeproj",
-      target_filter: "Runner",
-      build_configuration: "Release",
-      # 建議：直接省略 profile，會用 SIGH_PROFILE_PATH 預設
-      # profile: lane_context[SharedValues::SIGH_PROFILE_PATH]
-    )
+    # update_project_provisioning(
+    #   xcodeproj: "ios/Runner.xcodeproj",
+    #   target_filter: "Runner",
+    #   build_configuration: "Release",
+    #   # 建議：直接省略 profile，會用 SIGH_PROFILE_PATH 預設
+    #   # profile: lane_context[SharedValues::SIGH_PROFILE_PATH]
+    # )
     
     # 構建應用
     build_app(
@@ -67,7 +67,7 @@ platform :ios do
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        # "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'" # Avoid affecting other third-party plugins 
+        "PROVISIONING_PROFILE_SPECIFIER='match Development #{BUNDLE}'" # Avoid affecting other third-party plugins 
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
