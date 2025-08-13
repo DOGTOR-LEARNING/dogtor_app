@@ -5,7 +5,7 @@ platform :ios do
     ENV["FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT"] = "120"
   end
 
-  desc "Build iOS app with code signing for CI"
+  desc "Build iOS app with manual code signing for CI"
   lane :build do
     setup_ci if ENV['CI']
     
@@ -44,9 +44,9 @@ platform :ios do
       output_name: "Runner.ipa",
       include_symbols: true,
       # 把旗標塞進 xcodebuild
-      xcodebuild_command: "xcodebuild -allowProvisioningUpdates",
-      export_xcargs: "-allowProvisioningUpdates",
-      #include_bitcode: false
+      # xcodebuild_command: "xcodebuild -allowProvisioningUpdates",
+      # export_xcargs: "-allowProvisioningUpdates",
+      # include_bitcode: false
     )
     
     UI.success("✅ iOS build completed successfully!")

@@ -6,6 +6,10 @@ storage_mode("git")
 
 type("development") # The default type, can be: appstore, adhoc, enterprise or development
 
+app_identifier("com.dogtor.superbFlutterApp")  # 與 project.pbxproj 中的 PRODUCT_BUNDLE_IDENTIFIER 一致
+username("dogtor.love.learning@gmail.com")          # 替換為你的 Apple ID
+team_id("623TA8PLPU")
+
 # app_identifier(["tools.fastlane.app", "tools.fastlane.app2"])
 # username("user@fastlane.tools") # Your Apple Developer Portal username
 
