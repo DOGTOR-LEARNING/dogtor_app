@@ -19,8 +19,10 @@ platform :ios do
 
     # 2) CocoaPods（在 ios 目錄底下）
     cocoapods(
+      podfile: "ios/Podfile",
       try_repo_update_on_error: true,
-      project_directory: "ios"
+      clean_install: true,   # 等同 pod install --clean-install（避免殘留）
+      repo_update: false     # 需要時才設 true；與 try_repo_update_on_error 互斥
     )
     
     # 下載匹配的證書和描述檔案
