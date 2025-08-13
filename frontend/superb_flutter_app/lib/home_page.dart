@@ -318,7 +318,8 @@ class _BaseSeaSkyLayer extends StatelessWidget {
         ),
         Expanded(
           flex: 3,
-          child: Container(color: Color.fromARGB(255, 4, 91, 178)), // Ocean blue
+          child:
+              Container(color: Color.fromARGB(255, 4, 91, 178)), // Ocean blue
         ),
       ],
     );
