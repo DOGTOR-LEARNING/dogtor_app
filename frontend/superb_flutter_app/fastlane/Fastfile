@@ -29,6 +29,7 @@ platform :ios do
     match(
       type: "development",
       readonly: true,
+      api_key: ENV['APP_STORE_CONNECT_API_KEY'], # 從環境變數讀取
       clone_branch_directly: true
     )
 
