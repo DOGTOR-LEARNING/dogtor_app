@@ -43,7 +43,9 @@ platform :ios do
       output_directory: "./build",
       output_name: "Runner.ipa",
       include_symbols: true,
-      allowProvisioningUpdates: true
+      # 把旗標塞進 xcodebuild
+      xcodebuild_command: "xcodebuild -allowProvisioningUpdates",
+      export_xcargs: "-allowProvisioningUpdates",
       #include_bitcode: false
     )
     
