@@ -31,6 +31,8 @@ platform :ios do
       readonly: true,
       clone_branch_directly: true
     )
+
+
     
     # 構建應用
     build_app(
@@ -41,6 +43,7 @@ platform :ios do
       output_directory: "./build",
       output_name: "Runner.ipa",
       include_symbols: true,
+      allowProvisioningUpdates: true
       #include_bitcode: false
     )
     
