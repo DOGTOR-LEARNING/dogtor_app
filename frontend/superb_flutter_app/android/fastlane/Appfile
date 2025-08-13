@@ -1,0 +1,2 @@
+json_key_file("") # Google Play Console API JSON 密鑰檔案路徑，在 CI/CD 中會通過環境變數設置
+package_name("com.example.superb_flutter_app") # 請替換為你的實際包名

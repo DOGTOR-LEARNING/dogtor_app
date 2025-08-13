@@ -34,7 +34,7 @@ async def get_friends(user_id: str):
         friends = cursor.fetchall()
         
         return {
-            "status": "success",
+            "success": True,
             "friends": friends
         }
     
@@ -69,14 +69,14 @@ async def get_friend_requests(user_id: str):
             requests = cursor.fetchall()
             
         return {
-            "status": "success",
+            "success": True,
             "requests": requests
         }
         
     except Exception as e:
         print(f"獲取好友請求時出錯: {str(e)}")
         return {
-            "status": "error",
+            "success": False,
             "message": "無法獲取好友請求"
         }
     finally:
@@ -108,11 +108,11 @@ async def send_friend_request(request: FriendRequest):
         if existing:
             status = existing['status']
             if status == 'accepted':
-                return {"status": "error", "message": "已經是好友了"}
+                return StandardResponse(success=False, message="已經是好友了")
             elif status == 'blocked':
-                return {"status": "error", "message": "無法發送好友請求"}
+                return StandardResponse(success=False, message="無法發送好友請求")
             elif status == 'pending':
-                return {"status": "error", "message": "好友請求已存在，等待對方回應"}
+                return StandardResponse(success=False, message="好友請求已存在，等待對方回應")
             else:
                 # 如果是被拒絕狀態，可以重新發送請求
                 update_query = """
@@ -123,7 +123,7 @@ async def send_friend_request(request: FriendRequest):
                 """
                 cursor.execute(update_query, (existing['id'],))
                 connection.commit()
-                return {"status": "success", "message": "好友請求已重新發送"}
+                return StandardResponse(success=True, message="好友請求已重新發送")
         
         # 創建新的好友請求
         insert_query = """
@@ -133,7 +133,7 @@ async def send_friend_request(request: FriendRequest):
         cursor.execute(insert_query, (request.requester_id, request.addressee_id))
         connection.commit()
         
-        return {"status": "success", "message": "好友請求已發送"}
+        return StandardResponse(success=True, message="好友請求已發送")
     
     except Exception as e:
         print(f"[send_friend_request] Error: {e}")
@@ -161,10 +161,7 @@ async def respond_friend_request(response: FriendResponse):
         cursor.execute(update_query, (response.status, response.request_id))
         connection.commit()
         
-        return {
-            "status": "success",
-            "message": "好友請求已更新"
-        }
+        return StandardResponse(success=True, message="好友請求已更新")
         
     
     except Exception as e:
@@ -206,12 +203,12 @@ async def search_users(request: SearchUsersRequest):
             sql = """
             SELECT user_id, name, nickname, photo_url, year_grade, introduction
             FROM users 
-            WHERE (name LIKE %s OR nickname LIKE %s OR user_id LIKE %s)
+            WHERE (name LIKE %s OR nickname LIKE %s OR user_id LIKE %s OR email LIKE %s)
             AND user_id != %s
             LIMIT 20
             """
-            search_pattern = f"%{request.query}%"
-            cursor.execute(sql, (search_pattern, search_pattern, search_pattern, request.current_user_id))
+            search_pattern = f"%{request.search_term}%"
+            cursor.execute(sql, (search_pattern, search_pattern, search_pattern, search_pattern, request.current_user_id))
             users = cursor.fetchall()
             
             # 檢查每個用戶的好友狀態
@@ -248,7 +245,7 @@ async def search_users(request: SearchUsersRequest):
                     user['friend_status'] = 'none'
         
         return {
-            "status": "success", 
+            "success": True, 
             "users": users
         }
     

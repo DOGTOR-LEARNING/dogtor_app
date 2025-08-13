@@ -10,11 +10,11 @@ class BattlePreparePage extends StatefulWidget {
   final String? opponentPhotoUrl;
 
   const BattlePreparePage({
-    Key? key,
+    super.key,
     required this.opponentId,
     required this.opponentName,
     this.opponentPhotoUrl,
-  }) : super(key: key);
+  });
 
   @override
   _BattlePreparePageState createState() => _BattlePreparePageState();
@@ -44,7 +44,8 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
   Future<void> _loadSubjects() async {
     try {
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/quiz/subjects'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/quiz/subjects'),
         headers: {'Accept': 'application/json; charset=utf-8'},
       );
 
@@ -68,7 +69,8 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
   Future<void> _loadChapters(String subject) async {
     try {
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/quiz/chapters/$subject'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/quiz/chapters/$subject'),
         headers: {'Accept': 'application/json; charset=utf-8'},
       );
 
@@ -90,11 +92,11 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
     setState(() {
       isLoading = true;
     });
-    
+
     try {
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/quiz/random_chapter' +
-            (selectedSubject != null ? '?subject=$selectedSubject' : '')),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/quiz/random_chapter${selectedSubject != null ? '?subject=$selectedSubject' : ''}'),
         headers: {'Accept': 'application/json; charset=utf-8'},
       );
 
@@ -124,7 +126,8 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
               ),
               backgroundColor: primaryBlue,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           );
         } else {
@@ -179,7 +182,8 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
       }
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/battle/start'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/battle/start'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'challenger_id': userId,
@@ -209,7 +213,7 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
 
           // 短暫延遲後跳轉
           await Future.delayed(Duration(milliseconds: 1500));
-          
+
           // 跳轉到對戰頁面
           Navigator.pushReplacement(
             context,
@@ -401,7 +405,7 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
 
   Widget _buildChapterSelection() {
     final chapters = chaptersBySubject[selectedSubject!] ?? [];
-    
+
     if (chapters.isEmpty) {
       return Container(
         padding: EdgeInsets.all(20),
@@ -451,13 +455,15 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
                     color: isSelected ? accentOrange : Colors.grey.shade300,
                     width: 2,
                   ),
-                  boxShadow: isSelected ? [
-                    BoxShadow(
-                      color: accentOrange.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ] : [],
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: accentOrange.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ]
+                      : [],
                 ),
                 child: Text(
                   chapter,
@@ -552,8 +558,8 @@ class _BattlePreparePageState extends State<BattlePreparePage> {
 
   Widget _buildStartBattleButton() {
     final canStart = selectedSubject != null && selectedChapter != null;
-    
-    return Container(
+
+    return SizedBox(
       width: double.infinity,
       height: 56,
       child: ElevatedButton(

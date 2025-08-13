@@ -1,0 +1,69 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Deploy iOS app to App Store"
+  lane :deploy do
+    setup_ci if ENV['CI']
+    
+    # 同步憑證
+    match(type: "appstore", readonly: true)
+    
+    # 建構 iOS app
+    build_app(
+      workspace: "ios/Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+      configuration: "Release"
+    )
+    
+    # 上傳到 App Store Connect
+    upload_to_app_store(
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: false
+    )
+  end
+
+  desc "Build iOS app for testing"
+  lane :beta do
+    setup_ci if ENV['CI']
+    
+    match(type: "adhoc", readonly: true)
+    
+    build_app(
+      workspace: "ios/Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "ad-hoc",
+      configuration: "Release"
+    )
+    
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true
+    )
+  end
+end
+
+platform :android do
+  desc "Deploy Android app to Google Play"
+  lane :deploy do
+    # 上傳到 Google Play Console
+    upload_to_play_store(
+      aab: "build/app/outputs/bundle/release/app-release.aab",
+      track: "internal",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Build and deploy to Google Play Beta"
+  lane :beta do
+    upload_to_play_store(
+      aab: "build/app/outputs/bundle/release/app-release.aab",
+      track: "beta",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end

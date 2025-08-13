@@ -1,42 +1,53 @@
-# EXAMPLE USAGE:
+# Lefthook 配置檔案
+min_version: 1.5.0
+
+pre-commit:
+  parallel: true
+  commands:
+    # Flutter 格式化檢查
+    flutter-format:
+      glob: "frontend/superb_flutter_app/**/*.dart"
+      run: cd frontend/superb_flutter_app && dart format --output=none --set-exit-if-changed {staged_files}
+      stage_fixed: true
+    
+    # Flutter 分析
+    flutter-analyze:
+      glob: "frontend/superb_flutter_app/**/*.dart"
+      run: cd frontend/superb_flutter_app && flutter analyze --no-fatal-infos --no-fatal-warnings
+      
+    # Python 格式化檢查
+    python-format:
+      glob: "backend/**/*.py"
+      run: cd backend && python -m black --check --diff {staged_files}
+      
+    # Python lint 檢查
+    python-lint:
+      glob: "backend/**/*.py"
+      run: cd backend && python -m flake8 {staged_files}
+
+#pre-push:
+#  parallel: true
+#  commands:
+#    # Flutter 測試
+#    flutter-test:
+#      glob: "frontend/superb_flutter_app/**/*.dart"
+#      run: cd frontend/superb_flutter_app && flutter test
 #
-#   Refer for explanation to following link:
-#   https://lefthook.dev/configuration/
-#
-# pre-push:
-#   jobs:
-#     - name: packages audit
-#       tags:
-#         - frontend
-#         - security
-#       run: yarn audit
-#
-#     - name: gems audit
-#       tags:
-#         - backend
-#         - security
-#       run: bundle audit
-#
-# pre-commit:
-#   parallel: true
-#   jobs:
-#     - run: yarn eslint {staged_files}
-#       glob: "*.{js,ts,jsx,tsx}"
-#
-#     - name: rubocop
-#       glob: "*.rb"
-#       exclude:
-#         - config/application.rb
-#         - config/routes.rb
-#       run: bundle exec rubocop --force-exclusion {all_files}
-#
-#     - name: govet
-#       files: git ls-files -m
-#       glob: "*.go"
-#       run: go vet {files}
-#
-#     - script: "hello.js"
-#       runner: node
-#
-#     - script: "hello.go"
-#       runner: go run
+#    # Python 測試
+#    python-test:
+#      glob: "backend/**/*.py"
+#      run: cd backend && python -m pytest
+
+commit-msg:
+  commands:
+    # 檢查 commit message 格式
+    commitlint:
+      run: npx commitlint --edit {1}
+
+# 跳過特定檔案
+skip_output:
+  - meta
+  - execution_info
+
+# 設定執行環境
+source_dir: "."

@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class UserProfilePage extends StatefulWidget {
+  const UserProfilePage({super.key});
+
   @override
   _UserProfilePageState createState() => _UserProfilePageState();
 }
@@ -24,7 +26,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   final TextEditingController _introductionController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController();
-  
+
   // 頭像選項
   final List<String> _avatarOptions = [
     "https://storage.googleapis.com/dogtor_asset/a-cute-capybara-.png",
@@ -37,14 +39,40 @@ class _UserProfilePageState extends State<UserProfilePage> {
     "https://storage.googleapis.com/dogtor_asset/a-pigwit.png",
     "https://storage.googleapis.com/dogtor_asset/a-sea-otter.png"
   ];
-  
+
   // 年級選項
-  final List<String> _gradeOptions = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'teacher', 'parent'];
+  final List<String> _gradeOptions = [
+    'G1',
+    'G2',
+    'G3',
+    'G4',
+    'G5',
+    'G6',
+    'G7',
+    'G8',
+    'G9',
+    'G10',
+    'G11',
+    'G12',
+    'teacher',
+    'parent'
+  ];
   // 年級顯示名稱
   final Map<String, String> _gradeDisplayNames = {
-    'G1': '小一', 'G2': '小二', 'G3': '小三', 'G4': '小四', 'G5': '小五', 'G6': '小六',
-    'G7': '國一', 'G8': '國二', 'G9': '國三', 'G10': '高一', 'G11': '高二', 'G12': '高三',
-    'teacher': '老師', 'parent': '家長'
+    'G1': '小一',
+    'G2': '小二',
+    'G3': '小三',
+    'G4': '小四',
+    'G5': '小五',
+    'G6': '小六',
+    'G7': '國一',
+    'G8': '國二',
+    'G9': '國三',
+    'G10': '高一',
+    'G11': '高二',
+    'G12': '高三',
+    'teacher': '老師',
+    'parent': '家長'
   };
 
   @override
@@ -65,13 +93,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
     try {
       print("開始加載用戶數據...");
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      
+
       // 輸出所有保存的鍵值對，用於調試
       print("SharedPreferences 中的所有鍵：${prefs.getKeys()}");
       prefs.getKeys().forEach((key) {
         print("$key: ${prefs.get(key)}");
       });
-      
+
       setState(() {
         _userId = prefs.getString('user_id') ?? 'USER-0000';
         _email = prefs.getString('email') ?? 'example@email.com';
@@ -80,12 +108,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _introduction = prefs.getString('introduction') ?? '這個人很懶，什麼都沒有留下...';
         _nickname = prefs.getString('nickname') ?? '';
         _yearGrade = prefs.getString('year_grade') ?? 'G10'; // 預設高一
-        
+
         _introductionController.text = _introduction;
         _nicknameController.text = _nickname;
-        
+
         _isLoading = false;
-        
+
         print("加載的用戶數據：");
         print("用戶 ID: $_userId");
         print("電子郵件: $_email");
@@ -106,10 +134,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _introduction = '這是一個測試用戶的自我介紹...';
         _nickname = '測試暱稱';
         _yearGrade = 'G10';
-        
+
         _introductionController.text = _introduction;
         _nicknameController.text = _nickname;
-        
+
         _isLoading = false;
       });
     }
@@ -119,7 +147,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<void> _saveUserData() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      
+
       // 保存到本地
       await prefs.setString('introduction', _introductionController.text);
       await prefs.setString('nickname', _nicknameController.text);
@@ -127,7 +155,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       if (_photoUrl.isNotEmpty) {
         await prefs.setString('photo_url', _photoUrl);
       }
-      
+
       // 更新 UI
       setState(() {
         _introduction = _introductionController.text;
@@ -136,10 +164,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _isEditingNickname = false;
         _isEditingYearGrade = false;
       });
-      
+
       // 保存到後端
       await _updateUserInBackend();
-      
     } catch (e) {
       print("保存用戶數據時出錯: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -152,7 +179,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<void> _updateUserInBackend() async {
     try {
       final response = await http.put(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/users/$_userId'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/users/$_userId'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'user_id': _userId,
@@ -164,17 +192,17 @@ class _UserProfilePageState extends State<UserProfilePage> {
           'introduction': _introduction
         }),
       );
-      
+
       if (response.statusCode != 200) {
         print('更新用戶數據失敗: ${response.statusCode}');
         print('響應內容: ${response.body}');
         throw Exception('更新用戶數據失敗');
       }
-      
+
       print('用戶數據更新成功');
     } catch (e) {
       print('更新用戶數據時出錯: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -235,26 +263,34 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     final grade = _gradeOptions[index];
                     final displayName = _gradeDisplayNames[grade] ?? grade;
                     final isSelected = _yearGrade == grade;
-                    
+
                     return Container(
                       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.blue.shade400 : Colors.blue.shade50,
+                        color: isSelected
+                            ? Colors.blue.shade400
+                            : Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: isSelected ? [
-                          BoxShadow(
-                            color: Colors.blue.shade200.withOpacity(0.5),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ] : null,
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: Colors.blue.shade200.withOpacity(0.5),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ]
+                            : null,
                       ),
                       child: ListTile(
                         title: Text(
                           displayName,
                           style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.blue.shade800,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected
+                                ? Colors.white
+                                : Colors.blue.shade800,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                         selected: isSelected,
@@ -322,7 +358,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   itemBuilder: (context, index) {
                     final avatarUrl = _avatarOptions[index];
                     final isSelected = _photoUrl == avatarUrl;
-                    
+
                     return GestureDetector(
                       onTap: () {
                         setState(() {
@@ -335,7 +371,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isSelected ? Colors.blue.shade600 : Colors.transparent,
+                            color: isSelected
+                                ? Colors.blue.shade600
+                                : Colors.transparent,
                             width: 3,
                           ),
                           boxShadow: [
@@ -369,7 +407,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     print("Email: $_email");
     print("Introduction: $_introduction");
     print("User ID: $_userId");
-    
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -414,7 +452,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                     : null,
                               ),
                               child: _photoUrl.isEmpty
-                                  ? Icon(Icons.person, size: 80, color: Colors.grey.shade400)
+                                  ? Icon(Icons.person,
+                                      size: 80, color: Colors.grey.shade400)
                                   : null,
                             ),
                             Positioned(
@@ -425,7 +464,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                 decoration: BoxDecoration(
                                   color: Colors.blue.shade500,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
+                                  border:
+                                      Border.all(color: Colors.white, width: 2),
                                 ),
                                 child: GestureDetector(
                                   onTap: _showAvatarSelector,
@@ -441,7 +481,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                       ),
                       SizedBox(height: 20),
-                      
+
                       // 用戶名稱
                       Center(
                         child: Text(
@@ -454,14 +494,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                       ),
                       SizedBox(height: 10),
-                      
+
                       // 用戶身份標籤
                       Center(
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 15, vertical: 5),
                               decoration: BoxDecoration(
                                 color: Colors.blue.shade100,
                                 borderRadius: BorderRadius.circular(20),
@@ -477,7 +518,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             if (_nickname.isNotEmpty) SizedBox(width: 8),
                             if (_nickname.isNotEmpty)
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 15, vertical: 5),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.shade100,
                                   borderRadius: BorderRadius.circular(20),
@@ -494,7 +536,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                       ),
                       SizedBox(height: 30),
-                      
+
                       // 用戶信息卡片
                       Container(
                         width: double.infinity,
@@ -517,11 +559,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             // 電子郵件
                             _buildInfoRow(Icons.email, '電子郵件', _email),
                             Divider(),
-                            
+
                             // 年級
                             _buildInfoRow(
-                              Icons.school, 
-                              '年級', 
+                              Icons.school,
+                              '年級',
                               _gradeDisplayNames[_yearGrade] ?? _yearGrade,
                               isEditable: true,
                               onEdit: () {
@@ -532,11 +574,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                               },
                             ),
                             Divider(),
-                            
+
                             // 暱稱
                             _buildInfoRow(
-                              Icons.person_pin, 
-                              '暱稱', 
+                              Icons.person_pin,
+                              '暱稱',
                               _nickname.isEmpty ? '尚未設置暱稱' : _nickname,
                               isEditable: true,
                               isEditingState: _isEditingNickname,
@@ -551,18 +593,19 @@ class _UserProfilePageState extends State<UserProfilePage> {
                               },
                             ),
                             Divider(),
-                            
+
                             // 自我介紹
                             _buildInfoRow(
-                              Icons.person_outline, 
-                              '自我介紹 (50字內)', 
+                              Icons.person_outline,
+                              '自我介紹 (50字內)',
                               _introduction,
                               isEditable: true,
                               isEditingState: _isEditingIntroduction,
                               textController: _introductionController,
                               onEdit: () {
                                 setState(() {
-                                  _isEditingIntroduction = !_isEditingIntroduction;
+                                  _isEditingIntroduction =
+                                      !_isEditingIntroduction;
                                   if (!_isEditingIntroduction) {
                                     _saveUserData();
                                   }
@@ -574,7 +617,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                       ),
                       SizedBox(height: 100), // 增加底部高度，避免被保存按鈕遮擋
-                      
+
                       // 登出按鈕
                       Center(
                         child: ElevatedButton(
@@ -582,7 +625,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red.shade400,
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 15),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -600,7 +644,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     ],
                   ),
                 ),
-                
+
                 // 懸浮的保存按鈕（當正在編輯時顯示）
                 if (_isEditingNickname || _isEditingIntroduction)
                   Positioned(
@@ -625,7 +669,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue.shade600,
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 15),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -652,17 +697,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   // 構建信息行的輔助方法
   Widget _buildInfoRow(
-    IconData icon, 
-    String label, 
-    String value, 
-    {
-      bool isEditable = false,
-      bool isEditingState = false,
-      TextEditingController? textController,
-      VoidCallback? onEdit,
-      int? maxLength,
-    }
-  ) {
+    IconData icon,
+    String label,
+    String value, {
+    bool isEditable = false,
+    bool isEditingState = false,
+    TextEditingController? textController,
+    VoidCallback? onEdit,
+    int? maxLength,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -675,8 +718,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
               color: Colors.blue.shade50,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.blue.shade700, size: 18),
             alignment: Alignment.center,
+            child: Icon(icon, color: Colors.blue.shade700, size: 18),
           ),
           SizedBox(width: 12),
           Expanded(
@@ -698,7 +741,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     if (isEditable && onEdit != null)
                       Container(
                         decoration: BoxDecoration(
-                          color: isEditingState ? Colors.green.shade100 : Colors.blue.shade50,
+                          color: isEditingState
+                              ? Colors.green.shade100
+                              : Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: IconButton(
@@ -707,7 +752,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           icon: Icon(
                             isEditingState ? Icons.check : Icons.edit,
                             size: 20,
-                            color: isEditingState ? Colors.green.shade700 : Colors.blue.shade700,
+                            color: isEditingState
+                                ? Colors.green.shade700
+                                : Colors.blue.shade700,
                           ),
                           onPressed: onEdit,
                         ),
@@ -727,12 +774,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         fontSize: 16,
                       ),
                       decoration: InputDecoration(
-                        hintText: label.contains('暱稱') ? '請輸入暱稱' : '請輸入自我介紹（50字內）',
+                        hintText:
+                            label.contains('暱稱') ? '請輸入暱稱' : '請輸入自我介紹（50字內）',
                         hintStyle: TextStyle(
                           color: Colors.grey,
                           fontSize: 16,
                         ),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         filled: true,
                         fillColor: Colors.grey.shade50,
                         border: OutlineInputBorder(
@@ -741,7 +790,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.blue.shade400, width: 2),
+                          borderSide:
+                              BorderSide(color: Colors.blue.shade400, width: 2),
                         ),
                       ),
                     ),

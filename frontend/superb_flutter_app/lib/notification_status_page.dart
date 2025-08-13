@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class NotificationStatusPage extends StatefulWidget {
-  const NotificationStatusPage({Key? key}) : super(key: key);
+  const NotificationStatusPage({super.key});
 
   @override
   _NotificationStatusPageState createState() => _NotificationStatusPageState();
@@ -38,7 +38,7 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
     try {
       final settings = await _messaging.getNotificationSettings();
       final status = settings.authorizationStatus;
-      
+
       setState(() {
         _notificationStatus = {
           'authorizationStatus': status.toString(),
@@ -87,7 +87,8 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
     try {
       final user = _auth.currentUser!;
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/notifications/register_token'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/notifications/register_token'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'user_id': user.uid,
@@ -136,7 +137,8 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
     try {
       final user = _auth.currentUser!;
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/validate_tokens'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/validate_tokens'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'user_id': user.uid,
@@ -145,17 +147,19 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        
+
         if (jsonData['success'] == true) {
           setState(() {
-            _validTokens = List<Map<String, dynamic>>.from(jsonData['valid_tokens'] ?? []);
-            _invalidTokens = List<Map<String, dynamic>>.from(jsonData['invalid_tokens'] ?? []);
+            _validTokens =
+                List<Map<String, dynamic>>.from(jsonData['valid_tokens'] ?? []);
+            _invalidTokens = List<Map<String, dynamic>>.from(
+                jsonData['invalid_tokens'] ?? []);
           });
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(
-              '令牌驗證完成：有效 ${jsonData['valid_tokens_count']}，無效 ${jsonData['invalid_tokens_count']}'
-            )),
+            SnackBar(
+                content: Text(
+                    '令牌驗證完成：有效 ${jsonData['valid_tokens_count']}，無效 ${jsonData['invalid_tokens_count']}')),
           );
         } else {
           throw Exception(jsonData['message'] ?? '驗證令牌失敗');
@@ -192,7 +196,8 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/notifications/send_test_push'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/notifications/send_test_push'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'token': _currentToken,
@@ -204,11 +209,10 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(
-            jsonData['success'] == true 
-                ? '測試通知已發送，請查看通知欄' 
-                : '測試通知發送失敗：${jsonData['message']}'
-          )),
+          SnackBar(
+              content: Text(jsonData['success'] == true
+                  ? '測試通知已發送，請查看通知欄'
+                  : '測試通知發送失敗：${jsonData['message']}')),
         );
       } else {
         throw Exception('發送測試通知失敗：狀態碼 ${response.statusCode}');
@@ -248,18 +252,25 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
                         ? Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildStatusItem('授權狀態', _notificationStatus!['authorizationStatus']),
-                              _buildStatusItem('是否已授權', _notificationStatus!['isAuthorized'].toString()),
-                              _buildStatusItem('顯示通知', _notificationStatus!['showAlert']),
-                              _buildStatusItem('顯示角標', _notificationStatus!['showBadge']),
-                              _buildStatusItem('播放聲音', _notificationStatus!['showSound']),
+                              _buildStatusItem('授權狀態',
+                                  _notificationStatus!['authorizationStatus']),
+                              _buildStatusItem(
+                                  '是否已授權',
+                                  _notificationStatus!['isAuthorized']
+                                      .toString()),
+                              _buildStatusItem(
+                                  '顯示通知', _notificationStatus!['showAlert']),
+                              _buildStatusItem(
+                                  '顯示角標', _notificationStatus!['showBadge']),
+                              _buildStatusItem(
+                                  '播放聲音', _notificationStatus!['showSound']),
                               SizedBox(height: 8),
                               ElevatedButton(
                                 onPressed: _checkNotificationPermission,
-                                child: Text('刷新權限狀態'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Color(0xFF319cb6),
                                 ),
+                                child: Text('刷新權限狀態'),
                               ),
                             ],
                           )
@@ -297,17 +308,17 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
                           children: [
                             ElevatedButton(
                               onPressed: _getCurrentToken,
-                              child: Text('刷新令牌'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF319cb6),
                               ),
+                              child: Text('刷新令牌'),
                             ),
                             ElevatedButton(
                               onPressed: _registerToken,
-                              child: Text('註冊令牌'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFFf59b03),
                               ),
+                              child: Text('註冊令牌'),
                             ),
                           ],
                         ),
@@ -317,17 +328,17 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
                           children: [
                             ElevatedButton(
                               onPressed: _sendTestNotification,
-                              child: Text('發送測試通知'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF4CAF50),
                               ),
+                              child: Text('發送測試通知'),
                             ),
                             ElevatedButton(
                               onPressed: _checkTokensValidity,
-                              child: Text('檢查令牌有效性'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF9C27B0),
                               ),
+                              child: Text('檢查令牌有效性'),
                             ),
                           ],
                         ),
@@ -346,15 +357,16 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
                         children: _validTokens.map((token) {
                           return ListTile(
                             title: Text('${token['token_prefix']}...'),
-                            subtitle: Text('上次更新: ${token['last_updated'] ?? '未知'}'),
-                            leading: Icon(Icons.check_circle, color: Colors.green),
+                            subtitle:
+                                Text('上次更新: ${token['last_updated'] ?? '未知'}'),
+                            leading:
+                                Icon(Icons.check_circle, color: Colors.green),
                           );
                         }).toList(),
                       ),
                     ),
 
-                  if (_invalidTokens.isNotEmpty)
-                    SizedBox(height: 16),
+                  if (_invalidTokens.isNotEmpty) SizedBox(height: 16),
 
                   // 無效令牌列表
                   if (_invalidTokens.isNotEmpty)
@@ -371,8 +383,7 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
                       ),
                     ),
 
-                  if (_errorMessage != null)
-                    SizedBox(height: 16),
+                  if (_errorMessage != null) SizedBox(height: 16),
 
                   // 錯誤信息
                   if (_errorMessage != null)
@@ -449,4 +460,4 @@ class _NotificationStatusPageState extends State<NotificationStatusPage> {
       ),
     );
   }
-} 
+}

@@ -4,19 +4,21 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'quiz_page_n.dart'; // blue & orange theme
 import 'package:google_fonts/google_fonts.dart';
-import 'insufficient_hearts_dialog.dart';  // 引入生命不足對話框
+import 'insufficient_hearts_dialog.dart'; // 引入生命不足對話框
 
 class ChapterDetailPage extends StatefulWidget {
   final String subject;
   final String csvPath;
 
-  ChapterDetailPage({required this.subject, required this.csvPath});
+  const ChapterDetailPage(
+      {super.key, required this.subject, required this.csvPath});
 
   @override
   _ChapterDetailPageState createState() => _ChapterDetailPageState();
 }
 
-class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTickerProviderStateMixin {
+class _ChapterDetailPageState extends State<ChapterDetailPage>
+    with SingleTickerProviderStateMixin {
   // 儲存所有章節資料的列表
   List<Map<String, dynamic>> sections = [];
   // 當前章節名稱
@@ -41,11 +43,11 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   int totalStars = 0;
   // 最大可能星星數 (每關3顆星)
   int maxPossibleStars = 0;
-  
+
   // 動畫控制器q
   late AnimationController _animationController;
-  Map<String, Animation<double>> _animations = {};
-  
+  final Map<String, Animation<double>> _animations = {};
+
   // 滾動控制器
   late ScrollController _scrollController;
   // 用於記錄上次滾動位置的鍵
@@ -55,31 +57,31 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   String get _expandedGradeBooksKey => '${widget.subject}_expanded_grade_books';
 
   // 更新主題色彩以匹配圖片
-  final Color primaryColor = Color(0xFF1E5B8C);  // 深藍色主題
+  final Color primaryColor = Color(0xFF1E5B8C); // 深藍色主題
   final Color secondaryColor = Color(0xFF2A7AB8); // 較淺的藍色
-  final Color accentColor = Color.fromARGB(255, 238, 159, 41);    // 橙色強調色，類似小島的顏色
-  final Color cardColor = Color(0xFF3A8BC8);      // 淺藍色卡片背景色
-  final Color whiteColor = Color(0xFFFFF9F7);     // 新增白色元素
+  final Color accentColor = Color.fromARGB(255, 238, 159, 41); // 橙色強調色，類似小島的顏色
+  final Color cardColor = Color(0xFF3A8BC8); // 淺藍色卡片背景色
+  final Color whiteColor = Color(0xFFFFF9F7); // 新增白色元素
 
   @override
   void initState() {
     super.initState();
-    print("loaded");  // Debug statement to indicate the page has loaded
-    
+    print("loaded"); // Debug statement to indicate the page has loaded
+
     // 初始化滾動控制器
     _scrollController = ScrollController();
-    
+
     _loadChapterData();
     _loadUserLevelStars();
     _loadSavedState();
-    
+
     // 初始化動畫控制器
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 300),
     );
   }
-  
+
   @override
   void dispose() {
     _saveCurrentState();
@@ -109,7 +111,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
       setState(() {
         isLoadingStars = true;
       });
-      
+
       String? userId = await _getUserId();
       if (userId == null) {
         print("無法獲取用戶 ID");
@@ -118,20 +120,21 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
         });
         return;
       }
-      
+
       print("正在獲取用戶星星數，用戶 ID: $userId, 科目: ${widget.subject}");
-      final apiUrl = 'https://superb-backend-1041765261654.asia-east1.run.app/quiz/user_level_stars';
+      final apiUrl =
+          'https://superb-backend-1041765261654.asia-east1.run.app/quiz/user_level_stars';
       // print("API URL: $apiUrl");
-      
+
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'user_id': userId,
-          'subject': widget.subject,  // 添加科目參數
+          'subject': widget.subject, // 添加科目參數
         }),
       );
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success']) {
@@ -139,17 +142,17 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
             // 將字符串鍵轉換為整數鍵
             Map<String, dynamic> stars = data['level_stars'];
             levelStars = stars.map((key, value) => MapEntry(key, value as int));
-            
+
             // 計算總星星數
             totalStars = levelStars.values.fold(0, (sum, stars) => sum + stars);
-            
+
             // 計算最大可能星星數 (每關3顆星)
             maxPossibleStars = sections.length * 3;
-            
+
             // 更新進度
             currentProgress = totalStars;
             totalSections = maxPossibleStars;
-            
+
             isLoadingStars = false;
           });
         } else {
@@ -176,42 +179,44 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   Future<void> _loadChapterData() async {
     try {
       // 從資源檔案中載入 CSV 資料
-      final String data = await DefaultAssetBundle.of(context).loadString(widget.csvPath);
+      final String data =
+          await DefaultAssetBundle.of(context).loadString(widget.csvPath);
       final List<String> rows = data.split('\n');
-      
+
       // 跳過標題行
-      final List<Map<String, dynamic>> allSections = rows.skip(1)
+      final List<Map<String, dynamic>> allSections = rows
+          .skip(1)
           .where((row) => row.trim().isNotEmpty)
           .map((row) {
             final cols = row.split(',');
             if (cols.length < 9) return null; // 確保有足夠的列
-            
+
             return {
-              'level_id': cols[9],       // 關卡編號 (最後一列)
-              'year_grade': cols[1],     // 年級
-              'book': cols[2],           // 冊別
-              'chapter_num': cols[3],    // 章節編號
-              'chapter_name': cols[4],   // 章節名稱
-              'section_num': cols[5],    // 小節編號
-              'section_name': cols[6],   // 小節名稱
-              'knowledge_spots': cols[7],// 知識點
-              'level_name': cols[8],     // 關卡名稱
+              'level_id': cols[9], // 關卡編號 (最後一列)
+              'year_grade': cols[1], // 年級
+              'book': cols[2], // 冊別
+              'chapter_num': cols[3], // 章節編號
+              'chapter_name': cols[4], // 章節名稱
+              'section_num': cols[5], // 小節編號
+              'section_name': cols[6], // 小節名稱
+              'knowledge_spots': cols[7], // 知識點
+              'level_name': cols[8], // 關卡名稱
             };
           })
           .where((map) => map != null)
           .cast<Map<String, dynamic>>()
           .toList();
-      
+
       // 設置年級和冊別（從第一個項目獲取）
       if (allSections.isNotEmpty) {
         yearGrade = allSections[0]['year_grade'];
         book = allSections[0]['book'];
       }
-      
+
       // 初始化所有章節為展開狀態
       Set<String> uniqueChapters = {};
       Set<String> uniqueGradeBooks = {};
-      
+
       for (var section in allSections) {
         if (section.containsKey('chapter_name')) {
           uniqueChapters.add(section['chapter_name']);
@@ -220,13 +225,13 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
           uniqueGradeBooks.add('${section['year_grade']}_${section['book']}');
         }
       }
-      
+
       // 設置所有章節為展開狀態
       Map<String, bool> initialExpandState = {};
       for (var chapter in uniqueChapters) {
         initialExpandState[chapter] = true; // 默認展開
       }
-      
+
       // 設置所有年級冊別為展開狀態
       Map<String, bool> initialGradeBookExpandState = {};
       for (var gradeBook in uniqueGradeBooks) {
@@ -259,57 +264,59 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   Future<void> _loadSavedState() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      
+
       // 載入滾動位置
       double? savedScrollPosition = prefs.getDouble(_scrollPositionKey);
       if (savedScrollPosition != null) {
         // 等UI渲染完畢後再滾動
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
-            _scrollController.jumpTo(
-              savedScrollPosition.clamp(0.0, _scrollController.position.maxScrollExtent)
-            );
+            _scrollController.jumpTo(savedScrollPosition.clamp(
+                0.0, _scrollController.position.maxScrollExtent));
           }
         });
       }
-      
+
       // 載入章節展開狀態
       String? expandedChaptersJson = prefs.getString(_expandedChaptersKey);
       if (expandedChaptersJson != null) {
         final Map<String, dynamic> decoded = jsonDecode(expandedChaptersJson);
         setState(() {
-          expandedChapters = decoded.map((key, value) => MapEntry(key, value as bool));
+          expandedChapters =
+              decoded.map((key, value) => MapEntry(key, value as bool));
         });
       }
-      
+
       // 載入年級冊別展開狀態
       String? expandedGradeBooksJson = prefs.getString(_expandedGradeBooksKey);
       if (expandedGradeBooksJson != null) {
         final Map<String, dynamic> decoded = jsonDecode(expandedGradeBooksJson);
         setState(() {
-          expandedGradeBooks = decoded.map((key, value) => MapEntry(key, value as bool));
+          expandedGradeBooks =
+              decoded.map((key, value) => MapEntry(key, value as bool));
         });
       }
     } catch (e) {
       print('載入儲存狀態時發生錯誤: $e');
     }
   }
-  
+
   // 儲存當前狀態
   Future<void> _saveCurrentState() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      
+
       // 儲存滾動位置
       if (_scrollController.hasClients) {
         await prefs.setDouble(_scrollPositionKey, _scrollController.offset);
       }
-      
+
       // 儲存章節展開狀態
       await prefs.setString(_expandedChaptersKey, jsonEncode(expandedChapters));
-      
+
       // 儲存年級冊別展開狀態
-      await prefs.setString(_expandedGradeBooksKey, jsonEncode(expandedGradeBooks));
+      await prefs.setString(
+          _expandedGradeBooksKey, jsonEncode(expandedGradeBooks));
     } catch (e) {
       print('儲存狀態時發生錯誤: $e');
     }
@@ -319,39 +326,40 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
   void _toggleChapter(String chapterName) {
     setState(() {
       expandedChapters[chapterName] = !(expandedChapters[chapterName] ?? true);
-      
+
       // 重置動畫控制器
       _animationController.reset();
-      
+
       // 創建新的動畫
       _animations[chapterName] = CurvedAnimation(
         parent: _animationController,
         curve: expandedChapters[chapterName]! ? Curves.easeOut : Curves.easeIn,
       );
-      
+
       // 開始動畫
       _animationController.forward();
-      
+
       // 保存當前狀態
       _saveCurrentState();
     });
   }
-  
+
   // 切換年級冊別展開/收合狀態
   void _toggleGradeBook(String gradeBook) {
     setState(() {
       expandedGradeBooks[gradeBook] = !(expandedGradeBooks[gradeBook] ?? true);
-      
+
       // 如果收合年級冊別，則收合其下所有章節
       if (!(expandedGradeBooks[gradeBook] ?? true)) {
         for (var section in sections) {
-          String sectionGradeBook = '${section['year_grade']}_${section['book']}';
+          String sectionGradeBook =
+              '${section['year_grade']}_${section['book']}';
           if (sectionGradeBook == gradeBook) {
             expandedChapters[section['chapter_name']] = false;
           }
         }
       }
-      
+
       // 保存當前狀態
       _saveCurrentState();
     });
@@ -383,7 +391,8 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
       if (userId == null) return {'hasHearts': false, 'remainingTime': null};
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/hearts/check_heart'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/hearts/check_heart'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -393,7 +402,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
         if (data['success']) {
           Duration? remainingTime;
           final nextHeartIn = data['next_heart_in'] as String?;
-          
+
           if (nextHeartIn != null && nextHeartIn.isNotEmpty) {
             try {
               final parts = nextHeartIn.split(':');
@@ -401,7 +410,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                 final hours = int.tryParse(parts[0]) ?? 0;
                 final minutes = int.tryParse(parts[1]) ?? 0;
                 final seconds = int.tryParse(parts[2].split('.')[0]) ?? 0;
-                
+
                 remainingTime = Duration(
                   hours: hours,
                   minutes: minutes,
@@ -412,7 +421,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
               print("解析倒數時間失敗: $e");
             }
           }
-          
+
           return {
             'hasHearts': data['hearts'] > -10,
             'remainingTime': remainingTime,
@@ -434,7 +443,8 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
       if (userId == null) return;
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/hearts/consume_heart'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/hearts/consume_heart'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
@@ -453,7 +463,6 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
       print("扣除體力時出錯: $e");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -530,7 +539,8 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                   ),
                   SizedBox(height: 8),
                   LinearProgressIndicator(
-                    value: totalSections > 0 ? currentProgress / totalSections : 0,
+                    value:
+                        totalSections > 0 ? currentProgress / totalSections : 0,
                     backgroundColor: secondaryColor.withOpacity(0.2),
                     valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                     borderRadius: BorderRadius.circular(10),
@@ -539,7 +549,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                 ],
               ),
             ),
-            
+
             // 章節列表
             Expanded(
               child: sections.isEmpty
@@ -551,38 +561,52 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                   : ListView.builder(
                       controller: _scrollController, // 使用滾動控制器
                       padding: EdgeInsets.all(16),
-                      itemCount: sections.length > 0 ? getUniqueChapters().length : 0,
+                      itemCount:
+                          sections.isNotEmpty ? getUniqueChapters().length : 0,
                       itemBuilder: (context, index) {
                         final chapterName = getUniqueChapters()[index];
-                        final isExpanded = expandedChapters[chapterName] ?? false;
-                        
+                        final isExpanded =
+                            expandedChapters[chapterName] ?? false;
+
                         // 獲取當前章節的年級和冊數
-                        final currentYearGrade = _getChapterYearGrade(chapterName);
+                        final currentYearGrade =
+                            _getChapterYearGrade(chapterName);
                         final currentBook = _getChapterBook(chapterName);
-                        final String gradeBookKey = '${currentYearGrade}_${currentBook}';
-                        final bool isGradeBookExpanded = expandedGradeBooks[gradeBookKey] ?? true;
-                        
+                        final String gradeBookKey =
+                            '${currentYearGrade}_$currentBook';
+                        final bool isGradeBookExpanded =
+                            expandedGradeBooks[gradeBookKey] ?? true;
+
                         // 判斷是否需要顯示年級和冊數
                         bool shouldShowGradeAndBook = true;
                         if (index > 0) {
-                          final prevChapterName = getUniqueChapters()[index - 1];
-                          final prevYearGrade = _getChapterYearGrade(prevChapterName);
+                          final prevChapterName =
+                              getUniqueChapters()[index - 1];
+                          final prevYearGrade =
+                              _getChapterYearGrade(prevChapterName);
                           final prevBook = _getChapterBook(prevChapterName);
-                          
-                          if (currentYearGrade == prevYearGrade && currentBook == prevBook) {
+
+                          if (currentYearGrade == prevYearGrade &&
+                              currentBook == prevBook) {
                             shouldShowGradeAndBook = false;
                           }
                         }
-                        
+
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (shouldShowGradeAndBook && currentYearGrade.isNotEmpty && currentBook.isNotEmpty)
+                            if (shouldShowGradeAndBook &&
+                                currentYearGrade.isNotEmpty &&
+                                currentBook.isNotEmpty)
                               InkWell(
                                 onTap: () => _toggleGradeBook(gradeBookKey),
                                 child: Container(
-                                  margin: EdgeInsets.only(left: 8, bottom: 12, top: index > 0 ? 20 : 0),
-                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  margin: EdgeInsets.only(
+                                      left: 8,
+                                      bottom: 12,
+                                      top: index > 0 ? 20 : 0),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
                                     color: accentColor,
                                     borderRadius: BorderRadius.circular(20),
@@ -600,7 +624,9 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                       ),
                                       SizedBox(width: 4),
                                       Icon(
-                                        isGradeBookExpanded ? Icons.expand_less : Icons.expand_more,
+                                        isGradeBookExpanded
+                                            ? Icons.expand_less
+                                            : Icons.expand_more,
                                         color: Colors.white,
                                         size: 16,
                                       ),
@@ -608,7 +634,7 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                   ),
                                 ),
                               ),
-                            
+
                             // 章節卡片 - 只有在對應的年級冊別展開時才顯示
                             if (isGradeBookExpanded)
                               Card(
@@ -629,12 +655,17 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.vertical(
                                             top: Radius.circular(16),
-                                            bottom: isExpanded ? Radius.zero : Radius.circular(16),
+                                            bottom: isExpanded
+                                                ? Radius.zero
+                                                : Radius.circular(16),
                                           ),
                                           gradient: LinearGradient(
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
-                                            colors: [cardColor, cardColor.withOpacity(0.8)],
+                                            colors: [
+                                              cardColor,
+                                              cardColor.withOpacity(0.8)
+                                            ],
                                           ),
                                         ),
                                         child: Row(
@@ -646,7 +677,9 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                                 shape: BoxShape.circle,
                                               ),
                                               child: Icon(
-                                                isExpanded ? Icons.expand_less : Icons.expand_more,
+                                                isExpanded
+                                                    ? Icons.expand_less
+                                                    : Icons.expand_more,
                                                 color: Colors.white,
                                               ),
                                             ),
@@ -665,114 +698,167 @@ class _ChapterDetailPageState extends State<ChapterDetailPage> with SingleTicker
                                         ),
                                       ),
                                     ),
-                                    
+
                                     // 小節列表
                                     if (isExpanded)
                                       AnimatedSize(
                                         duration: Duration(milliseconds: 300),
                                         curve: Curves.easeInOut,
                                         child: Container(
-                                          padding: EdgeInsets.symmetric(vertical: 8),
+                                          padding:
+                                              EdgeInsets.symmetric(vertical: 8),
                                           child: Column(
                                             children: sections
-                                                .where((section) => section['chapter_name'] == chapterName)
+                                                .where((section) =>
+                                                    section['chapter_name'] ==
+                                                    chapterName)
                                                 .map((section) => Container(
-                                                  margin: EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 6,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: whiteColor,
-                                                    borderRadius: BorderRadius.circular(12),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.black12,
-                                                        blurRadius: 3,
-                                                        offset: Offset(0, 1),
+                                                      margin:
+                                                          EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 6,
                                                       ),
-                                                    ],
-                                                  ),
-                                                  child: ListTile(
-                                                    contentPadding: EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 8,
-                                                    ),
-                                                    title: Text(
-                                                      section['level_name'],
-                                                      style: GoogleFonts.notoSans(
-                                                        color: primaryColor,
-                                                        fontSize: 16,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                    subtitle: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        SizedBox(height: 4),
-                                                        Text(
-                                                          '知識點：${section['knowledge_spots']}',
-                                                          style: GoogleFonts.notoSans(
-                                                            color: secondaryColor.withOpacity(0.8),
-                                                            fontSize: 12,
-                                                          ),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                        SizedBox(height: 8),
-                                                        Row(
-                                                          children: List.generate(
-                                                            3,
-                                                            (i) {
-                                                              int stars = 0;
-                                                              if (!isLoadingStars) {
-                                                                String levelId = section['level_id'].toString();
-                                                                stars = levelStars[levelId] ?? 0;
-                                                              }
-                                                              
-                                                              return Icon(
-                                                                i < stars ? Icons.star : Icons.star_border,
-                                                                color: accentColor,
-                                                                size: 20,
-                                                              );
-                                                            },
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    trailing: Container(
                                                       decoration: BoxDecoration(
-                                                        color: accentColor,
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      padding: EdgeInsets.all(8),
-                                                      child: Icon(Icons.play_arrow, color: Colors.white),
-                                                    ),
-                                                    onTap: () async {
-                                                      final heartResult = await _checkHeart();
-                                                      final hasHearts = heartResult['hasHearts'] as bool;
-                                                      final remainingTime = heartResult['remainingTime'] as Duration?;
-
-                                                      if (hasHearts) {
-                                                        _consumeHeart();
-                                                        Navigator.push(
-                                                          context,
-                                                          MaterialPageRoute(
-                                                            builder: (context) => QuizPage(
-                                                              chapter: chapterName,
-                                                              section: section['level_name'],
-                                                              knowledgePoints: section['knowledge_spots'],
-                                                              levelNum: section['level_id'].toString(),
-                                                            ),
+                                                        color: whiteColor,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color:
+                                                                Colors.black12,
+                                                            blurRadius: 3,
+                                                            offset:
+                                                                Offset(0, 1),
                                                           ),
-                                                        ).then((_) {
-                                                          _loadUserLevelStars();
-                                                        });
-                                                      } else {
-                                                        InsufficientHeartsDialog.show(context, remainingTime);
-                                                      }
-                                                    },
-                                                  ),
-                                                ))
+                                                        ],
+                                                      ),
+                                                      child: ListTile(
+                                                        contentPadding:
+                                                            EdgeInsets
+                                                                .symmetric(
+                                                          horizontal: 16,
+                                                          vertical: 8,
+                                                        ),
+                                                        title: Text(
+                                                          section['level_name'],
+                                                          style: GoogleFonts
+                                                              .notoSans(
+                                                            color: primaryColor,
+                                                            fontSize: 16,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                        subtitle: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            SizedBox(height: 4),
+                                                            Text(
+                                                              '知識點：${section['knowledge_spots']}',
+                                                              style: GoogleFonts
+                                                                  .notoSans(
+                                                                color: secondaryColor
+                                                                    .withOpacity(
+                                                                        0.8),
+                                                                fontSize: 12,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                            ),
+                                                            SizedBox(height: 8),
+                                                            Row(
+                                                              children:
+                                                                  List.generate(
+                                                                3,
+                                                                (i) {
+                                                                  int stars = 0;
+                                                                  if (!isLoadingStars) {
+                                                                    String
+                                                                        levelId =
+                                                                        section['level_id']
+                                                                            .toString();
+                                                                    stars =
+                                                                        levelStars[levelId] ??
+                                                                            0;
+                                                                  }
+
+                                                                  return Icon(
+                                                                    i < stars
+                                                                        ? Icons
+                                                                            .star
+                                                                        : Icons
+                                                                            .star_border,
+                                                                    color:
+                                                                        accentColor,
+                                                                    size: 20,
+                                                                  );
+                                                                },
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        trailing: Container(
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: accentColor,
+                                                            shape:
+                                                                BoxShape.circle,
+                                                          ),
+                                                          padding:
+                                                              EdgeInsets.all(8),
+                                                          child: Icon(
+                                                              Icons.play_arrow,
+                                                              color:
+                                                                  Colors.white),
+                                                        ),
+                                                        onTap: () async {
+                                                          final heartResult =
+                                                              await _checkHeart();
+                                                          final hasHearts =
+                                                              heartResult[
+                                                                      'hasHearts']
+                                                                  as bool;
+                                                          final remainingTime =
+                                                              heartResult[
+                                                                      'remainingTime']
+                                                                  as Duration?;
+
+                                                          if (hasHearts) {
+                                                            _consumeHeart();
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder:
+                                                                    (context) =>
+                                                                        QuizPage(
+                                                                  chapter:
+                                                                      chapterName,
+                                                                  section: section[
+                                                                      'level_name'],
+                                                                  knowledgePoints:
+                                                                      section[
+                                                                          'knowledge_spots'],
+                                                                  levelNum: section[
+                                                                          'level_id']
+                                                                      .toString(),
+                                                                ),
+                                                              ),
+                                                            ).then((_) {
+                                                              _loadUserLevelStars();
+                                                            });
+                                                          } else {
+                                                            InsufficientHeartsDialog
+                                                                .show(context,
+                                                                    remainingTime);
+                                                          }
+                                                        },
+                                                      ),
+                                                    ))
                                                 .toList(),
                                           ),
                                         ),

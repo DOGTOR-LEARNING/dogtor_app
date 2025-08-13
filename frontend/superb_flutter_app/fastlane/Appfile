@@ -1,0 +1,13 @@
+# iOS 設定
+for_platform :ios do
+  app_identifier("com.example.superbFlutterApp") # 請替換為你的實際 Bundle ID
+  apple_id("your-apple-id@example.com") # 請替換為你的 Apple ID
+  
+  itc_team_id("123456789") # 請替換為你的 iTunes Connect Team ID
+  team_id("ABCD123456") # 請替換為你的 Developer Team ID
+end
+
+# Android 設定
+for_platform :android do
+  package_name("com.example.superb_flutter_app") # 請替換為你的實際包名
+end

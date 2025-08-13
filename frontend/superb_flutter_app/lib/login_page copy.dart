@@ -8,17 +8,22 @@ import 'home_page.dart';
 
 class LoginPage extends StatelessWidget {
   // 使用您的 Google 客戶端 ID
-  final String clientId = '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com';
-  
+  final String clientId =
+      '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com';
+
   // 初始化 GoogleSignIn，並傳遞 clientId
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com',
+    clientId:
+        '1041765261654-hv85kemgu2pjrmclc66h0itpshrrk3p2.apps.googleusercontent.com',
   );
-  
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
   // API 端點，用於檢查和創建用戶
-  final String apiUrl = 'https://superb-backend-1041765261654.asia-east1.run.app';
+  final String apiUrl =
+      'https://superb-backend-1041765261654.asia-east1.run.app';
+
+  LoginPage({super.key});
 
   // 檢查用戶是否已登入
   Future<bool> _checkIfUserIsLoggedIn() async {
@@ -28,31 +33,33 @@ class LoginPage extends StatelessWidget {
   }
 
   // 保存用戶登入狀態到 SharedPreferences
-  Future<void> _saveUserLoginState(String userId, String email, String displayName, [String photoUrl = '']) async {
+  Future<void> _saveUserLoginState(
+      String userId, String email, String displayName,
+      [String photoUrl = '']) async {
     try {
       print("開始保存用戶登入狀態...");
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      
+
       // 保存用戶數據
       await prefs.setString('user_id', userId);
       await prefs.setString('email', email);
       await prefs.setString('display_name', displayName);
       await prefs.setString('photo_url', photoUrl);
-      
+
       // 輸出保存的數據，用於調試
       print("已保存的用戶數據：");
       print("user_id: $userId");
       print("email: $email");
       print("display_name: $displayName");
       print("photo_url: $photoUrl");
-      
+
       // 檢查數據是否成功保存
       print("檢查保存的數據：");
       print("user_id: ${prefs.getString('user_id')}");
       print("email: ${prefs.getString('email')}");
       print("display_name: ${prefs.getString('display_name')}");
       print("photo_url: ${prefs.getString('photo_url')}");
-      
+
       print("用戶登入狀態已保存");
     } catch (e) {
       print("保存用戶登入狀態時出錯: $e");
@@ -67,31 +74,31 @@ class LoginPage extends StatelessWidget {
       print("正在發送請求到: $requestUrl");
       print("用戶 ID: ${firebaseUser.uid}");
       print("完整 API URL: $apiUrl");
-      
+
       // 檢查用戶是否存在
       final response = await http.get(
         Uri.parse(requestUrl),
         headers: {'Content-Type': 'application/json'},
       );
-      
+
       // 輸出詳細的響應信息
       print("API 響應狀態碼: ${response.statusCode}");
       print("API 響應內容: ${response.body}");
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         print("解析後的響應數據: $data");
-        
+
         // 安全地檢查 'exists' 字段
         bool exists = data != null && data['exists'] == true;
         print("用戶是否存在: $exists");
-        
+
         if (!exists) {
           // 用戶不存在，創建新用戶
           print("用戶不存在，正在創建新用戶...");
           final createUrl = '$apiUrl/users';
           print("創建用戶請求 URL: $createUrl");
-          
+
           final createResponse = await http.post(
             Uri.parse(createUrl),
             headers: {'Content-Type': 'application/json'},
@@ -103,14 +110,14 @@ class LoginPage extends StatelessWidget {
               'created_at': DateTime.now().toIso8601String(),
             }),
           );
-          
+
           print("創建用戶響應狀態碼: ${createResponse.statusCode}");
           print("創建用戶響應內容: ${createResponse.body}");
-          
+
           if (createResponse.statusCode == 200) {
             final userData = jsonDecode(createResponse.body);
             print("用戶創建成功，保存登入狀態...");
-            
+
             // 從響應中獲取用戶數據
             final user = userData['user'];
             await _saveUserLoginState(
@@ -125,7 +132,7 @@ class LoginPage extends StatelessWidget {
         print("API 錯誤: ${response.statusCode} - ${response.body}");
         // 如果 API 調用失敗，我們仍然保存本地登入狀態
       }
-      
+
       // 保存用戶登入狀態
       print("正在保存用戶登入狀態...");
       await _saveUserLoginState(
@@ -168,7 +175,8 @@ class LoginPage extends StatelessWidget {
         return; // 用戶取消了登入
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // 創建一個新的憑證
       final AuthCredential credential = GoogleAuthProvider.credential(
@@ -177,13 +185,14 @@ class LoginPage extends StatelessWidget {
       );
 
       // 使用 Firebase 登入
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
-      
+
       if (user != null) {
         // 檢查用戶是否存在於數據庫，如果不存在則創建
         await _checkAndCreateUserInDatabase(user);
-        
+
         // 登入成功後導航到首頁
         Navigator.pushReplacement(
           context,
@@ -219,13 +228,13 @@ class LoginPage extends StatelessWidget {
             children: [
               // 應用程式標誌或名稱
               Icon(
-                Icons.pets,  // 可以替換成你的應用圖標
+                Icons.pets, // 可以替換成你的應用圖標
                 size: 100,
                 color: Colors.white,
               ),
               const SizedBox(height: 20),
               Text(
-                'Dogtor',  // 替換成你的應用名稱
+                'Dogtor', // 替換成你的應用名稱
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,

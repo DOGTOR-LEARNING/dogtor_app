@@ -11,6 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
+
   @override
   _ChatPageState createState() => _ChatPageState();
 }
@@ -22,37 +24,63 @@ class _ChatPageState extends State<ChatPage> {
   XFile? _selectedImage;
   bool _isKeyboardVisible = false;
   bool _hasSubmittedQuestion = false;
-  
+
   // 新增圖片解析狀態
   bool _isAnalyzingImage = false;
-  
+
   // 用於存儲從API獲取的所有科目
   List<String> _subjects = [];
   // 用於存儲從API獲取的所有章節，按科目分類
   Map<String, List<Map<String, dynamic>>> _chaptersMap = {};
-  
+
   String? _selectedSubject;
   bool _isLoading = false;
   List<dynamic> _items = [];
   String? _selectedItem;
-  
+
   // 用戶資料
   String _userId = '';
   String _displayName = '';
   String _nickname = '';
   String _yearGrade = '';
   String _introduction = '';
-  
+
   // Filter tags with placeholder text
   final List<String> _filterTags = ['選擇年級', '選擇科目', '選擇章節'];
-  List<String> _activeFilters = [];
+  final List<String> _activeFilters = [];
 
   // 年級選項和顯示名稱
-  final List<String> _gradeOptions = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'teacher', 'parent'];
+  final List<String> _gradeOptions = [
+    'G1',
+    'G2',
+    'G3',
+    'G4',
+    'G5',
+    'G6',
+    'G7',
+    'G8',
+    'G9',
+    'G10',
+    'G11',
+    'G12',
+    'teacher',
+    'parent'
+  ];
   final Map<String, String> _gradeDisplayNames = {
-    'G1': '小一', 'G2': '小二', 'G3': '小三', 'G4': '小四', 'G5': '小五', 'G6': '小六',
-    'G7': '國一', 'G8': '國二', 'G9': '國三', 'G10': '高一', 'G11': '高二', 'G12': '高三',
-    'teacher': '老師', 'parent': '家長'
+    'G1': '小一',
+    'G2': '小二',
+    'G3': '小三',
+    'G4': '小四',
+    'G5': '小五',
+    'G6': '小六',
+    'G7': '國一',
+    'G8': '國二',
+    'G9': '國三',
+    'G10': '高一',
+    'G11': '高二',
+    'G12': '高三',
+    'teacher': '老師',
+    'parent': '家長'
   };
 
   // 聊天歷史記錄
@@ -76,7 +104,7 @@ class _ChatPageState extends State<ChatPage> {
         _nickname = prefs.getString('nickname') ?? '';
         _yearGrade = prefs.getString('year_grade') ?? 'G10'; // 預設高一
         _introduction = prefs.getString('introduction') ?? '';
-        
+
         // 根據用戶年級設置默認過濾器
         if (_yearGrade.isNotEmpty) {
           _filterTags[0] = _gradeDisplayNames[_yearGrade] ?? _yearGrade;
@@ -95,24 +123,26 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/admin/subjects_and_chapters'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/admin/subjects_and_chapters'),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        
+
         if (data['success']) {
           setState(() {
             _subjects = List<String>.from(data['subjects']);
-            
+
             // 轉換章節數據結構
-            final Map<String, dynamic> chaptersData = data['chapters_by_subject'];
+            final Map<String, dynamic> chaptersData =
+                data['chapters_by_subject'];
             _chaptersMap = {};
-            
+
             chaptersData.forEach((subject, chapters) {
               _chaptersMap[subject] = List<Map<String, dynamic>>.from(chapters);
             });
-            
+
             _isLoading = false;
           });
         } else {
@@ -204,20 +234,30 @@ class _ChatPageState extends State<ChatPage> {
   void _showFilterOptions(String filterTag) {
     List<dynamic> options = [];
     String title = '';
-    
+
     if (filterTag == '選擇年級' || _gradeDisplayNames.values.contains(filterTag)) {
-      options = _gradeOptions.map((grade) => _gradeDisplayNames[grade] ?? grade).toList();
+      options = _gradeOptions
+          .map((grade) => _gradeDisplayNames[grade] ?? grade)
+          .toList();
       title = '選擇年級';
-    } else if (filterTag == '選擇科目' || filterTag.contains('文') || filterTag.contains('數') || 
-              filterTag.contains('理') || filterTag.contains('化') || filterTag.contains('物') || 
-              filterTag.contains('生') || filterTag.contains('社') || filterTag.contains('史') || 
-              filterTag.contains('地') || filterTag == '公民') {
+    } else if (filterTag == '選擇科目' ||
+        filterTag.contains('文') ||
+        filterTag.contains('數') ||
+        filterTag.contains('理') ||
+        filterTag.contains('化') ||
+        filterTag.contains('物') ||
+        filterTag.contains('生') ||
+        filterTag.contains('社') ||
+        filterTag.contains('史') ||
+        filterTag.contains('地') ||
+        filterTag == '公民') {
       // 使用API獲取的科目列表
       options = _subjects;
       title = '選擇科目';
     } else {
       // 如果選擇了科目，則顯示該科目的章節列表
-      if (_selectedSubject != null && _chaptersMap.containsKey(_selectedSubject)) {
+      if (_selectedSubject != null &&
+          _chaptersMap.containsKey(_selectedSubject)) {
         options = _chaptersMap[_selectedSubject]!;
       } else {
         options = [];
@@ -282,7 +322,7 @@ class _ChatPageState extends State<ChatPage> {
                     // 根據選項類型顯示不同內容
                     String optionText;
                     dynamic optionValue;
-                    
+
                     if (title == '選擇科目') {
                       optionText = options[index];
                       optionValue = options[index];
@@ -302,7 +342,7 @@ class _ChatPageState extends State<ChatPage> {
                       });
                       optionValue = gradeCode ?? optionText;
                     }
-                    
+
                     return ListTile(
                       title: Text(
                         optionText,
@@ -356,7 +396,8 @@ class _ChatPageState extends State<ChatPage> {
 
       // 修改為本地開發服務器 URL 進行測試
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/get_chat_history/$userId'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/get_chat_history/$userId'),
       );
 
       if (response.statusCode == 200) {
@@ -386,7 +427,8 @@ class _ChatPageState extends State<ChatPage> {
       print('! User ID: $userId, Year Grade: $_yearGrade');
 
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/save_chat_history'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/save_chat_history'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'user_id': userId,
@@ -394,7 +436,7 @@ class _ChatPageState extends State<ChatPage> {
           'answer': answer,
           'subject': _selectedSubject,
           'chapter': _selectedItem,
-          'year_grade': _yearGrade,  // 添加年級參數
+          'year_grade': _yearGrade, // 添加年級參數
           'timestamp': DateTime.now().toIso8601String(),
         }),
       );
@@ -419,18 +461,21 @@ class _ChatPageState extends State<ChatPage> {
 
   // Modify sendMessage method to handle single response and include user info
   void sendMessage() async {
-    if (_controller.text.isEmpty && _selectedImage == null || _hasSubmittedQuestion) return;
-    
+    if (_controller.text.isEmpty && _selectedImage == null ||
+        _hasSubmittedQuestion) {
+      return;
+    }
+
     FocusScope.of(context).unfocus();
-    
+
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       // 使用暱稱或顯示名稱
       String userDisplayName = _nickname.isNotEmpty ? _nickname : _displayName;
-      
+
       Map<String, dynamic> requestBody = {
         "user_message": _controller.text,
         "subject": _selectedSubject,
@@ -456,13 +501,15 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       final response = await http.post(
-        Uri.parse("https://superb-backend-1041765261654.asia-east1.run.app/ai/chat"),
+        Uri.parse(
+            "https://superb-backend-1041765261654.asia-east1.run.app/ai/chat"),
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: jsonEncode(requestBody),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Server error: ${response.statusCode}\nBody: ${response.body}');
+        throw Exception(
+            'Server error: ${response.statusCode}\nBody: ${response.body}');
       }
 
       final responseData = jsonDecode(utf8.decode(response.bodyBytes));
@@ -477,7 +524,8 @@ class _ChatPageState extends State<ChatPage> {
       await _saveChatHistory(_controller.text, _response);
     } catch (e) {
       setState(() {
-        _response = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.";
+        _response =
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.";
         _isLoading = false;
         _hasSubmittedQuestion = true;
       });
@@ -488,85 +536,88 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _handleImageSelection() async {
     showModalBottomSheet(
       context: context,
-    backgroundColor: Colors.transparent,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: Colors.grey.withOpacity(0.2),
-                  ),
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  '選擇照片',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-          color: Color(0xFF1E3875),
-                  ),
-                ),
-              ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
             ),
-            Container(
-              child: Column(
-                children: [
-              ListTile(
-                    leading: Icon(Icons.photo_library, color: Color(0xFF1E3875)),
-                    title: Text(
-                      '從相簿選擇',
-                      style: TextStyle(
-                        color: Color(0xFF1E3875),
-                        fontSize: 16,
-                      ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.grey.withOpacity(0.2),
                     ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-                  if (image != null) {
-                    _handleSelectedImage(image);
-                  }
-                },
-              ),
-              ListTile(
-                    leading: Icon(Icons.photo_camera, color: Color(0xFF1E3875)),
-                    title: Text(
-                      '拍照',
-                      style: TextStyle(
-                        color: Color(0xFF1E3875),
-                        fontSize: 16,
-                      ),
-                    ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  // 修改拍照設置，明確指定 JPEG 格式和高品質
-                  final XFile? photo = await _picker.pickImage(
-                    source: ImageSource.camera,
-                    imageQuality: 95, // 高品質
-                    preferredCameraDevice: CameraDevice.rear,
-                    requestFullMetadata: false, // 減少 EXIF 資訊
-                  );
-                  print("photo path: ${photo?.path}");
-                  if (photo != null) {
-                    _handleSelectedImage(photo);
-                  }
-                },
                   ),
-                ],
+                ),
+                child: Center(
+                  child: Text(
+                    '選擇照片',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E3875),
+                    ),
+                  ),
+                ),
               ),
+              Container(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading:
+                          Icon(Icons.photo_library, color: Color(0xFF1E3875)),
+                      title: Text(
+                        '從相簿選擇',
+                        style: TextStyle(
+                          color: Color(0xFF1E3875),
+                          fontSize: 16,
+                        ),
+                      ),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final XFile? image = await _picker.pickImage(
+                            source: ImageSource.gallery);
+                        if (image != null) {
+                          _handleSelectedImage(image);
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading:
+                          Icon(Icons.photo_camera, color: Color(0xFF1E3875)),
+                      title: Text(
+                        '拍照',
+                        style: TextStyle(
+                          color: Color(0xFF1E3875),
+                          fontSize: 16,
+                        ),
+                      ),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        // 修改拍照設置，明確指定 JPEG 格式和高品質
+                        final XFile? photo = await _picker.pickImage(
+                          source: ImageSource.camera,
+                          imageQuality: 95, // 高品質
+                          preferredCameraDevice: CameraDevice.rear,
+                          requestFullMetadata: false, // 減少 EXIF 資訊
+                        );
+                        print("photo path: ${photo?.path}");
+                        if (photo != null) {
+                          _handleSelectedImage(photo);
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -577,7 +628,7 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _handleSelectedImage(XFile image) async {
     print("處理圖片: ${image.path}, 格式: ${image.mimeType ?? '未知'}");
-    
+
     try {
       // 讀取圖像數據
       final bytes = await image.readAsBytes();
@@ -589,7 +640,7 @@ class _ChatPageState extends State<ChatPage> {
           _selectedImage = image;
           _isAnalyzingImage = true; // 開始圖片解析
         });
-        
+
         // 開始圖片分析流程
         await _analyzeImageWithGemini(bytes);
       } else {
@@ -609,10 +660,11 @@ class _ChatPageState extends State<ChatPage> {
     try {
       // 將圖片轉換為 base64
       final base64Image = base64Encode(imageBytes);
-      
+
       // 調用後端 API 進行圖片分析
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/ai/analyze_image'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/ai/analyze_image'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'image_base64': base64Image,
@@ -625,7 +677,7 @@ class _ChatPageState extends State<ChatPage> {
         if (data['success']) {
           final imageDescription = data['description'] as String;
           print('圖片分析結果: $imageDescription');
-          
+
           // 調用分類 API
           await _classifyText(imageDescription);
         } else {
@@ -652,7 +704,8 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _classifyText(String text) async {
     try {
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/ai/classify_text'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/ai/classify_text'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'text': text,
@@ -664,13 +717,15 @@ class _ChatPageState extends State<ChatPage> {
         if (data['success']) {
           final classificationLabel = data['predicted_label'] as String;
           final confidence = data['confidence'] as double;
-          
-          print('分類結果: $classificationLabel (信心度: ${(confidence * 100).toStringAsFixed(1)}%)');
-          
+
+          print(
+              '分類結果: $classificationLabel (信心度: ${(confidence * 100).toStringAsFixed(1)}%)');
+
           // 將分類結果輸入到對話框中
           setState(() {
             // _controller.text = '分類標籤: 氣體 (信心度: 93.2%)\n';
-            _controller.text = '分類標籤: 圖片分析結果: $text\n\n分類標籤: $classificationLabel (信心度: ${(confidence * 100).toStringAsFixed(1)}%)';
+            _controller.text =
+                '分類標籤: 圖片分析結果: $text\n\n分類標籤: $classificationLabel (信心度: ${(confidence * 100).toStringAsFixed(1)}%)';
             _isAnalyzingImage = false;
           });
         } else {
@@ -757,8 +812,10 @@ class _ChatPageState extends State<ChatPage> {
                     final chat = _chatHistory[index];
                     final question = chat['question'] as String;
                     final answer = chat['answer'] as String;
-                    final timestamp = DateTime.parse(chat['timestamp'] as String);
-                    final formattedTime = DateFormat('yyyy/MM/dd HH:mm').format(timestamp);
+                    final timestamp =
+                        DateTime.parse(chat['timestamp'] as String);
+                    final formattedTime =
+                        DateFormat('yyyy/MM/dd HH:mm').format(timestamp);
 
                     return ListTile(
                       title: Column(
@@ -776,7 +833,9 @@ class _ChatPageState extends State<ChatPage> {
                           ),
                           SizedBox(height: 4),
                           _buildResponse(
-                            answer.length > 32 ? '${answer.substring(0, 32)}...' : answer,
+                            answer.length > 32
+                                ? '${answer.substring(0, 32)}...'
+                                : answer,
                             fontSize: 14,
                             textColor: Colors.grey[600]!,
                             textAlign: TextAlign.left,
@@ -814,7 +873,7 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     _isKeyboardVisible = bottomInset > 0;
-    
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Color(0xFF102031),
@@ -829,9 +888,9 @@ class _ChatPageState extends State<ChatPage> {
               right: 0,
               height: 240, // Increased height to accommodate color block
               child: Container(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
                     // Color block above image
                     Positioned(
                       top: 0,
@@ -844,12 +903,12 @@ class _ChatPageState extends State<ChatPage> {
                       ),
                     ),
                     // Image positioned below color block
-                      Positioned(
+                    Positioned(
                       top: 40,
                       left: 0,
                       right: 0,
                       bottom: 0,
-                        child: Image.asset(
+                      child: Image.asset(
                         'assets/images/question-cor-top.png',
                         width: double.infinity,
                         fit: BoxFit.cover,
@@ -872,7 +931,7 @@ class _ChatPageState extends State<ChatPage> {
                     children: [
                       Stack(
                         alignment: Alignment.center,
-                          children: [
+                        children: [
                           Icon(
                             Icons.lightbulb_outline,
                             color: Colors.white,
@@ -891,9 +950,9 @@ class _ChatPageState extends State<ChatPage> {
                       SizedBox(height: 16),
                       Text('思考中...', style: TextStyle(color: Colors.white)),
                     ],
-                                ),
-                              ),
-                            ),
+                  ),
+                ),
+              ),
 
             // 圖片解析中的載入動畫
             if (_isAnalyzingImage)
@@ -924,9 +983,12 @@ class _ChatPageState extends State<ChatPage> {
                         ],
                       ),
                       SizedBox(height: 16),
-                      Text('圖片解析中...', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      Text('圖片解析中...',
+                          style: TextStyle(color: Colors.white, fontSize: 16)),
                       SizedBox(height: 8),
-                      Text('正在分析圖片內容並進行分類', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      Text('正在分析圖片內容並進行分類',
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -946,7 +1008,8 @@ class _ChatPageState extends State<ChatPage> {
                           onTap: () => Navigator.pop(context),
                           child: Row(
                             children: [
-                              Icon(Icons.arrow_back, color: Colors.white, size: 14),
+                              Icon(Icons.arrow_back,
+                                  color: Colors.white, size: 14),
                               SizedBox(width: 4),
                               Text(
                                 "返回",
@@ -961,7 +1024,7 @@ class _ChatPageState extends State<ChatPage> {
                       ],
                     ),
                   ),
-                
+
                   // Main content area (scrollable)
                   Expanded(
                     child: Stack(
@@ -996,7 +1059,8 @@ class _ChatPageState extends State<ChatPage> {
                             ),
                           ),
                           child: TextButton.icon(
-                            icon: Icon(Icons.history, size: 18, color: Color(0xFF1E3875)),
+                            icon: Icon(Icons.history,
+                                size: 18, color: Color(0xFF1E3875)),
                             label: Text(
                               '歷史紀錄',
                               style: TextStyle(
@@ -1010,7 +1074,7 @@ class _ChatPageState extends State<ChatPage> {
                             ),
                           ),
                         ),
-                Container(
+                        Container(
                           height: 36,
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -1021,22 +1085,28 @@ class _ChatPageState extends State<ChatPage> {
                           ),
                           child: TextButton.icon(
                             icon: Icon(
-                              _isAnalyzingImage ? Icons.hourglass_empty : Icons.photo_camera, 
-                              size: 18, 
-                              color: (_hasSubmittedQuestion || _isAnalyzingImage) 
-                                  ? Colors.grey 
-                                  : Color(0xFF1E3875)
-                            ),
+                                _isAnalyzingImage
+                                    ? Icons.hourglass_empty
+                                    : Icons.photo_camera,
+                                size: 18,
+                                color:
+                                    (_hasSubmittedQuestion || _isAnalyzingImage)
+                                        ? Colors.grey
+                                        : Color(0xFF1E3875)),
                             label: Text(
                               _isAnalyzingImage ? '解析中' : '拍照',
                               style: TextStyle(
-                                color: (_hasSubmittedQuestion || _isAnalyzingImage) 
-                                    ? Colors.grey 
-                                    : Color(0xFF1E3875),
+                                color:
+                                    (_hasSubmittedQuestion || _isAnalyzingImage)
+                                        ? Colors.grey
+                                        : Color(0xFF1E3875),
                                 fontSize: 14,
                               ),
                             ),
-                            onPressed: (!_hasSubmittedQuestion && !_isAnalyzingImage) ? _handleImageSelection : null,
+                            onPressed:
+                                (!_hasSubmittedQuestion && !_isAnalyzingImage)
+                                    ? _handleImageSelection
+                                    : null,
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.symmetric(horizontal: 12),
                             ),
@@ -1054,7 +1124,8 @@ class _ChatPageState extends State<ChatPage> {
                       if (!_hasSubmittedQuestion)
                         Positioned(
                           top: -115, // 調整位置
-                          left: MediaQuery.of(context).size.width / 2 - 70, // 水平置中
+                          left: MediaQuery.of(context).size.width / 2 -
+                              70, // 水平置中
                           child: Image.asset(
                             'assets/images/question-corgi.png',
                             width: 160, // 調整大小
@@ -1082,7 +1153,8 @@ class _ChatPageState extends State<ChatPage> {
                           children: [
                             // Input field and send button
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
                               child: Row(
                                 children: [
                                   Expanded(
@@ -1107,11 +1179,13 @@ class _ChatPageState extends State<ChatPage> {
                                         decoration: InputDecoration(
                                           hintText: "輸入或拍照⋯⋯",
                                           hintStyle: TextStyle(
-                                            color: Color(0xFF1E3875).withOpacity(0.6),
+                                            color: Color(0xFF1E3875)
+                                                .withOpacity(0.6),
                                             fontSize: 16,
                                           ),
                                           border: InputBorder.none,
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
                                         ),
                                       ),
                                     ),
@@ -1123,20 +1197,25 @@ class _ChatPageState extends State<ChatPage> {
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: IconButton(
-                                      icon: Icon(Icons.send, color: Colors.white),
-                                      onPressed: !_hasSubmittedQuestion ? sendMessage : null,
+                                      icon:
+                                          Icon(Icons.send, color: Colors.white),
+                                      onPressed: !_hasSubmittedQuestion
+                                          ? sendMessage
+                                          : null,
                                       style: IconButton.styleFrom(
-                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 8),
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            
+
                             // Filter chips (fixed at input field below)
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.start,
                                 children: _filterTags.map((filter) {
@@ -1146,10 +1225,11 @@ class _ChatPageState extends State<ChatPage> {
                                       onTap: () => _showFilterOptions(filter),
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          color: filter == '國中' 
-                                              ? Color(0xFFFFA368) 
+                                          color: filter == '國中'
+                                              ? Color(0xFFFFA368)
                                               : Color(0xFF8BB7E0),
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                         padding: EdgeInsets.symmetric(
                                           horizontal: 20,
@@ -1160,7 +1240,8 @@ class _ChatPageState extends State<ChatPage> {
                                           children: [
                                             if (filter == '國中')
                                               Padding(
-                                                padding: EdgeInsets.only(right: 8),
+                                                padding:
+                                                    EdgeInsets.only(right: 8),
                                                 child: Icon(
                                                   Icons.eco,
                                                   color: Colors.white,
@@ -1169,7 +1250,8 @@ class _ChatPageState extends State<ChatPage> {
                                               )
                                             else if (filter == '公民')
                                               Padding(
-                                                padding: EdgeInsets.only(right: 8),
+                                                padding:
+                                                    EdgeInsets.only(right: 8),
                                                 child: Icon(
                                                   Icons.menu_book,
                                                   color: Colors.white,
@@ -1196,7 +1278,8 @@ class _ChatPageState extends State<ChatPage> {
                             // Image preview (if image is selected)
                             if (_selectedImage != null)
                               Container(
-                                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                margin: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 child: Stack(
                                   children: [
                                     GestureDetector(
@@ -1205,11 +1288,15 @@ class _ChatPageState extends State<ChatPage> {
                                         height: 120,
                                         width: double.infinity,
                                         decoration: BoxDecoration(
-                                          border: Border.all(color: Colors.grey[300]!, width: 1),
-                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: Colors.grey[300]!,
+                                              width: 1),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(11),
+                                          borderRadius:
+                                              BorderRadius.circular(11),
                                           child: Image.file(
                                             File(_selectedImage!.path),
                                             fit: BoxFit.cover,
@@ -1230,8 +1317,10 @@ class _ChatPageState extends State<ChatPage> {
                                         child: Container(
                                           padding: EdgeInsets.all(4),
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(0.5),
-                                            borderRadius: BorderRadius.circular(12),
+                                            color:
+                                                Colors.black.withOpacity(0.5),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                           child: Icon(
                                             Icons.close,
@@ -1250,7 +1339,8 @@ class _ChatPageState extends State<ChatPage> {
                               Container(
                                 margin: EdgeInsets.all(16),
                                 constraints: BoxConstraints(
-                                  maxHeight: MediaQuery.of(context).size.height * 0.5,
+                                  maxHeight:
+                                      MediaQuery.of(context).size.height * 0.5,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.grey[100],
@@ -1263,13 +1353,16 @@ class _ChatPageState extends State<ChatPage> {
                                 child: SingleChildScrollView(
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       // Question display
                                       Padding(
                                         padding: EdgeInsets.all(16),
                                         child: Text(
-                                          _controller.text.isEmpty ? "Dogtor, 請幫我回答這一個題目 ;-; " : _controller.text,
+                                          _controller.text.isEmpty
+                                              ? "Dogtor, 請幫我回答這一個題目 ;-; "
+                                              : _controller.text,
                                           style: TextStyle(
                                             color: Color(0xFF1E3875),
                                             fontSize: 16,
@@ -1278,7 +1371,8 @@ class _ChatPageState extends State<ChatPage> {
                                         ),
                                       ),
                                       // Divider
-                                      Divider(height: 1, color: Colors.grey[300]),
+                                      Divider(
+                                          height: 1, color: Colors.grey[300]),
                                       // Response content
                                       Padding(
                                         padding: EdgeInsets.all(16),
@@ -1295,14 +1389,15 @@ class _ChatPageState extends State<ChatPage> {
                               ),
 
                             // Bottom padding
-                            SizedBox(height: MediaQuery.of(context).padding.bottom),
+                            SizedBox(
+                                height: MediaQuery.of(context).padding.bottom),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ],
-                ),
+              ),
             ),
           ],
         ),
@@ -1358,9 +1453,11 @@ class _ChatPageState extends State<ChatPage> {
     double latexScaleFactor = 1.1,
   }) {
     return Container(
-      alignment: textAlign == TextAlign.center ? Alignment.center : 
-                textAlign == TextAlign.right ? Alignment.centerRight :
-                Alignment.centerLeft,
+      alignment: textAlign == TextAlign.center
+          ? Alignment.center
+          : textAlign == TextAlign.right
+              ? Alignment.centerRight
+              : Alignment.centerLeft,
       child: Markdown(
         selectable: selectable,
         data: response,

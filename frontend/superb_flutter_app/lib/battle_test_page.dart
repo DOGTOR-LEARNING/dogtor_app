@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'battle_prepare_page.dart';
 
 class BattleTestPage extends StatelessWidget {
+  const BattleTestPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

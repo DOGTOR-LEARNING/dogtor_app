@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 
-
 class OnboardingChat extends StatefulWidget {
   const OnboardingChat({super.key});
 
@@ -123,7 +122,6 @@ class _OnboardingChatState extends State<OnboardingChat> {
     }
   }
 
-
   Widget _buildInputBar() {
     final isDone = _currentStep + 2 >= _conversationSteps.length;
     if (isDone) return const SizedBox.shrink();
@@ -163,16 +161,17 @@ class _OnboardingChatState extends State<OnboardingChat> {
                   controller: _textController,
                   minLines: 1,
                   maxLines: 5,
-                  style: const TextStyle(color: Color(0xFF1E3875), fontSize: 16),
+                  style:
+                      const TextStyle(color: Color(0xFF1E3875), fontSize: 16),
                   decoration: InputDecoration(
-                    hintText: _isEditing ? '編輯回答...' : '輸入你的回答...'
-                        ,
+                    hintText: _isEditing ? '編輯回答...' : '輸入你的回答...',
                     hintStyle: TextStyle(
                       color: const Color(0xFF1E3875).withOpacity(0.6),
                       fontSize: 16,
                     ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   onSubmitted: _handleSubmit,
                 ),
@@ -188,7 +187,8 @@ class _OnboardingChatState extends State<OnboardingChat> {
                 icon: const Icon(Icons.send, color: Colors.white),
                 onPressed: () => _handleSubmit(_textController.text),
                 style: IconButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
               ),
             ),
@@ -208,117 +208,123 @@ class _OnboardingChatState extends State<OnboardingChat> {
 
     return Scaffold(
       appBar: AppBar(
-        title: isDone 
-  ? TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.elasticOut,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // 1) Rainbow reflection below, and ignore pointer so taps pass through
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        duration: const Duration(milliseconds: 2000),
-                        curve: Curves.easeInOut,
-                        builder: (context, anim, _) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.orange.withOpacity(0.3 * anim),
-                                  Colors.yellow.withOpacity(0.3 * anim),
-                                  Colors.green.withOpacity(0.3 * anim),
-                                  Colors.blue.withOpacity(0.3 * anim),
-                                  Colors.indigo.withOpacity(0.3 * anim),
-                                ],
-                                stops: [
-                                  0.1 + anim * 0.1,
-                                  0.25 + anim * 0.1,
-                                  0.4 + anim * 0.1,
-                                  0.6 + anim * 0.1,
-                                  0.9 + anim * 0.1,
-                                ],
+        title: isDone
+            ? TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.elasticOut,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // 1) Rainbow reflection below, and ignore pointer so taps pass through
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0.0, end: 1.0),
+                                  duration: const Duration(milliseconds: 2000),
+                                  curve: Curves.easeInOut,
+                                  builder: (context, anim, _) {
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.orange
+                                                .withOpacity(0.3 * anim),
+                                            Colors.yellow
+                                                .withOpacity(0.3 * anim),
+                                            Colors.green
+                                                .withOpacity(0.3 * anim),
+                                            Colors.blue.withOpacity(0.3 * anim),
+                                            Colors.indigo
+                                                .withOpacity(0.3 * anim),
+                                          ],
+                                          stops: [
+                                            0.1 + anim * 0.1,
+                                            0.25 + anim * 0.1,
+                                            0.4 + anim * 0.1,
+                                            0.6 + anim * 0.1,
+                                            0.9 + anim * 0.1,
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
-                          );
-                        },
+                          ),
+
+                          // 2) Button on top, now fully clickable and text/icon visible
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color.fromARGB(180, 255, 255, 255),
+                              foregroundColor: const Color(0xFF1E3875),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              elevation: 0,
+                              shadowColor: Colors.transparent,
+                            ),
+                            icon: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              duration: const Duration(milliseconds: 1200),
+                              curve: Curves.elasticOut,
+                              builder: (context, iconValue, _) {
+                                return Transform.rotate(
+                                  angle: iconValue * 0.2,
+                                  child: const Icon(
+                                    Icons.rocket_launch,
+                                    size: 20,
+                                    color: Color(0xFF1E3875),
+                                  ),
+                                );
+                              },
+                            ),
+                            label: const Text(
+                              '開始吧！',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFF1E3875),
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.of(context)
+                                  .pushReplacementNamed('/home');
+                            },
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ),
-
-                // 2) Button on top, now fully clickable and text/icon visible
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(180, 255, 255, 255),
-                    foregroundColor: const Color(0xFF1E3875),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    elevation: 0,
-                    shadowColor: Colors.transparent,
-                  ),
-                  icon: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 1200),
-                    curve: Curves.elasticOut,
-                    builder: (context, iconValue, _) {
-                      return Transform.rotate(
-                        angle: iconValue * 0.2,
-                        child: const Icon(
-                          Icons.rocket_launch,
-                          size: 20,
-                          color: Color(0xFF1E3875),
-                        ),
-                      );
-                    },
-                  ),
-                  label: const Text(
-                    '開始吧！',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF1E3875),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pushReplacementNamed('/home');
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    )
-  : const Text(
-      '讓我多了解你一點',
-      style: TextStyle(fontWeight: FontWeight.bold),
-    ),
-
+                  );
+                },
+              )
+            : const Text(
+                '讓我多了解你一點',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
         backgroundColor: const Color(0xFF102031),
       ),
       resizeToAvoidBottomInset: true,
@@ -336,7 +342,7 @@ class _OnboardingChatState extends State<OnboardingChat> {
                       left: 16,
                       right: 16,
                       top: 8,
-                      bottom: 8 ,  // a little extra breathing room
+                      bottom: 8, // a little extra breathing room
                     ),
                     children: [
                       Wrap(
@@ -346,7 +352,8 @@ class _OnboardingChatState extends State<OnboardingChat> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: answered.map((msg) {
                           final originalIndex = _messages.indexOf(msg);
-                          final isEditingBubble = _isEditing && _editingIndex == originalIndex;
+                          final isEditingBubble =
+                              _isEditing && _editingIndex == originalIndex;
                           return GestureDetector(
                             onTap: () => _startEditing(originalIndex),
                             child: ConstrainedBox(
@@ -355,20 +362,23 @@ class _OnboardingChatState extends State<OnboardingChat> {
                                 maxWidth: size.width * 0.9,
                               ),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
                                 decoration: BoxDecoration(
                                   color: isEditingBubble
                                       ? const Color.fromARGB(255, 215, 235, 251)
-                                      : const Color.fromARGB(255, 255, 255, 255),
+                                      : const Color.fromARGB(
+                                          255, 255, 255, 255),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: isEditingBubble
-                                        ? const Color.fromARGB(255, 234, 246, 255)
-                                        : const Color(0xFF102031),// transparent when not editing
+                                        ? const Color.fromARGB(
+                                            255, 234, 246, 255)
+                                        : const Color(
+                                            0xFF102031), // transparent when not editing
                                     width: 2, // always reserve space
                                   ),
                                 ),
-
                                 child: Text(
                                   msg['message'],
                                   textAlign: TextAlign.center,
@@ -418,7 +428,8 @@ class _OnboardingChatState extends State<OnboardingChat> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           TweenAnimationBuilder<Offset>(
-                            tween: Tween(begin: const Offset(0, .3), end: Offset.zero),
+                            tween: Tween(
+                                begin: const Offset(0, .3), end: Offset.zero),
                             duration: const Duration(milliseconds: 400),
                             curve: Curves.easeOut,
                             builder: (context, offset, child) {
@@ -432,7 +443,8 @@ class _OnboardingChatState extends State<OnboardingChat> {
                               height: 130,
                               decoration: const BoxDecoration(
                                 image: DecorationImage(
-                                  image: AssetImage('assets/images/question-corgi.png'),
+                                  image: AssetImage(
+                                      'assets/images/question-corgi.png'),
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -441,9 +453,11 @@ class _OnboardingChatState extends State<OnboardingChat> {
                           const SizedBox(width: 24),
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.only(top: 20), // adjust this value as needed
+                              padding: const EdgeInsets.only(
+                                  top: 20), // adjust this value as needed
                               child: DefaultTextStyle(
-                                style: const TextStyle(fontSize: 16, color: Colors.white),
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.white),
                                 child: AnimatedTextKit(
                                   key: ValueKey<int>(_currentStep),
                                   isRepeatingAnimation: false,
@@ -451,25 +465,30 @@ class _OnboardingChatState extends State<OnboardingChat> {
                                   animatedTexts: _currentStep == 0
                                       ? [
                                           TypewriterAnimatedText(
-                                            _conversationSteps[_currentStep]['message'],
-                                            speed: const Duration(milliseconds: 50),
+                                            _conversationSteps[_currentStep]
+                                                ['message'],
+                                            speed: const Duration(
+                                                milliseconds: 50),
                                           ),
                                           TypewriterAnimatedText(
-                                            _conversationSteps[_currentStep + 1]['message'],
-                                            speed: const Duration(milliseconds: 50),
+                                            _conversationSteps[_currentStep + 1]
+                                                ['message'],
+                                            speed: const Duration(
+                                                milliseconds: 50),
                                           ),
                                         ]
                                       : [
                                           TypewriterAnimatedText(
-                                            _conversationSteps[_currentStep + 1]['message'],
-                                            speed: const Duration(milliseconds: 50),
+                                            _conversationSteps[_currentStep + 1]
+                                                ['message'],
+                                            speed: const Duration(
+                                                milliseconds: 50),
                                           ),
                                         ],
                                 ),
                               ),
                             ),
                           ),
-
                         ],
                       ),
                     ),
@@ -490,4 +509,4 @@ class _OnboardingChatState extends State<OnboardingChat> {
     _inputFocusNode.dispose();
     super.dispose();
   }
-} 
+}

@@ -1,0 +1,115 @@
+default_platform(:ios)
+
+platform :ios do
+  before_all do
+    ENV["FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT"] = "120"
+  end
+
+  desc "Build iOS app with code signing for CI"
+  lane :build do
+    setup_ci if ENV['CI']
+    
+    # 設置 Flutter 環境
+    sh("flutter", "clean")
+    sh("flutter", "pub", "get")
+    sh("pod", "install")
+    
+    # 下載匹配的證書和描述檔案
+    match(
+      type: "development",
+      readonly: true,
+      clone_branch_directly: true
+    )
+    
+    # 構建應用
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "development",
+      output_directory: "./build",
+      output_name: "Runner.ipa",
+      include_symbols: true,
+      include_bitcode: false
+    )
+    
+    UI.success("✅ iOS build completed successfully!")
+  end
+
+  desc "Deploy to TestFlight"
+  lane :beta do
+    setup_ci if ENV['CI']
+    
+    # 設置 Flutter 環境
+    sh("flutter", "clean")
+    sh("flutter", "pub", "get")
+    sh("pod", "install")
+    
+    match(
+      type: "appstore",
+      readonly: true,
+      clone_branch_directly: true
+    )
+    
+    # 自動增加 build number
+    increment_build_number(
+      xcodeproj: "Runner.xcodeproj"
+    )
+    
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "./build",
+      output_name: "Runner.ipa",
+      include_symbols: true,
+      include_bitcode: false
+    )
+    
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      changelog: "New beta build from CI/CD"
+    )
+    
+    UI.success("🚀 App successfully uploaded to TestFlight!")
+  end
+
+  desc "Deploy to App Store"
+  lane :deploy do
+    setup_ci if ENV['CI']
+    
+    # 設置 Flutter 環境
+    sh("flutter", "clean")
+    sh("flutter", "pub", "get")
+    sh("pod", "install")
+    
+    match(
+      type: "appstore",
+      readonly: true,
+      clone_branch_directly: true
+    )
+    
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "./build",
+      output_name: "Runner.ipa",
+      include_symbols: true,
+      include_bitcode: false
+    )
+    
+    upload_to_app_store(
+      submit_for_review: false,
+      automatic_release: false,
+      force: true,
+      skip_metadata: false,
+      skip_screenshots: true,
+      precheck_include_in_app_purchases: false
+    )
+    
+    UI.success("🏪 App successfully uploaded to App Store Connect!")
+  end
+end

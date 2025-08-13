@@ -7,23 +7,24 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserStatsPage extends StatefulWidget {
-  const UserStatsPage({Key? key}) : super(key: key);
+  const UserStatsPage({super.key});
 
   @override
   _UserStatsPageState createState() => _UserStatsPageState();
 }
 
-class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProviderStateMixin {
+class _UserStatsPageState extends State<UserStatsPage>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   Map<String, dynamic> _stats = {};
   String _errorMessage = '';
   late TabController _tabController;
-  
+
   // 更新主題色彩以匹配 chapter_detail_page_n.dart
-  final Color primaryColor = Color(0xFF1E5B8C);  // 深藍色主題
+  final Color primaryColor = Color(0xFF1E5B8C); // 深藍色主題
   final Color secondaryColor = Color(0xFF2A7AB8); // 較淺的藍色
-  final Color accentColor = Color.fromARGB(255, 238, 159, 41);    // 橙色強調色
-  final Color cardColor = Color(0xFF3A8BC8);      // 淺藍色卡片背景色
+  final Color accentColor = Color.fromARGB(255, 238, 159, 41); // 橙色強調色
+  final Color cardColor = Color(0xFF3A8BC8); // 淺藍色卡片背景色
 
   // 新增知識點分數數據
   List<Map<String, dynamic>> _knowledgeScores = [];
@@ -45,7 +46,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 新增篩選選項狀態變數
   String? _selectedSubject;
   String? _selectedChapter;
-  
+
   // 是否已點擊學習建議按鈕
   bool _hasClickedLearningTips = false;
 
@@ -58,7 +59,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
-    
+
     // 設置加載狀態
     setState(() {
       _isLoading = true;
@@ -66,10 +67,10 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       _selectedSubject = null;
       _selectedChapter = null;
     });
-    
+
     // 加載用戶個人資訊
     _loadUserProfile();
-    
+
     // 同時加載所有數據，並在全部完成後更新狀態
     Future.wait([
       _fetchUserStats(),
@@ -104,7 +105,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   void _handleTabChange() {
     // 不自動加載學習建議，等待用戶點擊按鈕
   }
-  
+
   // 學習建議是否已加載標記
   bool _isLearningTipsLoaded = false;
   // 是否正在生成學習建議
@@ -121,38 +122,39 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 獲取個人化學習建議
   Future<void> _fetchPersonalizedLearningTips() async {
     if (_isGeneratingTips) return;
-    
+
     setState(() {
       _isGeneratingTips = true;
       print("開始生成學習建議...");
     });
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('user_id');
       if (userId == null) return;
-      
+
       print("開始獲取學習建議...");
-      
+
       // 調用正確的學習建議API
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_suggestions/$userId'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_suggestions/$userId'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
       );
-      
+
       print("API回應狀態碼: ${response.statusCode}");
-      
+
       if (response.statusCode == 200) {
         final jsonString = utf8.decode(response.bodyBytes);
         final data = jsonDecode(jsonString);
-        
+
         print("成功獲取學習建議");
         setState(() {
           // 處理後端返回的建議數據
           List<String> tips = [];
-          
+
           // 從弱點知識點生成建議
           if (data['weak_points'] != null) {
             List weakPoints = data['weak_points'];
@@ -161,11 +163,12 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               String chapterName = point['chapter_name'] ?? '';
               String pointName = point['point_name'] ?? '';
               double score = (point['score'] as num?)?.toDouble() ?? 0;
-              
-              tips.add('加強練習「$subject - $chapterName」的「$pointName」，目前分數為 ${score.toStringAsFixed(1)}/10');
+
+              tips.add(
+                  '加強練習「$subject - $chapterName」的「$pointName」，目前分數為 ${score.toStringAsFixed(1)}/10');
             }
           }
-          
+
           // 從建議列表生成更多建議
           if (data['suggestions'] != null) {
             List suggestions = data['suggestions'];
@@ -176,27 +179,23 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               }
             }
           }
-          
+
           // 如果沒有特定建議，提供通用建議
           if (tips.isEmpty) {
-            tips = [
-              '保持每日學習習慣，持續進步！',
-              '可以嘗試挑戰更難的題目來提升能力',
-              '複習最近學過的內容以鞏固記憶'
-            ];
+            tips = ['保持每日學習習慣，持續進步！', '可以嘗試挑戰更難的題目來提升能力', '複習最近學過的內容以鞏固記憶'];
           }
-          
+
           _personalizedTips = tips;
-          
+
           // 設定學習段落內容
           _learningSections = {
-            'priority': tips.isNotEmpty 
-                ? '根據你的學習數據，建議優先加強：${tips.first}' 
+            'priority': tips.isNotEmpty
+                ? '根據你的學習數據，建議優先加強：${tips.first}'
                 : '繼續保持良好的學習節奏',
             'review': '建議定期複習已學過的章節，鞏固基礎知識',
             'improve': '可以嘗試更多不同類型的題目，拓展解題思路'
           };
-          
+
           _isGeneratingTips = false;
           _isLearningTipsLoaded = true;
         });
@@ -218,7 +217,6 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     }
   }
 
-
   Future<void> _fetchUserStats() async {
     setState(() {
       _errorMessage = '';
@@ -227,7 +225,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     // 使用 SharedPreferences 檢查用戶登入狀態（與登入頁面一致）
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('user_id');
-    
+
     if (userId == null) {
       setState(() {
         _errorMessage = '請先登入';
@@ -236,9 +234,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     }
 
     try {
-
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/user_stats'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/stats/user_stats'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -268,12 +266,13 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         _errorMessage = '發生錯誤: $e';
       });
     }
-    
+
     // 獲取本月科目進度數據
     try {
       // userId 已經在上面獲取並驗證過了
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/monthly_progress'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/stats/monthly_progress'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
@@ -306,7 +305,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (userId == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/get_knowledge_scores/$userId'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/stats/get_knowledge_scores/$userId'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -318,12 +318,14 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         if (data['success']) {
           setState(() {
             _knowledgeScores = List<Map<String, dynamic>>.from(data['scores']);
-            
+
             // 找出弱點知識點（分數低於5分的）
             _weakPoints = _knowledgeScores
-                .where((score) => (score['score'] as num) < 5 && (score['score'] as num) > 0)
+                .where((score) =>
+                    (score['score'] as num) < 5 && (score['score'] as num) > 0)
                 .toList()
-              ..sort((a, b) => (a['score'] as num).compareTo(b['score'] as num));
+              ..sort(
+                  (a, b) => (a['score'] as num).compareTo(b['score'] as num));
           });
         }
       }
@@ -340,7 +342,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (userId == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_days/$userId'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_days/$userId'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -353,7 +356,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
           setState(() {
             _currentStreak = data['current_streak'] ?? 0;
             _maxStreak = data['total_streak'] ?? 0;
-            
+
             // 確保weekly stats API返回前也能顯示連續天數
             if (_streak == 0) {
               _streak = _currentStreak;
@@ -374,7 +377,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (userId == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/weekly/$userId'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/stats/weekly/$userId'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -386,8 +390,10 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         if (data['success']) {
           setState(() {
             _weeklyStats = {
-              '本週': List<Map<String, dynamic>>.from(data['weekly_stats']['this_week']),
-              '上週': List<Map<String, dynamic>>.from(data['weekly_stats']['last_week']),
+              '本週': List<Map<String, dynamic>>.from(
+                  data['weekly_stats']['this_week']),
+              '上週': List<Map<String, dynamic>>.from(
+                  data['weekly_stats']['last_week']),
             };
             _streak = data['streak'];
           });
@@ -406,7 +412,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       if (userId == null) return;
 
       final response = await http.get(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_suggestions/$userId'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/stats/learning_suggestions/$userId'),
         headers: {
           'Accept': 'application/json; charset=utf-8',
         },
@@ -418,11 +425,15 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         if (data['success']) {
           setState(() {
             // 確保只獲取分數大於 0 的弱點知識點
-            List<Map<String, dynamic>> weakPoints = List<Map<String, dynamic>>.from(data['weak_points'] ?? []);
-            _weakPoints = weakPoints.where((point) => (point['score'] as num) > 0).toList();
-            
-            _recommendedChapters = List<Map<String, dynamic>>.from(data['recommended_chapters'] ?? []);
-            
+            List<Map<String, dynamic>> weakPoints =
+                List<Map<String, dynamic>>.from(data['weak_points'] ?? []);
+            _weakPoints = weakPoints
+                .where((point) => (point['score'] as num) > 0)
+                .toList();
+
+            _recommendedChapters = List<Map<String, dynamic>>.from(
+                data['recommended_chapters'] ?? []);
+
             // 從建議列表提取學習建議文字
             List<String> tips = [];
             if (data['suggestions'] != null) {
@@ -449,16 +460,17 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('user_id');
       if (userId == null) return;
-      
+
       final response = await http.post(
-        Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/subject_abilities'),
+        Uri.parse(
+            'https://superb-backend-1041765261654.asia-east1.run.app/stats/subject_abilities'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json; charset=utf-8',
         },
         body: jsonEncode({'user_id': userId}),
       );
-      
+
       if (response.statusCode == 200) {
         final jsonString = utf8.decode(response.bodyBytes);
         final data = jsonDecode(jsonString);
@@ -467,25 +479,37 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
             // 確保數據有效且包含所需欄位
             List<Map<String, dynamic>> validAbilities = [];
             List<dynamic> rawAbilities = data['subject_abilities'] ?? [];
-            
+
             for (var ability in rawAbilities) {
               // 檢查每個科目能力記錄是否包含所需欄位
-              if (ability is Map<String, dynamic> && 
-                  ability.containsKey('subject') && 
-                  ability.containsKey('total_attempts') && 
-                  ability.containsKey('correct_attempts') && 
+              if (ability is Map<String, dynamic> &&
+                  ability.containsKey('subject') &&
+                  ability.containsKey('total_attempts') &&
+                  ability.containsKey('correct_attempts') &&
                   ability.containsKey('ability_score')) {
                 // 確保資料類型正確
                 Map<String, dynamic> validAbility = {
                   'subject': ability['subject'],
-                  'total_attempts': ability['total_attempts'] is int ? ability['total_attempts'] : (ability['total_attempts'] is double ? (ability['total_attempts'] as double).toInt() : 0),
-                  'correct_attempts': ability['correct_attempts'] is int ? ability['correct_attempts'] : (ability['correct_attempts'] is double ? (ability['correct_attempts'] as double).toInt() : 0),
-                  'ability_score': ability['ability_score'] is double ? ability['ability_score'] : (ability['ability_score'] is int ? (ability['ability_score'] as int).toDouble() : 0.0)
+                  'total_attempts': ability['total_attempts'] is int
+                      ? ability['total_attempts']
+                      : (ability['total_attempts'] is double
+                          ? (ability['total_attempts'] as double).toInt()
+                          : 0),
+                  'correct_attempts': ability['correct_attempts'] is int
+                      ? ability['correct_attempts']
+                      : (ability['correct_attempts'] is double
+                          ? (ability['correct_attempts'] as double).toInt()
+                          : 0),
+                  'ability_score': ability['ability_score'] is double
+                      ? ability['ability_score']
+                      : (ability['ability_score'] is int
+                          ? (ability['ability_score'] as int).toDouble()
+                          : 0.0)
                 };
                 validAbilities.add(validAbility);
               }
             }
-            
+
             setState(() {
               _subjectAbilities = validAbilities;
               print("成功獲取科目能力統計: ${_subjectAbilities.length} 個科目");
@@ -547,11 +571,15 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
           ),
         ),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color.fromARGB(255, 238, 159, 41)),
+            ? const Center(
+                child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                    Color.fromARGB(255, 238, 159, 41)),
               ))
             : _errorMessage.isNotEmpty
-                ? Center(child: Text(_errorMessage, style: TextStyle(color: Colors.red)))
+                ? Center(
+                    child: Text(_errorMessage,
+                        style: TextStyle(color: Colors.red)))
                 : TabBarView(
                     controller: _tabController,
                     children: [
@@ -605,7 +633,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         if (userId != null) {
           try {
             final response = await http.post(
-              Uri.parse('https://superb-backend-1041765261654.asia-east1.run.app/stats/monthly_progress'),
+              Uri.parse(
+                  'https://superb-backend-1041765261654.asia-east1.run.app/stats/monthly_progress'),
               headers: {
                 'Content-Type': 'application/json; charset=utf-8',
                 'Accept': 'application/json; charset=utf-8',
@@ -696,8 +725,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   }
 
   Widget _buildTodayStats() {
-    final todaySubjectLevels = _stats['today_subject_levels'] as List<dynamic>? ?? [];
-    
+    final todaySubjectLevels =
+        _stats['today_subject_levels'] as List<dynamic>? ?? [];
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -724,7 +754,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '今日學習',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -769,7 +799,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                       children: todaySubjectLevels.map<Widget>((subject) {
                         final subjectName = subject['subject'] as String;
                         final levelCount = subject['level_count'] as int;
-                        
+
                         // 定義科目顏色映射
                         final subjectColors = {
                           '數學': Colors.blue,
@@ -784,16 +814,23 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                           '地理': Colors.teal,
                           '公民': Colors.pink,
                         };
-                        
+
                         return Chip(
-                          backgroundColor: subjectColors[subjectName]?.withOpacity(0.8) ?? Colors.grey,
+                          backgroundColor:
+                              subjectColors[subjectName]?.withOpacity(0.8) ??
+                                  Colors.grey,
                           avatar: CircleAvatar(
                             backgroundColor: Colors.white,
-                            child: Icon(Icons.book, size: 16, color: subjectColors[subjectName] ?? Colors.grey),
+                            child: Icon(Icons.book,
+                                size: 16,
+                                color:
+                                    subjectColors[subjectName] ?? Colors.grey),
                           ),
                           label: Text(
                             '$subjectName: $levelCount 關',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
                           ),
                         );
                       }).toList(),
@@ -835,7 +872,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '本週學習趨勢',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -851,7 +888,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 borderRadius: BorderRadius.circular(12),
               ),
               child: _weeklyStats.isEmpty
-                  ? Center(child: Text('暫無數據', style: TextStyle(color: Colors.white70)))
+                  ? Center(
+                      child:
+                          Text('暫無數據', style: TextStyle(color: Colors.white70)))
                   : LineChart(
                       LineChartData(
                         lineTouchData: LineTouchData(
@@ -863,7 +902,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                               return spots.map((spot) {
                                 return LineTooltipItem(
                                   '${spot.y.toInt()} 關',
-                                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold),
                                 );
                               }).toList();
                             },
@@ -876,8 +917,10 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                               showTitles: true,
                               getTitlesWidget: (double value, TitleMeta meta) {
                                 final now = DateTime.now();
-                                final today = DateTime(now.year, now.month, now.day);
-                                final date = today.subtract(Duration(days: 6 - value.toInt()));
+                                final today =
+                                    DateTime(now.year, now.month, now.day);
+                                final date = today.subtract(
+                                    Duration(days: 6 - value.toInt()));
                                 return Text(
                                   '${date.month}/${date.day}',
                                   style: const TextStyle(
@@ -894,15 +937,29 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                             sideTitles: SideTitles(
                               showTitles: true,
                               getTitlesWidget: (double value, TitleMeta meta) {
-                                if (value == 0) return const Text('0', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 10));
-                                if (value % 2 == 0) return Text(value.toInt().toString(), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 10));
+                                if (value == 0) {
+                                  return const Text('0',
+                                      style: TextStyle(
+                                          color: Colors.white70,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 10));
+                                }
+                                if (value % 2 == 0) {
+                                  return Text(value.toInt().toString(),
+                                      style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 10));
+                                }
                                 return const Text('');
                               },
                               reservedSize: 30,
                             ),
                           ),
-                          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                          topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
                         ),
                         gridData: FlGridData(
                           show: true,
@@ -955,17 +1012,17 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 新增方法：獲取折線圖數據點
   List<FlSpot> _getLineSpots(String week) {
     if (!_weeklyStats.containsKey(week)) return [];
-    
+
     List<FlSpot> spots = [];
     final weekData = _weeklyStats[week] ?? [];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     // 創建過去7天的日期列表（包含今天）
     List<DateTime> last7Days = List.generate(7, (index) {
       return today.subtract(Duration(days: 6 - index));
     });
-    
+
     // 為每一天創建數據點
     for (int i = 0; i < 7; i++) {
       final targetDate = last7Days[i];
@@ -973,32 +1030,33 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         (data) {
           final dataDate = DateTime.parse(data['date']);
           return dataDate.year == targetDate.year &&
-                 dataDate.month == targetDate.month &&
-                 dataDate.day == targetDate.day;
+              dataDate.month == targetDate.month &&
+              dataDate.day == targetDate.day;
         },
         orElse: () => {'levels': 0},
       );
-      
-      spots.add(FlSpot(i.toDouble(), (dayData['levels'] as int? ?? 0).toDouble()));
+
+      spots.add(
+          FlSpot(i.toDouble(), (dayData['levels'] as int? ?? 0).toDouble()));
     }
-    
+
     return spots;
   }
 
   // 新增方法：為折線圖數據點添加數字標記
   List<VerticalLine> _getVerticalTextLines(String week) {
     if (!_weeklyStats.containsKey(week)) return [];
-    
+
     List<VerticalLine> lines = [];
     final weekData = _weeklyStats[week] ?? [];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     // 創建過去7天的日期列表（包含今天）
     List<DateTime> last7Days = List.generate(7, (index) {
       return today.subtract(Duration(days: 6 - index));
     });
-    
+
     // 為每一天創建垂直線
     for (int i = 0; i < 7; i++) {
       final targetDate = last7Days[i];
@@ -1006,12 +1064,12 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         (data) {
           final dataDate = DateTime.parse(data['date']);
           return dataDate.year == targetDate.year &&
-                 dataDate.month == targetDate.month &&
-                 dataDate.day == targetDate.day;
+              dataDate.month == targetDate.month &&
+              dataDate.day == targetDate.day;
         },
         orElse: () => {'levels': 0},
       );
-      
+
       final value = dayData['levels'] as int? ?? 0;
       if (value > 0) {
         lines.add(
@@ -1032,7 +1090,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         );
       }
     }
-    
+
     return lines;
   }
 
@@ -1064,7 +1122,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '學習連續性',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -1164,12 +1222,12 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   Widget _buildPast7DaysLearningRecord() {
     // 獲取過去7天日期
     final now = DateTime.now();
-    final pastDays = List.generate(7, (index) => 
-      DateTime(now.year, now.month, now.day - (6 - index)));
-    
+    final pastDays = List.generate(
+        7, (index) => DateTime(now.year, now.month, now.day - (6 - index)));
+
     // 星期幾的顯示文字
     final weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
-    
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1192,10 +1250,10 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: pastDays.map((date) {
-              final isToday = date.year == now.year && 
-                             date.month == now.month && 
-                             date.day == now.day;
-              
+              final isToday = date.year == now.year &&
+                  date.month == now.month &&
+                  date.day == now.day;
+
               // 檢查該日期是否有學習記錄
               // 使用 _weeklyStats 數據判斷是否學習
               bool hasLearned = false;
@@ -1203,30 +1261,26 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 final weekData = _weeklyStats['本週'] ?? [];
                 for (var data in weekData) {
                   final dataDate = DateTime.parse(data['date']);
-                  if (dataDate.year == date.year && 
-                      dataDate.month == date.month && 
-                      dataDate.day == date.day && 
+                  if (dataDate.year == date.year &&
+                      dataDate.month == date.month &&
+                      dataDate.day == date.day &&
                       (data['levels'] as int? ?? 0) > 0) {
                     hasLearned = true;
                     break;
                   }
                 }
               }
-              
+
               // 決定顯示的顏色
-              final baseColor = hasLearned 
-                  ? accentColor
-                  : Colors.grey.shade700;
-              
+              final baseColor = hasLearned ? accentColor : Colors.grey.shade700;
+
               return Column(
                 children: [
                   // 星期幾
                   Text(
                     weekdayNames[date.weekday - 1],
                     style: TextStyle(
-                      color: isToday
-                          ? Colors.white
-                          : Colors.white70,
+                      color: isToday ? Colors.white : Colors.white70,
                       fontSize: 14,
                       fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -1251,7 +1305,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                         date.day.toString(),
                         style: TextStyle(
                           color: hasLearned ? Colors.white : Colors.white70,
-                          fontWeight: isToday || hasLearned 
+                          fontWeight: isToday || hasLearned
                               ? FontWeight.bold
                               : FontWeight.normal,
                           fontSize: 16,
@@ -1281,7 +1335,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 新增方法：科目進度
   Widget _buildSubjectProgress() {
     final subjectLevels = _stats['subject_levels'] as List<dynamic>? ?? [];
-    
+
     // 定義科目顏色映射
     final subjectColors = {
       '數學': Colors.blue,
@@ -1296,7 +1350,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       '地理': Colors.teal,
       '公民': Colors.pink,
     };
-    
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1323,7 +1377,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '科目進度',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -1351,11 +1405,11 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                   final subjectName = subject['subject'] as String;
                   final levelCount = subject['level_count'] as int;
                   final color = subjectColors[subjectName] ?? Colors.grey;
-                  
+
                   // 假設每個科目總共有30關
                   final totalLevels = 30;
                   final progress = levelCount / totalLevels;
-                  
+
                   return Container(
                     margin: EdgeInsets.only(bottom: 12),
                     padding: EdgeInsets.all(12),
@@ -1371,7 +1425,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                             CircleAvatar(
                               backgroundColor: color,
                               radius: 12,
-                              child: Icon(Icons.book, size: 14, color: Colors.white),
+                              child: Icon(Icons.book,
+                                  size: 14, color: Colors.white),
                             ),
                             SizedBox(width: 8),
                             Text(
@@ -1427,7 +1482,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     if (!_hasClickedLearningTips) {
       return SizedBox();
     }
-    
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1454,7 +1509,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '下一步學習計劃',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -1638,7 +1693,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
             ),
           ],
         ),
-        content: Container(
+        content: SizedBox(
           width: double.maxFinite,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1696,7 +1751,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
+          SizedBox(
             width: 70,
             child: Text(
               day,
@@ -1783,7 +1838,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
 
   Widget _buildSubjectStats() {
     final subjectLevels = _stats['subject_levels'] as List<dynamic>? ?? [];
-    
+
     // 定義科目顏色映射
     final subjectColors = {
       '數學': Colors.blue,
@@ -1825,7 +1880,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '各科目學習統計',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -1888,14 +1943,21 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                         final subjectName = subject['subject'] as String;
                         final levelCount = subject['level_count'] as int;
                         return Chip(
-                          backgroundColor: subjectColors[subjectName]?.withOpacity(0.8) ?? Colors.grey,
+                          backgroundColor:
+                              subjectColors[subjectName]?.withOpacity(0.8) ??
+                                  Colors.grey,
                           avatar: CircleAvatar(
                             backgroundColor: Colors.white,
-                            child: Icon(Icons.book, size: 16, color: subjectColors[subjectName] ?? Colors.grey),
+                            child: Icon(Icons.book,
+                                size: 16,
+                                color:
+                                    subjectColors[subjectName] ?? Colors.grey),
                           ),
                           label: Text(
                             '$subjectName: $levelCount 關',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
                           ),
                         );
                       }).toList(),
@@ -1936,7 +1998,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '總體學習統計',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -1996,7 +2058,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '最近完成的關卡',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -2023,16 +2085,22 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: recentLevels.length,
-                separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.white24),
+                separatorBuilder: (context, index) =>
+                    const Divider(height: 1, color: Colors.white24),
                 itemBuilder: (context, index) {
                   final level = recentLevels[index];
-                  final DateTime answeredAt = DateTime.parse(level['answered_at']);
-                  final formattedDate = DateFormat('yyyy/MM/dd HH:mm').format(answeredAt);
-                  
-                  final subject = level['subject'] is String ? level['subject'] : '未知科目';
-                  final chapterName = level['chapter_name'] is String ? level['chapter_name'] : '未知章節';
+                  final DateTime answeredAt =
+                      DateTime.parse(level['answered_at']);
+                  final formattedDate =
+                      DateFormat('yyyy/MM/dd HH:mm').format(answeredAt);
+
+                  final subject =
+                      level['subject'] is String ? level['subject'] : '未知科目';
+                  final chapterName = level['chapter_name'] is String
+                      ? level['chapter_name']
+                      : '未知章節';
                   final subjectInitial = subject.isNotEmpty ? subject[0] : '?';
-                  
+
                   // 定義科目顏色映射
                   final subjectColors = {
                     '數學': Colors.blue,
@@ -2047,9 +2115,10 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                     '地理': Colors.teal,
                     '公民': Colors.pink,
                   };
-                  
-                  final backgroundColor = subjectColors[subject] ?? Colors.blue[700];
-                  
+
+                  final backgroundColor =
+                      subjectColors[subject] ?? Colors.blue[700];
+
                   return Container(
                     margin: EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
@@ -2057,20 +2126,30 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: ListTile(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       leading: CircleAvatar(
                         backgroundColor: backgroundColor,
-                        child: Text(subjectInitial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Text(subjectInitial,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
                       ),
                       title: Text(
                         '$chapterName',
-                        style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600),
                       ),
                       subtitle: Row(
                         children: [
-                          const Icon(Icons.access_time, size: 14, color: Colors.white70),
+                          const Icon(Icons.access_time,
+                              size: 14, color: Colors.white70),
                           const SizedBox(width: 4),
-                          Text(formattedDate, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                          Text(formattedDate,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.white70)),
                         ],
                       ),
                       trailing: Row(
@@ -2079,7 +2158,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                           3,
                           (i) => Icon(
                             Icons.star,
-                            color: i < (level['stars'] ?? 0) ? accentColor : Colors.white30,
+                            color: i < (level['stars'] ?? 0)
+                                ? accentColor
+                                : Colors.white30,
                             size: 20,
                           ),
                         ),
@@ -2122,7 +2203,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '科目能力分析',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -2139,7 +2220,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 ),
                 child: Center(
                   child: Text(
-                    _subjectAbilities.isEmpty 
+                    _subjectAbilities.isEmpty
                         ? '尚未獲取科目能力數據'
                         : '需要至少3個科目的數據才能顯示雷達圖',
                     style: TextStyle(color: Colors.white70),
@@ -2167,7 +2248,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                     borderData: FlBorderData(show: false),
                     gridBorderData: BorderSide(color: Colors.white10, width: 1),
                     ticksTextStyle: const TextStyle(
-                      color: Colors.white70, 
+                      color: Colors.white70,
                       fontSize: 10,
                     ),
                     tickCount: 5,
@@ -2177,13 +2258,14 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                       fontSize: 12,
                     ),
                     getTitle: (index, angle) {
-                      if (_subjectAbilities.isEmpty || 
+                      if (_subjectAbilities.isEmpty ||
                           _subjectAbilities.length < 3 ||
                           index >= _subjectAbilities.length) {
                         return RadarChartTitle(text: '', angle: angle);
                       }
                       // 使用科目名稱
-                      final subject = _subjectAbilities[index]['subject'] as String;
+                      final subject =
+                          _subjectAbilities[index]['subject'] as String;
                       return RadarChartTitle(text: subject, angle: angle);
                     },
                   ),
@@ -2230,15 +2312,16 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     if (_subjectAbilities.isEmpty || _subjectAbilities.length < 3) {
       return [];
     }
-    
+
     // 確保至少取前6個科目（或全部如果少於6個）
     final int maxSubjects = 8;
-    final subjectsToShow = _subjectAbilities.length > maxSubjects 
-        ? _subjectAbilities.sublist(0, maxSubjects) 
+    final subjectsToShow = _subjectAbilities.length > maxSubjects
+        ? _subjectAbilities.sublist(0, maxSubjects)
         : _subjectAbilities;
-    
+
     return subjectsToShow.map((subject) {
-      final abilityScore = (subject['ability_score'] as num?)?.toDouble() ?? 0.0;
+      final abilityScore =
+          (subject['ability_score'] as num?)?.toDouble() ?? 0.0;
       return RadarEntry(value: abilityScore);
     }).toList();
   }
@@ -2271,7 +2354,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '科目掌握排行',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -2341,14 +2424,15 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                     ..._subjectAbilities.map((subject) {
                       final subjectName = subject['subject'] as String;
                       // 修改類型轉換以確保兼容
-                      final totalAttempts = (subject['total_attempts'] is int) 
-                          ? subject['total_attempts'] as int 
+                      final totalAttempts = (subject['total_attempts'] is int)
+                          ? subject['total_attempts'] as int
                           : (subject['total_attempts'] as double).toInt();
-                      final correctAttempts = (subject['correct_attempts'] is int) 
-                          ? subject['correct_attempts'] as int 
-                          : (subject['correct_attempts'] as double).toInt();
+                      final correctAttempts =
+                          (subject['correct_attempts'] is int)
+                              ? subject['correct_attempts'] as int
+                              : (subject['correct_attempts'] as double).toInt();
                       final abilityScore = subject['ability_score'] as num;
-                      
+
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Row(
@@ -2358,12 +2442,15 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                               child: Row(
                                 children: [
                                   CircleAvatar(
-                                    backgroundColor: _getSubjectColor(subjectName),
+                                    backgroundColor:
+                                        _getSubjectColor(subjectName),
                                     radius: 12,
                                     child: Text(
-                                      subjectName.isNotEmpty ? subjectName[0] : '?',
+                                      subjectName.isNotEmpty
+                                          ? subjectName[0]
+                                          : '?',
                                       style: TextStyle(
-                                        color: Colors.white, 
+                                        color: Colors.white,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -2383,7 +2470,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                             Expanded(
                               flex: 2,
                               child: Text(
-                                '${correctAttempts}/${totalAttempts}題',
+                                '$correctAttempts/$totalAttempts題',
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 14,
@@ -2393,9 +2480,11 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                             Expanded(
                               flex: 1,
                               child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: _getScoreColor(abilityScore.toDouble()),
+                                  color:
+                                      _getScoreColor(abilityScore.toDouble()),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -2412,7 +2501,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),
@@ -2425,16 +2514,19 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
   // 新增方法：弱點知識點卡片
   Widget _buildWeakPointsCard() {
     // 應用篩選器過濾弱點知識點
-    var filteredWeakPoints = _weakPoints.where((point) =>
-      (point['score'] as num) > 0 && 
-      (_selectedSubject == null || point['subject'] == _selectedSubject) &&
-      (_selectedChapter == null || point['chapter_name'] == _selectedChapter)
-    ).toList();
-    
+    var filteredWeakPoints = _weakPoints
+        .where((point) =>
+            (point['score'] as num) > 0 &&
+            (_selectedSubject == null ||
+                point['subject'] == _selectedSubject) &&
+            (_selectedChapter == null ||
+                point['chapter_name'] == _selectedChapter))
+        .toList();
+
     // 獲取所有可用的科目和章節（用於篩選器）
     Set<String> subjects = {};
     Set<String> chapters = {};
-    
+
     for (var point in _weakPoints) {
       if ((point['score'] as num) > 0) {
         String subject = point['subject'] as String? ?? '';
@@ -2443,29 +2535,28 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
         if (chapter.isNotEmpty) chapters.add(chapter);
       }
     }
-    
+
     // 確保選定的科目在列表中存在
     if (_selectedSubject != null && !subjects.contains(_selectedSubject)) {
       _selectedSubject = null;
     }
-    
+
     // 確保選定的章節在列表中存在
     if (_selectedChapter != null) {
       bool chapterExists = false;
       if (_selectedSubject == null) {
         chapterExists = chapters.contains(_selectedChapter);
       } else {
-        chapterExists = _weakPoints.any((point) => 
-          point['subject'] == _selectedSubject && 
-          point['chapter_name'] == _selectedChapter
-        );
+        chapterExists = _weakPoints.any((point) =>
+            point['subject'] == _selectedSubject &&
+            point['chapter_name'] == _selectedChapter);
       }
-      
+
       if (!chapterExists) {
         _selectedChapter = null;
       }
     }
-    
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -2492,7 +2583,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '需要加強的知識點',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -2500,7 +2591,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // 新增篩選器
             Container(
               padding: EdgeInsets.all(12),
@@ -2530,7 +2621,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             hintText: '選擇科目',
                             hintStyle: TextStyle(color: Colors.white70),
                           ),
@@ -2539,24 +2631,28 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                           items: [
                             DropdownMenuItem<String?>(
                               value: null,
-                              child: Text('所有科目', style: TextStyle(color: Colors.white)),
+                              child: Text('所有科目',
+                                  style: TextStyle(color: Colors.white)),
                             ),
-                            ...subjects.toList().map((subject) => 
-                              DropdownMenuItem<String?>(
-                                value: subject,
-                                child: Text(subject, style: TextStyle(color: Colors.white)),
-                              )
-                            ).toList(),
+                            ...subjects
+                                .toList()
+                                .map((subject) => DropdownMenuItem<String?>(
+                                      value: subject,
+                                      child: Text(subject,
+                                          style:
+                                              TextStyle(color: Colors.white)),
+                                    )),
                           ],
                           onChanged: (value) {
                             setState(() {
                               _selectedSubject = value;
                               // 如果選擇了新科目，重置章節篩選
                               if (_selectedChapter != null) {
-                                bool chapterBelongsToSubject = _weakPoints.any((point) => 
-                                  point['subject'] == value && 
-                                  point['chapter_name'] == _selectedChapter
-                                );
+                                bool chapterBelongsToSubject = _weakPoints.any(
+                                    (point) =>
+                                        point['subject'] == value &&
+                                        point['chapter_name'] ==
+                                            _selectedChapter);
                                 if (!chapterBelongsToSubject) {
                                   _selectedChapter = null;
                                 }
@@ -2576,7 +2672,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             hintText: '選擇章節',
                             hintStyle: TextStyle(color: Colors.white70),
                           ),
@@ -2585,29 +2682,34 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                           items: [
                             DropdownMenuItem<String?>(
                               value: null,
-                              child: Text('所有章節', style: TextStyle(color: Colors.white)),
+                              child: Text('所有章節',
+                                  style: TextStyle(color: Colors.white)),
                             ),
-                            ...chapters.toList().where((chapter) => 
-                              _selectedSubject == null || 
-                              _weakPoints.any((point) => 
-                                point['subject'] == _selectedSubject && 
-                                point['chapter_name'] == chapter
-                              )
-                            ).map((chapter) => 
-                              DropdownMenuItem<String?>(
-                                value: chapter,
-                                child: Text(chapter, style: TextStyle(color: Colors.white)),
-                              )
-                            ).toList(),
+                            ...chapters
+                                .toList()
+                                .where((chapter) =>
+                                    _selectedSubject == null ||
+                                    _weakPoints.any((point) =>
+                                        point['subject'] == _selectedSubject &&
+                                        point['chapter_name'] == chapter))
+                                .map((chapter) => DropdownMenuItem<String?>(
+                                      value: chapter,
+                                      child: Text(chapter,
+                                          style:
+                                              TextStyle(color: Colors.white)),
+                                    )),
                           ],
                           onChanged: (value) {
                             setState(() {
                               _selectedChapter = value;
                               // 如果選擇了章節但沒有選科目，自動選擇對應科目
-                              if (_selectedChapter != null && _selectedSubject == null) {
+                              if (_selectedChapter != null &&
+                                  _selectedSubject == null) {
                                 for (var point in _weakPoints) {
-                                  if (point['chapter_name'] == _selectedChapter) {
-                                    _selectedSubject = point['subject'] as String?;
+                                  if (point['chapter_name'] ==
+                                      _selectedChapter) {
+                                    _selectedSubject =
+                                        point['subject'] as String?;
                                     break;
                                   }
                                 }
@@ -2622,9 +2724,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             if (filteredWeakPoints.isEmpty)
               Container(
                 padding: EdgeInsets.all(16),
@@ -2634,9 +2736,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 ),
                 child: Center(
                   child: Text(
-                    _weakPoints.isEmpty 
-                      ? '太棒了！目前沒有需要特別加強的知識點'
-                      : '目前沒有符合篩選條件的知識點',
+                    _weakPoints.isEmpty
+                        ? '太棒了！目前沒有需要特別加強的知識點'
+                        : '目前沒有符合篩選條件的知識點',
                     style: TextStyle(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
@@ -2656,7 +2758,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                     final chapterName = point['chapter_name'] as String? ?? '';
                     final subject = point['subject'] as String? ?? '';
                     final score = (point['score'] as num?)?.toDouble() ?? 0;
-                    
+
                     return Container(
                       margin: EdgeInsets.only(bottom: 12),
                       padding: EdgeInsets.all(12),
@@ -2681,7 +2783,8 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                                 ),
                               ),
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: _getScoreColor(score),
                                   borderRadius: BorderRadius.circular(12),
@@ -2736,9 +2839,9 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                   }).toList(),
                 ),
               ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 添加學習建議按鈕
             if (!_hasClickedLearningTips)
               InkWell(
@@ -2746,7 +2849,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                   setState(() {
                     _hasClickedLearningTips = true;
                   });
-                  
+
                   // 獲取學習建議和弱點知識點
                   _fetchLearningSuggestions();
                   _fetchPersonalizedLearningTips();
@@ -2788,10 +2891,11 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
     if (!_hasClickedLearningTips) {
       return SizedBox();
     }
-    
+
     // 使用個人化建議或默認建議
-    final displayTips = _personalizedTips.isNotEmpty ? _personalizedTips : _learningTips;
-    
+    final displayTips =
+        _personalizedTips.isNotEmpty ? _personalizedTips : _learningTips;
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -2818,7 +2922,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
                 Text(
                   '學習建議',
                   style: TextStyle(
-                    fontSize: 18, 
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -2906,7 +3010,7 @@ class _UserStatsPageState extends State<UserStatsPage> with SingleTickerProvider
       '公民': Colors.pink,
       '未分類': Colors.grey,
     };
-    
+
     return subjectColors[subject] ?? Colors.grey;
   }
 }
