@@ -71,7 +71,7 @@ platform :ios do
       build_configuration: "Release",
       # profile: profile_path
       # 建議：直接省略 profile，會用 SIGH_PROFILE_PATH 預設
-      profile: lane_context[SharedValues::SIGH_PROFILE_PATH]
+      # profile: lane_context[SharedValues::SIGH_PROFILE_PATH]
     )
 
     # 構建應用
