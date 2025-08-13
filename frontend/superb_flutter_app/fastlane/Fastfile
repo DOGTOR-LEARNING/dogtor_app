@@ -46,12 +46,12 @@ platform :ios do
     )
     
     # 綁定 Release 組態的 Provisioning Profile
-    update_project_provisioning(
-      xcodeproj: "ios/Runner.xcodeproj",
-      target_filter: "Runner",
-      build_configuration: "Release",
-      profile: PROF
-    )
+    # update_project_provisioning(
+    #  xcodeproj: "ios/Runner.xcodeproj",
+    #  target_filter: "Runner",
+    #  build_configuration: "Release",
+    #  profile: PROF
+    #)
     
     # 構建應用
     build_app(
