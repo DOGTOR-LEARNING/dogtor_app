@@ -105,8 +105,8 @@ jobs:
       with:
         name: ios-build
         path: |
-          frontend/superb_flutter_app/ios/build/Runner.ipa
-          frontend/superb_flutter_app/ios/build/Runner.app.dSYM.zip
+          frontend/superb_flutter_app/build/Runner.ipa
+          frontend/superb_flutter_app/build/Runner.app.dSYM.zip
 
   deploy-testflight:
     name: Deploy to TestFlight
