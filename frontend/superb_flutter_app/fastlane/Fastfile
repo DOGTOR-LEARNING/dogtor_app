@@ -9,13 +9,19 @@ platform :ios do
   lane :build do
     setup_ci if ENV['CI']
     
-    # 設置 Flutter 環境
+    # 1) 設置 Flutter 環境
     sh("flutter", "clean")
     sh("flutter", "pub", "get")
     # 切換到 iOS 目錄執行 pod install
-    Dir.chdir(File.expand_path("../ios", __dir__)) do
-      sh("pod", "install")
-    end
+    #Dir.chdir(File.expand_path("../ios", __dir__)) do
+    #  sh("pod", "install")
+    #end
+
+    # 2) CocoaPods（在 ios 目錄底下）
+    cocoapods(
+      try_repo_update_on_error: true,
+      project_directory: "ios"
+    )
     
     # 下載匹配的證書和描述檔案
     match(
@@ -26,7 +32,7 @@ platform :ios do
     
     # 構建應用
     build_app(
-      workspace: "Runner.xcworkspace",
+      workspace: File.expand_path("../ios/Runner.xcworkspace", __dir__),
       scheme: "Runner",
       configuration: "Release",
       export_method: "development",
