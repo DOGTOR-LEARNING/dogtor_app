@@ -32,7 +32,26 @@ platform :ios do
       clone_branch_directly: true
     )
 
+    # 設定手動簽章
+    TEAM   = "623TA8PLPU"
+    BUNDLE = "com.dogtor.superbFlutterApp"
+    PROF   = "match Development #{BUNDLE}"
 
+    # 強制設定為手動簽章
+    update_code_signing_settings(
+      path: "ios/Runner.xcodeproj", 
+      use_automatic_signing: false, 
+      team_id: TEAM, 
+      targets: ["Runner"]
+    )
+    
+    # 綁定 Release 組態的 Provisioning Profile
+    update_project_provisioning(
+      xcodeproj: "ios/Runner.xcodeproj",
+      target_filter: "Runner",
+      build_configuration: "Release",
+      profile: PROF
+    )
     
     # 構建應用
     build_app(
@@ -40,13 +59,18 @@ platform :ios do
       scheme: "Runner",
       configuration: "Release",
       export_method: "development",
+      export_options: { 
+        provisioningProfiles: { BUNDLE => PROF } 
+      },
+      xcargs: [
+        "DEVELOPMENT_TEAM=#{TEAM}",
+        "CODE_SIGN_STYLE=Manual",
+        "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
+        "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
+      ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
-      include_symbols: true,
-      # 把旗標塞進 xcodebuild
-      # xcodebuild_command: "xcodebuild -allowProvisioningUpdates",
-      # export_xcargs: "-allowProvisioningUpdates",
-      # include_bitcode: false
+      include_symbols: true
     )
     
     UI.success("✅ iOS build completed successfully!")
@@ -59,7 +83,14 @@ platform :ios do
     # 設置 Flutter 環境
     sh("flutter", "clean")
     sh("flutter", "pub", "get")
-    sh("pod", "install")
+    
+    # CocoaPods
+    cocoapods(
+      podfile: "ios/Podfile",
+      try_repo_update_on_error: true,
+      clean_install: true,
+      repo_update: false
+    )
     
     match(
       type: "appstore",
@@ -67,20 +98,49 @@ platform :ios do
       clone_branch_directly: true
     )
     
+    # 設定手動簽章
+    TEAM   = "623TA8PLPU"
+    BUNDLE = "com.dogtor.superbFlutterApp"
+    PROF   = "match AppStore #{BUNDLE}"
+
+    # 強制設定為手動簽章
+    update_code_signing_settings(
+      path: "ios/Runner.xcodeproj", 
+      use_automatic_signing: false, 
+      team_id: TEAM, 
+      targets: ["Runner"]
+    )
+    
+    # 綁定 Release 組態的 Provisioning Profile
+    update_project_provisioning(
+      xcodeproj: "ios/Runner.xcodeproj",
+      target_filter: "Runner",
+      build_configuration: "Release",
+      profile: PROF
+    )
+    
     # 自動增加 build number
     increment_build_number(
-      xcodeproj: "Runner.xcodeproj"
+      xcodeproj: "ios/Runner.xcodeproj"
     )
     
     build_app(
-      workspace: "Runner.xcworkspace",
+      workspace: "ios/Runner.xcworkspace",
       scheme: "Runner",
       configuration: "Release",
       export_method: "app-store",
+      export_options: { 
+        provisioningProfiles: { BUNDLE => PROF } 
+      },
+      xcargs: [
+        "DEVELOPMENT_TEAM=#{TEAM}",
+        "CODE_SIGN_STYLE=Manual",
+        "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
+        "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
+      ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
-      include_symbols: true,
-      #include_bitcode: false
+      include_symbols: true
     )
     
     upload_to_testflight(
@@ -98,7 +158,14 @@ platform :ios do
     # 設置 Flutter 環境
     sh("flutter", "clean")
     sh("flutter", "pub", "get")
-    sh("pod", "install")
+    
+    # CocoaPods
+    cocoapods(
+      podfile: "ios/Podfile",
+      try_repo_update_on_error: true,
+      clean_install: true,
+      repo_update: false
+    )
     
     match(
       type: "appstore",
@@ -106,15 +173,44 @@ platform :ios do
       clone_branch_directly: true
     )
     
+    # 設定手動簽章
+    TEAM   = "623TA8PLPU"
+    BUNDLE = "com.dogtor.superbFlutterApp"
+    PROF   = "match AppStore #{BUNDLE}"
+
+    # 強制設定為手動簽章
+    update_code_signing_settings(
+      path: "ios/Runner.xcodeproj", 
+      use_automatic_signing: false, 
+      team_id: TEAM, 
+      targets: ["Runner"]
+    )
+    
+    # 綁定 Release 組態的 Provisioning Profile
+    update_project_provisioning(
+      xcodeproj: "ios/Runner.xcodeproj",
+      target_filter: "Runner",
+      build_configuration: "Release",
+      profile: PROF
+    )
+    
     build_app(
-      workspace: "Runner.xcworkspace",
+      workspace: "ios/Runner.xcworkspace",
       scheme: "Runner",
       configuration: "Release",
       export_method: "app-store",
+      export_options: { 
+        provisioningProfiles: { BUNDLE => PROF } 
+      },
+      xcargs: [
+        "DEVELOPMENT_TEAM=#{TEAM}",
+        "CODE_SIGN_STYLE=Manual",
+        "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
+        "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
+      ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
-      include_symbols: true,
-      #include_bitcode: false
+      include_symbols: true
     )
     
     upload_to_app_store(
