@@ -8,6 +8,15 @@ platform :ios do
   desc "Build iOS app with manual code signing for CI"
   lane :build do
     setup_ci if ENV['CI']
+
+    # 設定 App Store Connect API（從環境變數讀取）
+    if ENV['CI']
+      api_key = app_store_connect_api_key(
+        key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
+        issuer_id: ENV['APP_STORE_CONNECT_ISSUER_ID'],
+        key_content: ENV['APP_STORE_CONNECT_API_KEY']
+      )
+    end
     
     # 1) 設置 Flutter 環境
     sh("flutter", "clean")
@@ -29,7 +38,7 @@ platform :ios do
     match(
       type: "development",
       readonly: true,
-      api_key: ENV['APP_STORE_CONNECT_API_KEY'], # 從環境變數讀取
+      api_key: api_key, # 從環境變數讀取
       clone_branch_directly: true
     )
 
@@ -62,15 +71,6 @@ platform :ios do
       # 建議：直接省略 profile，會用 SIGH_PROFILE_PATH 預設
       # profile: lane_context[SharedValues::SIGH_PROFILE_PATH]
     )
-
-    # 設定 App Store Connect API（從環境變數讀取）
-    if ENV['CI']
-      app_store_connect_api_key(
-        key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
-        issuer_id: ENV['APP_STORE_CONNECT_ISSUER_ID'],
-        key_content: ENV['APP_STORE_CONNECT_API_KEY']
-      )
-    end
 
     # 構建應用
     build_app(
