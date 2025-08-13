@@ -36,7 +36,7 @@ platform :ios do
     
     # 下載匹配的證書和描述檔案
     match(
-      type: "development",
+      type: "appstore",
       readonly: true,
       api_key: api_key, # 從環境變數讀取
       clone_branch_directly: true
@@ -45,7 +45,7 @@ platform :ios do
     # 設定手動簽章
     TEAM   = "623TA8PLPU"
     BUNDLE = "com.dogtor.superbFlutterApp"
-    PROF   = "match Development #{BUNDLE}"
+    PROF   = "match AppStore #{BUNDLE}"
 
     # 強制設定為手動簽章
     update_code_signing_settings(
@@ -59,7 +59,7 @@ platform :ios do
     # 從 match 下載的 profiles 中抓到實際檔案路徑
     profile_path = get_provisioning_profile(
       app_identifier: BUNDLE,
-      development: true,
+      development: false,
       #readonly: true,
       api_key: api_key # 從環境變數讀取
     )
@@ -79,19 +79,12 @@ platform :ios do
       workspace: File.expand_path("../ios/Runner.xcworkspace", __dir__),
       scheme: "Runner",
       configuration: "Release",
-      export_method: "development",
-      #export_options: { 
-      #  provisioningProfiles: { BUNDLE => PROF } 
-      #},
-      export_options: {
-        signingStyle: "manual"
-        # 不加 provisioningProfiles
-      }
+      export_method: "app-store",
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        "PROVISIONING_PROFILE_SPECIFIER='match Development #{BUNDLE}'" # Avoid affecting other third-party plugins 
+        "PROVISIONING_PROFILE_SPECIFIER='match AppStore #{BUNDLE}'" # Avoid affecting other third-party plugins 
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
@@ -164,9 +157,6 @@ platform :ios do
       scheme: "Runner",
       configuration: "Release",
       export_method: "app-store",
-      export_options: { 
-        provisioningProfiles: { BUNDLE => PROF } 
-      },
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
@@ -245,9 +235,6 @@ platform :ios do
       scheme: "Runner",
       configuration: "Release",
       export_method: "app-store",
-      export_options: { 
-        provisioningProfiles: { BUNDLE => PROF } 
-      },
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
