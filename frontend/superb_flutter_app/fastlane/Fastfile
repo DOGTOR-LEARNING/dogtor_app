@@ -59,7 +59,8 @@ platform :ios do
     # 從 match 下載的 profiles 中抓到實際檔案路徑
     profile_path = get_provisioning_profile(
       app_identifier: BUNDLE,
-      readonly: true,
+      development: true,
+      #readonly: true,
       api_key: api_key # 從環境變數讀取
     )
     
