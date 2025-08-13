@@ -44,16 +44,25 @@ platform :ios do
       team_id: TEAM, 
       targets: ["Runner"]
     )
+
+
+    # 從 match 下載的 profiles 中抓到實際檔案路徑
+    profile_path = get_provisioning_profile(
+      app_identifier: BUNDLE,
+      type: "development",
+      readonly: true
+    )
     
     # 綁定 Release 組態的 Provisioning Profile
-    # update_project_provisioning(
-    #   xcodeproj: "ios/Runner.xcodeproj",
-    #   target_filter: "Runner",
-    #   build_configuration: "Release",
-    #   # 建議：直接省略 profile，會用 SIGH_PROFILE_PATH 預設
-    #   # profile: lane_context[SharedValues::SIGH_PROFILE_PATH]
-    # )
-    
+    update_project_provisioning(
+      xcodeproj: "ios/Runner.xcodeproj",
+      target_filter: "Runner",
+      build_configuration: "Release",
+      profile: profile_path
+      # 建議：直接省略 profile，會用 SIGH_PROFILE_PATH 預設
+      # profile: lane_context[SharedValues::SIGH_PROFILE_PATH]
+    )
+
     # 構建應用
     build_app(
       workspace: File.expand_path("../ios/Runner.xcworkspace", __dir__),
@@ -67,7 +76,7 @@ platform :ios do
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        "PROVISIONING_PROFILE_SPECIFIER='match Development #{BUNDLE}'" # Avoid affecting other third-party plugins 
+        # "PROVISIONING_PROFILE_SPECIFIER='match Development #{BUNDLE}'" # Avoid affecting other third-party plugins 
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
