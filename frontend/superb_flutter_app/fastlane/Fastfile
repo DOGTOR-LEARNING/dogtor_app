@@ -82,7 +82,7 @@ platform :ios do
       configuration: "Release",
       export_method: "app-store",
       export_options: {
-        signingStyle: "manual",
+        # signingStyle: "manual",
         provisioningProfiles: {
           "com.dogtor.superbFlutterApp" => "match AppStore com.dogtor.superbFlutterApp"
         }
