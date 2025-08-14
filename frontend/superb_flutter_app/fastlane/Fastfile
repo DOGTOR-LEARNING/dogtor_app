@@ -3,6 +3,18 @@ default_platform(:ios)
 platform :ios do
   before_all do
     ENV["FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT"] = "120"
+    
+    # 🔇 隱藏 Warning 和減少 Log 輸出
+    ENV["FASTLANE_HIDE_GITHUB_ISSUES"] = "1"
+    ENV["FASTLANE_HIDE_CHANGELOG"] = "1"
+    ENV["FASTLANE_SKIP_UPDATE_CHECK"] = "1"
+    ENV["FASTLANE_DISABLE_ANIMATION"] = "1"
+    
+    # 減少 Xcode 的 Warning 輸出
+    ENV["XCODE_XCCONFIG_FILE"] = ""
+    
+    # CocoaPods 靜音
+    ENV["COCOAPODS_DISABLE_STATS"] = "true"
   end
 
   desc "Build iOS app with manual code signing for CI"
@@ -19,19 +31,16 @@ platform :ios do
     end
     
     # 1) 設置 Flutter 環境
-    sh("flutter", "clean")
-    sh("flutter", "pub", "get")
-    # 切換到 iOS 目錄執行 pod install
-    #Dir.chdir(File.expand_path("../ios", __dir__)) do
-    #  sh("pod", "install")
-    #end
+    sh("flutter", "clean", log: false)
+    sh("flutter", "pub", "get", log: false)
 
     # 2) CocoaPods（在 ios 目錄底下）
     cocoapods(
       podfile: "ios/Podfile",
       try_repo_update_on_error: true,
       clean_install: true,   # 等同 pod install --clean-install（避免殘留）
-      repo_update: false     # 需要時才設 true；與 try_repo_update_on_error 互斥
+      repo_update: false,    # 需要時才設 true；與 try_repo_update_on_error 互斥
+      silent: true           # 🔇 靜音模式
     )
     
     # 下載匹配的證書和描述檔案
@@ -81,13 +90,10 @@ platform :ios do
       scheme: "Runner",
       configuration: "Release",
       export_method: "app-store",
-      export_options: {
-        # signingStyle: "manual",
-        provisioningProfiles: {
-          "com.dogtor.superbFlutterApp" => "match AppStore com.dogtor.superbFlutterApp"
-        }
-      },
       codesigning_identity: "Apple Distribution",
+      clean: true,
+      silent: true,          # 🔇 減少構建輸出
+      suppress_xcode_output: true,  # 🔇 隱藏 Xcode 詳細輸出
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         # "CODE_SIGN_STYLE=Manual",
@@ -99,6 +105,32 @@ platform :ios do
       output_name: "Runner.ipa",
       include_symbols: true
     )
+    
+    # 🔍 Debug: 檢查 ExportOptions.plist
+    export_plist_path = Dir.glob("/tmp/**/gym_config*.plist").first || Dir.glob("/var/folders/**/gym_config*.plist").first
+    if export_plist_path && File.exist?(export_plist_path)
+      UI.message("📋 ExportOptions.plist 位置: #{export_plist_path}")
+      export_options_content = File.read(export_plist_path)
+      UI.message("📄 ExportOptions.plist 內容:")
+      UI.message(export_options_content)
+    else
+      UI.message("⚠️  未找到 ExportOptions.plist 檔案")
+    end
+    
+    # 🔍 Debug: 檢查證書和 Provisioning Profile
+    UI.message("🔐 已安裝的證書:")
+    sh("security find-identity -v -p codesigning", log: false)
+    
+    UI.message("📱 可用的 Provisioning Profiles:")
+    sh("find ~/Library/MobileDevice/Provisioning\\ Profiles -name '*.mobileprovision' -exec echo {} \\; -exec security cms -D -i {} \\; | grep -A1 -B1 '#{BUNDLE}'", log: false) rescue UI.message("無法列出 Provisioning Profiles")
+    
+    # 🔍 Debug: 檢查構建結果
+    if File.exist?("./build/Runner.ipa")
+      ipa_size = File.size("./build/Runner.ipa") / (1024 * 1024.0)
+      UI.success("✅ IPA 檔案已建立: #{ipa_size.round(2)} MB")
+    else
+      UI.error("❌ IPA 檔案建立失敗")
+    end
     
     UI.success("✅ iOS build completed successfully!")
   end
@@ -168,7 +200,7 @@ platform :ios do
       export_method: "app-store",
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
-        "CODE_SIGN_STYLE=Manual",
+        #"CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
         "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
       ].join(" "),
