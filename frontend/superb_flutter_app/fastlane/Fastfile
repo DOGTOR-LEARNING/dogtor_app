@@ -84,7 +84,8 @@ platform :ios do
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        "PROVISIONING_PROFILE_SPECIFIER='match AppStore #{BUNDLE}'" # Avoid affecting other third-party plugins 
+        "PROVISIONING_PROFILE_SPECIFIER='match AppStore #{BUNDLE}'", # Avoid affecting other third-party plugins 
+        "CODE_SIGN_IDENTITY=iPhone Distribution"
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
