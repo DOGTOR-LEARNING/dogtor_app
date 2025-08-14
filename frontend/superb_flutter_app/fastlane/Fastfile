@@ -51,6 +51,7 @@ platform :ios do
     update_code_signing_settings(
       path: "ios/Runner.xcodeproj", 
       use_automatic_signing: false, 
+      code_sign_identity: "Apple Distribution",
       team_id: TEAM, 
       targets: ["Runner"]
     )
@@ -86,6 +87,7 @@ platform :ios do
           "com.dogtor.superbFlutterApp" => "match AppStore com.dogtor.superbFlutterApp"
         }
       },
+      code_sign_identity: "Apple Distribution",
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
