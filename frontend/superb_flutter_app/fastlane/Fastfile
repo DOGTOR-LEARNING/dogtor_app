@@ -92,7 +92,7 @@ platform :ios do
       clean: true,
       silent: true,          # 🔇 減少構建輸出
       suppress_xcode_output: true,  # 🔇 隱藏 Xcode 詳細輸出
-      skip_profile_detection: true,                 # ← 取消 gym 自動產生 provisioningProfiles
+      # skip_profile_detection: true,                 # ← 取消 gym 自動產生 provisioningProfiles
       export_options: { method: "app-store" },      # ← 最小化，不放 provisioningProfiles/signingStyle
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
