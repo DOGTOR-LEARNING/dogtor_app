@@ -80,12 +80,18 @@ platform :ios do
       scheme: "Runner",
       configuration: "Release",
       export_method: "app-store",
+      export_options: {
+        signingStyle: "manual",
+        provisioningProfiles: {
+          "com.dogtor.superbFlutterApp" => "match AppStore com.dogtor.superbFlutterApp"
+        }
+      },
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
         "PROVISIONING_PROFILE_SPECIFIER='match AppStore #{BUNDLE}'", # Avoid affecting other third-party plugins 
-        "CODE_SIGN_IDENTITY=iPhone Distribution"
+        # "CODE_SIGN_IDENTITY=iPhone Distribution"
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
