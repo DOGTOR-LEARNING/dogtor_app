@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-platform :ios, '14.0'
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -41,40 +41,23 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     
+    # 🔧 只處理 Native targets，避免 Aggregate target 錯誤
+    next unless target.respond_to?(:product_type) && target.respond_to?(:build_configurations)
+    
     target.build_configurations.each do |config|
-      # 🔧 修正 deployment target 為 13.0
+      # 🔧 統一 deployment target 為 13.0（解決 Firebase 兼容問題）
       if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 13.0
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
       end
       
-      # 🎯 關鍵：Pod targets 統一使用自動簽署，不指定 profile
+      # 🎯 解決 CI/CD 簽署衝突：所有 Pod targets 使用自動簽署
       config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
       config.build_settings['DEVELOPMENT_TEAM'] = '623TA8PLPU'
       
-      # 🚨 移除所有可能造成衝突的手動簽署設定
+      # 🚨 移除可能造成 provisioning profile 衝突的設定
       config.build_settings.delete('CODE_SIGN_IDENTITY')
       config.build_settings.delete('PROVISIONING_PROFILE_SPECIFIER')
       config.build_settings.delete('PROVISIONING_PROFILE')
-      
-      # 📱 Framework 和 Bundle 的特殊處理
-      case target.product_type
-      when "com.apple.product-type.framework"
-        # Framework 通常不需要 provisioning profile
-        config.build_settings['CODE_SIGN_IDENTITY'] = ''
-        UI.message("🔧 Framework #{target.name}: 停用簽署")
-      when "com.apple.product-type.bundle"
-        # Bundle 使用最簡單的自動簽署
-        config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
-        UI.message("🔧 Bundle #{target.name}: 自動簽署")
-      when "com.apple.product-type.library.static"
-        # 靜態庫不需要簽署
-        config.build_settings['CODE_SIGN_IDENTITY'] = ''
-        UI.message("🔧 Static Library #{target.name}: 停用簽署")
-      else
-        # 其他類型使用自動簽署
-        config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
-        UI.message("🔧 Target #{target.name} (#{target.product_type}): 自動簽署")
-      end
     end
   end
 end
