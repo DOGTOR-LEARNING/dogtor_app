@@ -42,6 +42,16 @@ platform :ios do
       repo_update: false,    # 需要時才設 true；與 try_repo_update_on_error 互斥
       silent: true           # 🔇 靜音模式
     )
+
+    begin
+      update_code_signing_settings(
+        path: "ios/Pods/Pods.xcodeproj",
+        use_automatic_signing: true
+      )
+      UI.message("✅ 已設定 Pods 專案為自動簽署")
+    rescue => e
+      UI.message("⚠️ 無法設定 Pods 自動簽署: #{e.message}")
+    end
     
     # 下載匹配的證書和描述檔案
     match(
@@ -164,15 +174,15 @@ platform :ios do
     )
 
     # 🔧 在 CocoaPods 之後，match 之前加入
-    #begin
-    #  update_code_signing_settings(
-    #    path: "ios/Pods/Pods.xcodeproj",
-    #    use_automatic_signing: true
-    #  )
-    #  UI.message("✅ 已設定 Pods 專案為自動簽署")
-    #rescue => e
-    #  UI.message("⚠️ 無法設定 Pods 自動簽署: #{e.message}")
-    #end
+    begin
+      update_code_signing_settings(
+        path: "ios/Pods/Pods.xcodeproj",
+        use_automatic_signing: true
+      )
+      UI.message("✅ 已設定 Pods 專案為自動簽署")
+    rescue => e
+      UI.message("⚠️ 無法設定 Pods 自動簽署: #{e.message}")
+    end
 
     # 下載匹配的證書和描述檔案  
     match(
@@ -217,6 +227,7 @@ platform :ios do
         "DEVELOPMENT_TEAM=#{TEAM}",
         #"CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
+        "IPHONEOS_DEPLOYMENT_TARGET=13.0",  # 🔧 更新為 iOS 13.0
         "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
       ].join(" "),
       output_directory: "./build",
@@ -295,6 +306,7 @@ platform :ios do
         "DEVELOPMENT_TEAM=#{TEAM}",
         "CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
+        "IPHONEOS_DEPLOYMENT_TARGET=13.0",  # 🔧 更新為 iOS 13.0
         "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
       ].join(" "),
       output_directory: "./build",
