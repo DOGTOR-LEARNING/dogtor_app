@@ -59,11 +59,18 @@ platform :ios do
       UI.message("🔧 Updated Pods deployment targets to iOS 12.0")
     end
     
-    # 下載匹配的證書和描述檔案
+    # 同時下載 Development 和 App Store 證書
     match(
-      type: "appstore",
+      type: "development",  # 👈 Archive 階段用
       readonly: true,
-      api_key: api_key, # 從環境變數讀取
+      api_key: api_key,
+      clone_branch_directly: true
+    )
+
+    match(
+      type: "appstore",     # 👈 Export 階段用
+      readonly: true,
+      api_key: api_key,
       clone_branch_directly: true
     )
 
