@@ -89,7 +89,7 @@ platform :ios do
       clean: true,
       silent: false,          # 🔇 減少構建輸出
       suppress_xcode_output: false,  # 🔇 隱藏 Xcode 詳細輸出
-      codesigning_identity: "Apple Distribution",
+      #codesigning_identity: "Apple Distribution",
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
