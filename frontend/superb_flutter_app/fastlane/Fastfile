@@ -93,7 +93,7 @@ platform :ios do
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        "IPHONEOS_DEPLOYMENT_TARGET=12.0"  # 🔧 修正 iOS 版本要求
+        "IPHONEOS_DEPLOYMENT_TARGET=12.0",  # 🔧 修正 iOS 版本要求
         "CODE_SIGN_IDENTITY=Apple Distribution"  # 👈 強制指定 Distribution 證書
       ].join(" "),
       output_directory: "./build",
@@ -143,62 +143,29 @@ platform :ios do
       )
     end
     
-    # 設置 Flutter 環境
-    sh("flutter", "clean")
-    sh("flutter", "pub", "get")
-    
-    # CocoaPods
-    cocoapods(
-      podfile: "ios/Podfile",
-      try_repo_update_on_error: true,
-      clean_install: true,
-      repo_update: false
-    )
-    
-    match(
-      type: "appstore",
-      readonly: true,
-      api_key: api_key,
-      clone_branch_directly: true
-    )
-    
-    # 設定手動簽章
-    TEAM   = "623TA8PLPU"
-    BUNDLE = "com.dogtor.superbFlutterApp"
-    PROF   = "match AppStore #{BUNDLE}"
-
-    # 設定為自動簽章（使用 match 下載的證書）
-    update_code_signing_settings(
-      path: "ios/Runner.xcodeproj", 
-      use_automatic_signing: true,  # 🔄 改為自動簽署
-      team_id: TEAM, 
-      targets: ["Runner"]
-    )
-    
-    # 綁定 Release 組態的 Provisioning Profile
-    update_project_provisioning(
-      xcodeproj: "ios/Runner.xcodeproj",
-      target_filter: "Runner",
-      build_configuration: "Release",
-      profile: PROF
-    )
+    # 🔄 重用 build lane 的設定並增加 build number
+    build  # 重用 build lane
     
     # 自動增加 build number
     increment_build_number(
       xcodeproj: "ios/Runner.xcodeproj"
     )
     
+    # 重新 build（因為 build number 改變了）
     build_app(
-      workspace: "ios/Runner.xcworkspace",
+      workspace: File.expand_path("../ios/Runner.xcworkspace", __dir__),
       scheme: "Runner",
       configuration: "Release",
       export_method: "app-store",
+      allowProvisioningUpdates: true,
+      clean: false,  # 不需要 clean，build lane 已經做了
+      silent: true,
+      suppress_xcode_output: true,
       xcargs: [
-        "DEVELOPMENT_TEAM=#{TEAM}",
-        # 🔄 自動簽署不需要這些參數
-        # "CODE_SIGN_STYLE=Manual",
-        "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        # "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
+        "DEVELOPMENT_TEAM=623TA8PLPU",
+        "PRODUCT_BUNDLE_IDENTIFIER=com.dogtor.superbFlutterApp",
+        "IPHONEOS_DEPLOYMENT_TARGET=12.0",
+        "CODE_SIGN_IDENTITY=Apple Distribution"
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
@@ -227,65 +194,77 @@ platform :ios do
       )
     end
     
-    # 設置 Flutter 環境
-    sh("flutter", "clean")
-    sh("flutter", "pub", "get")
-    
-    # CocoaPods
-    cocoapods(
-      podfile: "ios/Podfile",
-      try_repo_update_on_error: true,
-      clean_install: true,
-      repo_update: false
-    )
-    
-    match(
-      type: "appstore",
-      readonly: true,
-      api_key: api_key,
-      clone_branch_directly: true
-    )
-    
-    # 設定手動簽章
-    TEAM   = "623TA8PLPU"
-    BUNDLE = "com.dogtor.superbFlutterApp"
-    PROF   = "match AppStore #{BUNDLE}"
-
-    # 設定為自動簽章（使用 match 下載的證書）
-    update_code_signing_settings(
-      path: "ios/Runner.xcodeproj", 
-      use_automatic_signing: true,  # 🔄 改為自動簽署
-      team_id: TEAM, 
-      targets: ["Runner"]
-    )
-    
-    # 綁定 Release 組態的 Provisioning Profile
-    update_project_provisioning(
-      xcodeproj: "ios/Runner.xcodeproj",
-      target_filter: "Runner",
-      build_configuration: "Release",
-      profile: PROF
-    )
-    
-    build_app(
-      workspace: "ios/Runner.xcworkspace",
-      scheme: "Runner",
-      configuration: "Release",
-      export_method: "app-store",
-      xcargs: [
-        "DEVELOPMENT_TEAM=#{TEAM}",
-        # 🔄 自動簽署不需要這些參數
-        # "CODE_SIGN_STYLE=Manual",
-        "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        # "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
-      ].join(" "),
-      output_directory: "./build",
-      output_name: "Runner.ipa",
-      include_symbols: true
-    )
+    # 🔄 重用 build lane 的設定
+    build  # 重用 build lane
     
     upload_to_app_store(
       api_key: api_key,
+      submit_for_review: false,
+      automatic_release: false,
+      force: true,
+      skip_metadata: false,
+      skip_screenshots: true,
+      precheck_include_in_app_purchases: false
+    )
+    
+    UI.success("🏪 App successfully uploaded to App Store Connect!")
+  end
+
+  desc "Upload to TestFlight (artifacts only)"
+  lane :upload_testflight do
+    setup_ci if ENV['CI']
+    
+    # 設定 App Store Connect API（從環境變數讀取）
+    if ENV['CI']
+      api_key = app_store_connect_api_key(
+        key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
+        issuer_id: ENV['APP_STORE_CONNECT_ISSUER_ID'],
+        key_content: ENV['APP_STORE_CONNECT_API_KEY']
+      )
+    end
+    
+    # 檢查 IPA 檔案是否存在
+    ipa_path = "./build/Runner.ipa"
+    unless File.exist?(ipa_path)
+      UI.error("❌ IPA 檔案不存在: #{ipa_path}")
+      UI.error("請確保已下載 build artifacts")
+      raise "IPA file not found"
+    end
+    
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: ipa_path,
+      skip_waiting_for_build_processing: true,
+      changelog: "New beta build from CI/CD"
+    )
+    
+    UI.success("🚀 App successfully uploaded to TestFlight!")
+  end
+
+  desc "Upload to App Store (artifacts only)"
+  lane :upload_appstore do
+    setup_ci if ENV['CI']
+    
+    # 設定 App Store Connect API（從環境變數讀取）
+    if ENV['CI']
+      api_key = app_store_connect_api_key(
+        key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
+        issuer_id: ENV['APP_STORE_CONNECT_ISSUER_ID'],
+        key_content: ENV['APP_STORE_CONNECT_API_KEY']
+      )
+    end
+    
+    # 檢查 IPA 檔案是否存在
+    ipa_path = "./build/Runner.ipa"
+    unless File.exist?(ipa_path)
+      UI.error("❌ IPA 檔案不存在: #{ipa_path}")
+      UI.error("請確保已下載 build artifacts")
+      raise "IPA file not found"
+    end
+    
+    upload_to_app_store(
+      api_key: api_key,
+      ipa: ipa_path,
       submit_for_review: false,
       automatic_release: false,
       force: true,
