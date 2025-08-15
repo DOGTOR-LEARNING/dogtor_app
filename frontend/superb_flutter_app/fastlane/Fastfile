@@ -87,8 +87,8 @@ platform :ios do
       configuration: "Release",
       export_method: "app-store",
       clean: true,
-      silent: true,          # 🔇 減少構建輸出
-      suppress_xcode_output: true,  # 🔇 隱藏 Xcode 詳細輸出
+      silent: false,          # 🔇 減少構建輸出
+      suppress_xcode_output: false,  # 🔇 隱藏 Xcode 詳細輸出
       codesigning_identity: "Apple Distribution",
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
