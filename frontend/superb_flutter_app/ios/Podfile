@@ -40,14 +40,15 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     next unless target.respond_to?(:build_configurations)
+    
     target.build_configurations.each do |config|
       config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
-
+    end
+    
     target.build_configurations.each do |config|
       # 🔧 統一 deployment target 為 13.0（解決 Firebase 兼容問題）
       if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 13.0
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-      end
     end
   end
 end
