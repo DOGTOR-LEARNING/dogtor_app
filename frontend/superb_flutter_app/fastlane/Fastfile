@@ -44,8 +44,20 @@ platform :ios do
     )
     
     # 🔧 修正 CocoaPods target 的 iOS deployment target
-    sh("sed -i '' 's/platform :ios, .*/platform :ios, \"12.0\"/' ios/Podfile")
-    sh("find ios/Pods -name '*.xcconfig' -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} \\;") rescue UI.message("Could not update deployment targets in xcconfig files")
+    podfile_path = File.expand_path("../ios/Podfile", __dir__)
+    if File.exist?(podfile_path)
+      sh("sed -i '' 's/platform :ios, .*/platform :ios, \"12.0\"/' '#{podfile_path}'")
+      UI.message("📱 Updated Podfile platform to iOS 12.0")
+    else
+      UI.error("❌ Podfile not found at #{podfile_path}")
+    end
+    
+    # 修正 Pods 目錄中的 deployment target
+    pods_dir = File.expand_path("../ios/Pods", __dir__)
+    if Dir.exist?(pods_dir)
+      sh("find '#{pods_dir}' -name '*.xcconfig' -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} \\;") rescue UI.message("Could not update deployment targets in xcconfig files")
+      UI.message("🔧 Updated Pods deployment targets to iOS 12.0")
+    end
     
     # 下載匹配的證書和描述檔案
     match(
