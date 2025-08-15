@@ -89,11 +89,12 @@ platform :ios do
       clean: true,
       silent: true,          # 🔇 減少構建輸出
       suppress_xcode_output: true,  # 🔇 隱藏 Xcode 詳細輸出
+      codesigning_identity: "Apple Distribution",
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
         "IPHONEOS_DEPLOYMENT_TARGET=12.0",  # 🔧 修正 iOS 版本要求
-        "CODE_SIGN_IDENTITY=Apple Distribution",  # 👈 強制指定 Distribution 證書
+        #"CODE_SIGN_IDENTITY=Apple Distribution",  # 👈 強制指定 Distribution 證書
         "-allowProvisioningUpdates"  # 🔧 允許 Xcode 自動更新 Provisioning Profiles
       ].join(" "),
       output_directory: "./build",
