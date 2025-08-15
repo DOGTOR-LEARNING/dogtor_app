@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'main.dart' show AppColors;
 import 'battle_prepare_page.dart';
 
 class BattleTestPage extends StatelessWidget {
@@ -9,7 +10,7 @@ class BattleTestPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('對戰系統測試'),
-        backgroundColor: Color(0xFF319cb6),
+        backgroundColor: Theme.of(context).extension<AppColors>()!.oceanAqua,
       ),
       body: Center(
         child: Column(
@@ -38,7 +39,7 @@ class BattleTestPage extends StatelessWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF319cb6),
+                backgroundColor: Theme.of(context).extension<AppColors>()!.oceanAqua,
                 padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

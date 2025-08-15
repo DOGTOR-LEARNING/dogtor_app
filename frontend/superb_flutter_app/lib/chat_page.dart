@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'main.dart' show AppColors;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -190,7 +191,7 @@ class _ChatPageState extends State<ChatPage> {
       context: context,
       builder: (BuildContext context) {
         return Container(
-          color: Color(0xFF1E3875),
+          color: Theme.of(context).extension<AppColors>()!.brandPrimary,
           child: Wrap(
             children: <Widget>[
               ListTile(

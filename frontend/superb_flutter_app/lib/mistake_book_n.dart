@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'main.dart' show AppColors;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'add_mistake_page.dart';
@@ -176,7 +177,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
         barrierDismissible: false,
         builder: (BuildContext context) {
           return AlertDialog(
-            backgroundColor: Color(0xFF102031),
+            backgroundColor: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep,
             content: Row(
               children: [
                 CircularProgressIndicator(color: Colors.blue),
@@ -264,7 +265,7 @@ class _MistakeBookPageState extends State<MistakeBookPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF102031),
+      backgroundColor: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep,
       body: Stack(
         children: [
           // Background color and image at top
@@ -736,7 +737,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Color(0xFF102031),
+          backgroundColor: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep,
           title: Text(
             '確認刪除',
             style: TextStyle(color: Colors.white),
@@ -780,7 +781,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
         barrierDismissible: false,
         builder: (BuildContext context) {
           return AlertDialog(
-            backgroundColor: Color(0xFF102031),
+            backgroundColor: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep,
             content: Row(
               children: [
                 CircularProgressIndicator(color: Colors.blue),
@@ -848,7 +849,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF102031),
+      backgroundColor: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep,
       appBar: AppBar(
         title: Text('錯題詳情',
             style: TextStyle(
@@ -856,7 +857,7 @@ class _MistakeDetailPageState extends State<MistakeDetailPage> {
               fontWeight: FontWeight.w800,
               color: Colors.white,
             )),
-        backgroundColor: Color(0xFF102031),
+        backgroundColor: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),

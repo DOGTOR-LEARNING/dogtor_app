@@ -1,3 +1,4 @@
+
 # Lefthook 配置檔案
 min_version: 1.5.0
 
@@ -51,3 +52,4 @@ skip_output:
 
 # 設定執行環境
 source_dir: "."
+

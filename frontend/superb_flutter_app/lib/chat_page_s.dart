@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'main.dart' show AppColors;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -276,41 +277,42 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Colors.grey.withOpacity(0.2),
-                    ),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1E3875),
-                    ),
-                  ),
-                ),
+          showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (BuildContext context) {
+          final app = Theme.of(context).extension<AppColors>()!;
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
               ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.grey.withOpacity(0.2),
+                      ),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: app.brandPrimary,
+                      ),
+                    ),
+                  ),
+                ),
               Container(
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.4,
@@ -874,9 +876,10 @@ class _ChatPageState extends State<ChatPage> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     _isKeyboardVisible = bottomInset > 0;
 
+    final app = Theme.of(context).extension<AppColors>()!;
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: Color(0xFF102031),
+      backgroundColor: app.brandBackgroundDeep,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: Stack(
@@ -898,7 +901,7 @@ class _ChatPageState extends State<ChatPage> {
                       right: 0,
                       child: Container(
                         height: 40,
-                        color: Color.fromRGBO(99, 158, 171, 1),
+                        color: app.oceanAqua, 
                         width: double.infinity,
                       ),
                     ),
@@ -924,7 +927,7 @@ class _ChatPageState extends State<ChatPage> {
               Container(
                 width: double.infinity,
                 height: double.infinity,
-                color: Color(0xFF102031).withOpacity(0.8),
+                color: app.brandBackgroundDeep.withOpacity(0.8),
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

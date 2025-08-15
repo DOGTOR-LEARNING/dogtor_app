@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'main.dart' show AppColors;
 import 'package:animated_text_kit/animated_text_kit.dart';
 
 class OnboardingChat extends StatefulWidget {
@@ -161,12 +162,12 @@ class _OnboardingChatState extends State<OnboardingChat> {
                   controller: _textController,
                   minLines: 1,
                   maxLines: 5,
-                  style:
-                      const TextStyle(color: Color(0xFF1E3875), fontSize: 16),
+                                     style:
+                       TextStyle(color: Theme.of(context).extension<AppColors>()!.brandPrimary, fontSize: 16),
                   decoration: InputDecoration(
                     hintText: _isEditing ? '編輯回答...' : '輸入你的回答...',
                     hintStyle: TextStyle(
-                      color: const Color(0xFF1E3875).withOpacity(0.6),
+                      color: Theme.of(context).extension<AppColors>()!.brandPrimary.withOpacity(0.6),
                       fontSize: 16,
                     ),
                     border: InputBorder.none,
@@ -178,11 +179,11 @@ class _OnboardingChatState extends State<OnboardingChat> {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E3875),
-                borderRadius: BorderRadius.circular(20),
-              ),
+                          Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).extension<AppColors>()!.brandPrimary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
               child: IconButton(
                 icon: const Icon(Icons.send, color: Colors.white),
                 onPressed: () => _handleSubmit(_textController.text),

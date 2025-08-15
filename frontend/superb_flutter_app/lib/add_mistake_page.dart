@@ -1,5 +1,6 @@
 // frontend/superb_flutter_app/lib/add_mistake_page.dart
 import 'package:flutter/material.dart';
+import 'main.dart' show AppColors;
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -242,7 +243,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(widget.isEditMode ? '錯題更新成功！' : '錯題添加成功！'),
-          backgroundColor: Color(0xFF1E3875),
+          backgroundColor: Theme.of(context).extension<AppColors>()!.brandPrimary,
         ),
       );
 
@@ -377,7 +378,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF102031),
+      backgroundColor: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep,
       body: Stack(
         children: [
           // Background color and image at top
@@ -397,7 +398,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                     right: 0,
                     child: Container(
                       height: 40,
-                      color: Color(0xFF102031),
+                      color: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep,
                       width: double.infinity,
                     ),
                   ),
@@ -443,11 +444,11 @@ class _AddMistakePageState extends State<AddMistakePage> {
                         onPressed: _submitData,
                         style: ElevatedButton.styleFrom(
                           foregroundColor: Colors.white,
-                          backgroundColor: Color(0xFFFFA368),
+                          backgroundColor: Theme.of(context).extension<AppColors>()!.accentOrangeSoft,
                           elevation: 20,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(color: Color(0xFFFFA368)),
+                            side: BorderSide(color: Theme.of(context).extension<AppColors>()!.accentOrangeSoft),
                           ),
                           padding:
                               EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -674,8 +675,8 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                     child: _buildActionButton(
                                       icon: Icons.auto_awesome,
                                       label: "生成摘要",
-                                      color: Color(0xFF1E3875),
-                                      iconColor: Color(0xFFFFA368),
+                                      color: Theme.of(context).extension<AppColors>()!.brandPrimary,
+                                      iconColor: Theme.of(context).extension<AppColors>()!.accentOrangeSoft,
                                       textColor: Colors.white,
                                       onPressed: _questionImage != null
                                           ? () {
@@ -724,7 +725,7 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                         SizedBox(height: 6),
                                         Container(
                                           decoration: BoxDecoration(
-                                            color: Color(0xFF8BB7E0),
+                                            color: Theme.of(context).extension<AppColors>()!.lightBlue,
                                             borderRadius:
                                                 BorderRadius.circular(16),
                                           ),
@@ -736,11 +737,11 @@ class _AddMistakePageState extends State<AddMistakePage> {
                                               value: _selectedSubject,
                                               borderRadius:
                                                   BorderRadius.circular(12),
-                                              dropdownColor: Color(0xFF8BB7E0),
+                                              dropdownColor: Theme.of(context).extension<AppColors>()!.lightBlue,
                                               icon: Icon(Icons.arrow_drop_down,
-                                                  color: Color(0xFF102031)),
+                                                  color: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep),
                                               style: TextStyle(
-                                                  color: Color(0xFF102031),
+                                                  color: Theme.of(context).extension<AppColors>()!.brandBackgroundDeep,
                                                   fontSize: 15),
                                               items: ["數學", "國文", "理化", "歷史"]
                                                   .map((subject) =>
