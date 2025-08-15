@@ -121,14 +121,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
+    - name: Download iOS build artifacts
+      uses: actions/download-artifact@v4
       with:
-        flutter-version: ${{ env.FLUTTER_VERSION }}
-        cache: true
-    
-    - name: Install Flutter dependencies
-      run: flutter pub get
+        name: ios-build
+        path: frontend/superb_flutter_app/build
     
     - name: Setup Ruby
       uses: ruby/setup-ruby@v1
@@ -137,13 +134,17 @@ jobs:
         bundler-cache: true
         working-directory: frontend/superb_flutter_app
     
-    #- name: Install Fastlane dependencies
-    #  run: bundle install
-    #  working-directory: frontend/superb_flutter_app
-    
-    - name: Deploy to TestFlight
-      run: bundle exec fastlane ios beta
+    - name: Install Fastlane dependencies
       working-directory: frontend/superb_flutter_app
+      run: bundle install --jobs 4
+    
+    - name: Deploy to TestFlight (upload only)
+      run: bundle exec fastlane ios upload_testflight
+      working-directory: frontend/superb_flutter_app
+      env:
+        APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
 
   deploy-appstore:
     name: Deploy to App Store
@@ -157,14 +158,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
+    - name: Download iOS build artifacts
+      uses: actions/download-artifact@v4
       with:
-        flutter-version: ${{ env.FLUTTER_VERSION }}
-        cache: true
-    
-    - name: Install Flutter dependencies
-      run: flutter pub get
+        name: ios-build
+        path: frontend/superb_flutter_app/build
     
     - name: Setup Ruby
       uses: ruby/setup-ruby@v1
@@ -173,15 +171,14 @@ jobs:
         bundler-cache: true
         working-directory: frontend/superb_flutter_app
     
-    #- name: Install Fastlane dependencies
-    #  run: bundle install
-    #  working-directory: frontend/superb_flutter_app
+    - name: Install Fastlane dependencies
+      working-directory: frontend/superb_flutter_app
+      run: bundle install --jobs 4
     
-    - name: Deploy to App Store
-      run: bundle exec fastlane ios deploy
+    - name: Deploy to App Store (upload only)
+      run: bundle exec fastlane ios upload_appstore
       working-directory: frontend/superb_flutter_app
       env:
-        MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-        FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
-        FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+        APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}

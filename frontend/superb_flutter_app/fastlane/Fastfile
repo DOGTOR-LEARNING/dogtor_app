@@ -42,10 +42,16 @@ platform :ios do
       repo_update: false,    # 需要時才設 true；與 try_repo_update_on_error 互斥
       silent: true           # 🔇 靜音模式
     )
-    
-    # 🔧 修正 CocoaPods target 的 iOS deployment target
-    sh("sed -i '' 's/platform :ios, .*/platform :ios, \"12.0\"/' ios/Podfile")
-    sh("find ios/Pods -name '*.xcconfig' -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} \\;") rescue UI.message("Could not update deployment targets in xcconfig files")
+
+    begin
+      update_code_signing_settings(
+        path: "ios/Pods/Pods.xcodeproj",
+        use_automatic_signing: true
+      )
+      UI.message("✅ 已設定 Pods 專案為自動簽署")
+    rescue => e
+      UI.message("⚠️ 無法設定 Pods 自動簽署: #{e.message}")
+    end
     
     # 下載匹配的證書和描述檔案
     match(
@@ -60,12 +66,32 @@ platform :ios do
     BUNDLE = "com.dogtor.superbFlutterApp"
     PROF   = "match AppStore #{BUNDLE}"
 
-    # 設定為自動簽章（使用 match 下載的證書）
+    # 強制設定為手動簽章
     update_code_signing_settings(
       path: "ios/Runner.xcodeproj", 
-      use_automatic_signing: true,  # 🔄 改為自動簽署
+      use_automatic_signing: false, 
+      code_sign_identity: "Apple Distribution",
       team_id: TEAM, 
       targets: ["Runner"]
+    )
+
+
+    # 從 match 下載的 profiles 中抓到實際檔案路徑
+    profile_path = get_provisioning_profile(
+      app_identifier: BUNDLE,
+      development: false,
+      #readonly: true,
+      api_key: api_key # 從環境變數讀取
+    )
+    
+    # 綁定 Release 組態的 Provisioning Profile
+    update_project_provisioning(
+      xcodeproj: "ios/Runner.xcodeproj",
+      target_filter: "Runner",
+      build_configuration: "Release",
+      # profile: profile_path
+      # 建議：直接省略 profile，會用 SIGH_PROFILE_PATH 預設
+      # profile: lane_context[SharedValues::SIGH_PROFILE_PATH]
     )
 
     # 構建應用
@@ -74,13 +100,18 @@ platform :ios do
       scheme: "Runner",
       configuration: "Release",
       export_method: "app-store",
+      codesigning_identity: "Apple Distribution",
       clean: true,
       silent: true,          # 🔇 減少構建輸出
-      suppress_xcode_output: true,  # 🔇 隱藏 Xcode 詳細輸出
+      suppress_xcode_output: false,  # 🔇 隱藏 Xcode 詳細輸出
+      skip_profile_detection: true,                 # ← 取消 gym 自動產生 provisioningProfiles
+      export_options: { method: "app-store" },      # ← 最小化，不放 provisioningProfiles/signingStyle
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
+        # "CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        "IPHONEOS_DEPLOYMENT_TARGET=12.0"  # 🔧 修正 iOS 版本要求
+        # "PROVISIONING_PROFILE_SPECIFIER='match AppStore #{BUNDLE}'", # Avoid affecting other third-party plugins 
+        # "CODE_SIGN_IDENTITY=iPhone Distribution"
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
@@ -138,9 +169,22 @@ platform :ios do
       podfile: "ios/Podfile",
       try_repo_update_on_error: true,
       clean_install: true,
-      repo_update: false
+      repo_update: false,
+      silent: true
     )
-    
+
+    # 🔧 在 CocoaPods 之後，match 之前加入
+    begin
+      update_code_signing_settings(
+        path: "ios/Pods/Pods.xcodeproj",
+        use_automatic_signing: true
+      )
+      UI.message("✅ 已設定 Pods 專案為自動簽署")
+    rescue => e
+      UI.message("⚠️ 無法設定 Pods 自動簽署: #{e.message}")
+    end
+
+    # 下載匹配的證書和描述檔案  
     match(
       type: "appstore",
       readonly: true,
@@ -153,10 +197,10 @@ platform :ios do
     BUNDLE = "com.dogtor.superbFlutterApp"
     PROF   = "match AppStore #{BUNDLE}"
 
-    # 設定為自動簽章（使用 match 下載的證書）
+    # 強制設定為手動簽章
     update_code_signing_settings(
       path: "ios/Runner.xcodeproj", 
-      use_automatic_signing: true,  # 🔄 改為自動簽署
+      use_automatic_signing: false, 
       team_id: TEAM, 
       targets: ["Runner"]
     )
@@ -181,10 +225,10 @@ platform :ios do
       export_method: "app-store",
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
-        # 🔄 自動簽署不需要這些參數
-        # "CODE_SIGN_STYLE=Manual",
+        #"CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        # "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
+        "IPHONEOS_DEPLOYMENT_TARGET=13.0",  # 🔧 更新為 iOS 13.0
+        "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
@@ -237,10 +281,10 @@ platform :ios do
     BUNDLE = "com.dogtor.superbFlutterApp"
     PROF   = "match AppStore #{BUNDLE}"
 
-    # 設定為自動簽章（使用 match 下載的證書）
+    # 強制設定為手動簽章
     update_code_signing_settings(
       path: "ios/Runner.xcodeproj", 
-      use_automatic_signing: true,  # 🔄 改為自動簽署
+      use_automatic_signing: false, 
       team_id: TEAM, 
       targets: ["Runner"]
     )
@@ -260,10 +304,10 @@ platform :ios do
       export_method: "app-store",
       xcargs: [
         "DEVELOPMENT_TEAM=#{TEAM}",
-        # 🔄 自動簽署不需要這些參數
-        # "CODE_SIGN_STYLE=Manual",
+        "CODE_SIGN_STYLE=Manual",
         "PRODUCT_BUNDLE_IDENTIFIER=#{BUNDLE}",
-        # "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
+        "IPHONEOS_DEPLOYMENT_TARGET=13.0",  # 🔧 更新為 iOS 13.0
+        "PROVISIONING_PROFILE_SPECIFIER='#{PROF}'"
       ].join(" "),
       output_directory: "./build",
       output_name: "Runner.ipa",
